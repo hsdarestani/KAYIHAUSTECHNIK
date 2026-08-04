@@ -1,1 +1,2 @@
 Prepare the persistent KAYI reference-data public encryption key.
+Synchronized: 2026-08-05T01:33:00+03:30
