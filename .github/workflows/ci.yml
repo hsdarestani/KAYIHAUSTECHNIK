@@ -31,5 +31,7 @@ jobs:
         run: python manage.py test -v 2
       - name: Python syntax
         run: python -m compileall -q config erp tests
+      - name: Prepare Compose environment
+        run: cp .env.example .env
       - name: Compose validation
         run: docker compose config --quiet
