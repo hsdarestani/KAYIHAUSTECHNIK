@@ -1,4 +1,6 @@
+import base64
 import gzip
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -10,6 +12,34 @@ from erp.models import CatalogItem, Organization, PriceItem, PriceSource
 
 
 class NormalizedPriceImportTests(TestCase):
+    def test_encrypted_fixture_integrity(self):
+        root = Path(__file__).resolve().parents[1]
+        encrypted = root / "reference_data" / "encrypted"
+        assembled = (
+            (encrypted / "prices.part-00").read_bytes()[:8000]
+            + b"".join((encrypted / f"prices.part-{index:02d}").read_bytes() for index in range(1, 6))
+        )
+        self.assertEqual(len(assembled), 85720)
+        self.assertEqual(
+            hashlib.sha256(assembled).hexdigest(),
+            "fba909127ab186258355cb76de5a73ddfdf5e78a5aa92a5e182f7a6f5b3525d0",
+        )
+        ciphertext = base64.b64decode(assembled, validate=True)
+        self.assertEqual(
+            hashlib.sha256(ciphertext).hexdigest(),
+            "e1906a43c44023045e772e8921c51fb1acd9f26e3d9c91838b842fc9c3ef3651",
+        )
+        wrapped_key_b64 = (encrypted / "key.enc.b64").read_bytes()
+        self.assertEqual(
+            hashlib.sha256(wrapped_key_b64).hexdigest(),
+            "d560705add12afde62f91af0bb2e913031d9d2466cf64e8b0e000d72f89b4979",
+        )
+        wrapped_key = base64.b64decode(wrapped_key_b64, validate=True)
+        self.assertEqual(
+            hashlib.sha256(wrapped_key).hexdigest(),
+            "7f411bb00e4e2a7f478c5987529761e3eda2233a94e70d5f74fef55b96607e1a",
+        )
+
     def test_import_is_idempotent_and_keeps_demo_separate(self):
         org = Organization.objects.create(name="KAYI Haustechnik")
         Organization.objects.create(name="KAYI Demo", settings={"is_demo": True})
