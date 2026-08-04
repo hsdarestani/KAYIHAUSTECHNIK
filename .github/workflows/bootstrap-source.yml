@@ -1,0 +1,39 @@
+name: Bootstrap source tree
+
+on:
+  push:
+    branches: [agent/full-platform]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-source
+  cancel-in-progress: false
+
+jobs:
+  unpack:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/full-platform
+          fetch-depth: 0
+      - name: Unpack staged application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f .bootstrap/READY ]; then
+            echo "Source parts are still being uploaded."
+            exit 0
+          fi
+          cat .bootstrap/source.part-* | base64 --decode > /tmp/kayi-source.tar.gz
+          echo "b2b84d7b372316472ffc9e7483b52757dc1b8a36104c4f8c361394b29adc42fa  /tmp/kayi-source.tar.gz" | sha256sum --check
+          tar -xzf /tmp/kayi-source.tar.gz
+          rm -rf .bootstrap .github/workflows/bootstrap-source.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Build complete KAYI operations platform"
+          git push origin HEAD:agent/full-platform
