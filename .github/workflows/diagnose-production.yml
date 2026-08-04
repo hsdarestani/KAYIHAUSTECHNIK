@@ -1,0 +1,48 @@
+name: Diagnose KAYI production host
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[diagnose] KAYI production' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'maintenance/kayi-production-diagnose' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect production host
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 5m
+          script: |
+            set +e
+            echo '=== date / uptime ==='
+            date -Is
+            uptime
+            echo '=== memory ==='
+            free -h
+            echo '=== disk / inodes ==='
+            df -h
+            df -i
+            echo '=== docker ==='
+            systemctl is-active docker
+            docker version --format '{{.Server.Version}}'
+            docker system df
+            cd /opt/kayi 2>/dev/null || exit 0
+            if docker compose version >/dev/null 2>&1; then
+              docker compose ps -a
+              docker compose logs --tail=80 web db redis caddy worker beat
+            else
+              docker-compose ps -a
+              docker-compose logs --tail=80 web db redis caddy worker beat
+            fi
+            echo '=== recent kernel OOM / kills ==='
+            dmesg -T | grep -Ei 'out of memory|oom|killed process|i/o error|no space' | tail -80
+            echo '=== recent docker service ==='
+            journalctl -u docker --no-pager -n 100
