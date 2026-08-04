@@ -1,0 +1,2 @@
+KAYI Haustechnik production release
+Approved tested main branch deployment trigger: 2026-08-04
