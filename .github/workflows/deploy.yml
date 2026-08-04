@@ -23,6 +23,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: Verify and assemble source
         run: bash scripts/unpack-source.sh
+      - name: Prepare Compose environment
+        run: cp .env.example .env
       - name: Validate compose
         run: docker compose config --quiet
       - name: Deploy over SSH
