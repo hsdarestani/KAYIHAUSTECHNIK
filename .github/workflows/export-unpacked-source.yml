@@ -1,0 +1,29 @@
+name: Export unpacked source
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[source-export] KAYI source' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'maintenance/source-export' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble source
+        run: bash scripts/unpack-source.sh
+      - name: Package application source
+        run: |
+          tar -czf /tmp/kayi-unpacked-source.tar.gz \
+            config erp templates static tests manage.py requirements.txt \
+            Dockerfile docker-compose.yml Caddyfile entrypoint.sh .env.example
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kayi-unpacked-source-${{ github.run_id }}
+          path: /tmp/kayi-unpacked-source.tar.gz
+          if-no-files-found: error
+          retention-days: 3
