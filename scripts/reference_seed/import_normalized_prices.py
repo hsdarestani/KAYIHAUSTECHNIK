@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import gzip
 import json
+import lzma
 import mimetypes
 import re
 from decimal import Decimal
@@ -42,8 +43,34 @@ class Command(BaseCommand):
         if not org:
             raise CommandError("Keine Organisation vorhanden.")
         try:
-            with gzip.open(fixture, "rt", encoding="utf-8") as handle:
-                payload = json.load(handle)
+            if fixture.suffix.lower() == ".xz":
+                with lzma.open(fixture, "rt", encoding="utf-8") as handle:
+                    compact = json.load(handle)
+                if not isinstance(compact, list) or len(compact) != 2 or compact[0] != 1:
+                    raise ValueError("compact schema")
+                payload = {"version": 1, "sources": []}
+                for source in compact[1]:
+                    path, filename, sha256, size, rows = source
+                    payload["sources"].append({
+                        "path": path,
+                        "filename": filename,
+                        "sha256": sha256,
+                        "size": size,
+                        "items": [
+                            {
+                                "code": row[0],
+                                "description": row[1],
+                                "category": row[2],
+                                "unit": row[3],
+                                "purchase_price": row[4],
+                                "sales_price": row[5],
+                            }
+                            for row in rows
+                        ],
+                    })
+            else:
+                with gzip.open(fixture, "rt", encoding="utf-8") as handle:
+                    payload = json.load(handle)
         except Exception as exc:
             raise CommandError(f"Preisbibliothek ist ungültig: {exc}") from exc
         if payload.get("version") != 1 or not isinstance(payload.get("sources"), list):
@@ -88,9 +115,8 @@ class Command(BaseCommand):
                 },
             )
             source.items.all().delete()
-            price_objects = []
-            for item in items:
-                price_objects.append(
+            PriceItem.objects.bulk_create(
+                [
                     PriceItem(
                         organization=org,
                         source=source,
@@ -102,8 +128,10 @@ class Command(BaseCommand):
                         sales_price=money(item.get("sales_price")),
                         external_data={"normalized_from": source_data["path"]},
                     )
-                )
-            PriceItem.objects.bulk_create(price_objects, batch_size=1000)
+                    for item in items
+                ],
+                batch_size=1000,
+            )
 
             safe_dir = output_root / re.sub(r"[^A-Za-z0-9._-]+", "_", str(original_path.parent))
             safe_dir.mkdir(parents=True, exist_ok=True)
