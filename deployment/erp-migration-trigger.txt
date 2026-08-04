@@ -1,1 +1,2 @@
 Generate and commit the initial ERP migration.
+Synchronized: 2026-08-04T17:09:00Z
