@@ -7,10 +7,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: kayi-production
-  cancel-in-progress: false
-
 jobs:
   validate-and-deploy:
     if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[deploy-sync] KAYI production' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'deploy/kayi-production-live' }}
@@ -29,15 +25,8 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Generate test migrations
-        run: python manage.py makemigrations erp --noinput
-      - name: Preserve generated migrations
-        uses: actions/upload-artifact@v4
-        with:
-          name: erp-migrations-${{ github.run_id }}
-          path: erp/migrations/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Validate committed migrations
+        run: python manage.py makemigrations --check --dry-run
       - name: Migrate test database
         run: python manage.py migrate --noinput
       - name: Django checks
