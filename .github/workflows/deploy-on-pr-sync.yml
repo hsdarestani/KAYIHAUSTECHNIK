@@ -59,3 +59,10 @@ jobs:
           envs: OPENAI_API_KEY
           command_timeout: 35m
           script_path: deploy/server-deploy.sh
+      - name: Verify public IP health
+        run: curl --retry 12 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS http://91.107.144.64/api/health/
+      - name: Check domain DNS and HTTPS
+        continue-on-error: true
+        run: |
+          getent hosts kayi.smarbiz.sbs
+          curl --retry 4 --retry-all-errors --retry-delay 5 --connect-timeout 5 --max-time 15 -fsS https://kayi.smarbiz.sbs/api/health/
