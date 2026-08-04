@@ -31,6 +31,13 @@ jobs:
         run: pip install -r requirements.txt
       - name: Generate test migrations
         run: python manage.py makemigrations erp --noinput
+      - name: Preserve generated migrations
+        uses: actions/upload-artifact@v4
+        with:
+          name: erp-migrations-${{ github.run_id }}
+          path: erp/migrations/
+          if-no-files-found: error
+          retention-days: 7
       - name: Migrate test database
         run: python manage.py migrate --noinput
       - name: Django checks
