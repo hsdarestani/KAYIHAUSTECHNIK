@@ -68,6 +68,8 @@ for part_id, spec in expected.items():
             start = block_index * block_size
             end = min(start + block_size, len(text))
             text = text[:start] + replacement + text[end:]
+    if len(text) > spec["length"]:
+        text = text[: spec["length"]]
 
     actual_hashes = [
         hashlib.sha256(text[offset : offset + block_size].encode()).hexdigest()
