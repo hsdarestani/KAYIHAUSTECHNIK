@@ -110,5 +110,6 @@ done | base64 --decode > "$ARCHIVE"
 
 echo "${EXPECTED_SHA}  ${ARCHIVE}" | sha256sum --check
 tar -xzf "$ARCHIVE"
+python3 scripts/source_overrides.py
 
 echo "KAYI source tree assembled and verified."
