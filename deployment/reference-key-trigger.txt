@@ -1,0 +1,1 @@
+Prepare the persistent KAYI reference-data public encryption key.
