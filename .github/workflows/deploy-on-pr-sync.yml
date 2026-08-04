@@ -1,0 +1,54 @@
+name: Validate and deploy approved production PR
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kayi-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[deploy-sync] KAYI production' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'deploy/kayi-production-live' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAIAPIKEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify and assemble source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Generate test migrations
+        run: python manage.py makemigrations erp --noinput
+      - name: Migrate test database
+        run: python manage.py migrate --noinput
+      - name: Django checks
+        run: python manage.py check
+      - name: Tests
+        run: python manage.py test -v 2
+      - name: Python syntax
+        run: python -m compileall -q config erp tests
+      - name: Prepare Compose environment
+        run: cp .env.example .env
+      - name: Compose validation
+        run: docker compose config --quiet
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          envs: OPENAI_API_KEY
+          command_timeout: 35m
+          script_path: deploy/server-deploy.sh
