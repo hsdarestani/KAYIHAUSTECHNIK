@@ -15,6 +15,18 @@ if ! docker compose version >/dev/null 2>&1; then
   apt-get install -y docker-compose-v2 || apt-get install -y docker-compose-plugin || apt-get install -y docker-compose
 fi
 
+# Keep SSH untouched; only add explicit web ingress rules when a host firewall exists.
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow 80/tcp >/dev/null 2>&1 || true
+  ufw allow 443/tcp >/dev/null 2>&1 || true
+  ufw allow 443/udp >/dev/null 2>&1 || true
+fi
+if command -v iptables >/dev/null 2>&1; then
+  iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
+  iptables -C INPUT -p tcp --dport 443 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport 443 -j ACCEPT
+  iptables -C INPUT -p udp --dport 443 -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p udp --dport 443 -j ACCEPT
+fi
+
 dc() {
   if docker compose version >/dev/null 2>&1; then
     docker compose "$@"
@@ -94,6 +106,8 @@ dc up -d --remove-orphans
 for attempt in $(seq 1 36); do
   if curl -fsS http://127.0.0.1/api/health/ >/dev/null; then
     echo "KAYI deployment healthy"
+    dc ps
+    ss -lntup 2>/dev/null | grep -E '(:80|:443)' || true
     docker image prune -f
     exit 0
   fi
