@@ -47,3 +47,15 @@ if patch_parts:
         ["git", "apply", "--whitespace=nowarn", str(patch_path)],
         check=True,
     )
+
+# Keep sensitive pricing payload outside the public source tree while installing
+# its importer and tests into the assembled Django application.
+reference_command = Path("scripts/reference_seed/import_normalized_prices.py")
+if reference_command.exists():
+    target = Path("erp/management/commands/import_normalized_prices.py")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(reference_command.read_text(encoding="utf-8"), encoding="utf-8")
+reference_test = Path("scripts/reference_seed/test_normalized_prices.py")
+if reference_test.exists():
+    target = Path("tests/test_normalized_prices.py")
+    target.write_text(reference_test.read_text(encoding="utf-8"), encoding="utf-8")
