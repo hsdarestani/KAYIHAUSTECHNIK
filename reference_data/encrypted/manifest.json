@@ -1,0 +1,35 @@
+{
+  "format_version": 1,
+  "description": "KAYI commercial reference-price dataset. Public repository contains ciphertext only; the RSA private key remains on the production server.",
+  "cipher": {
+    "data": "AES-256-CBC/PBKDF2-SHA256/200000",
+    "wrapped_key": "RSA-3072-OAEP-SHA256"
+  },
+  "sources": 25,
+  "normalized_rows": 3614,
+  "plaintext": {
+    "filename": "kayi-prices.compact.xz",
+    "size": 64264,
+    "sha256": "dccc8196e83fbd1f4d5471c4c885b35adf3ba627d819068ab154c3e1b2361aac"
+  },
+  "encrypted_data": {
+    "base64_size": 85720,
+    "base64_sha256": "fba909127ab186258355cb76de5a73ddfdf5e78a5aa92a5e182f7a6f5b3525d0",
+    "binary_sha256": "e1906a43c44023045e772e8921c51fb1acd9f26e3d9c91838b842fc9c3ef3651",
+    "assembly": [
+      {"path": "prices.part-00", "stored_size": 10000, "use_first_bytes": 8000, "used_sha256": "c38506544667c691e9b6b97b9dfed44e50d755f8ee436e4fe8349804fa8fc599"},
+      {"path": "prices.part-01", "size": 16000, "sha256": "91d83fa05f345117208df5be99c916e5937c616077ce24780750ffc7f1f4ef2e"},
+      {"path": "prices.part-02", "size": 16000, "sha256": "fee8f67176066006b858689b31aa1a00d08a73789e6ad2d828b9fa69e203abbf"},
+      {"path": "prices.part-03", "size": 16000, "sha256": "3f323d5113ce3670da64eb7d69a6ca21a3556044798bc81eb4ecfa11ddd68486"},
+      {"path": "prices.part-04", "size": 16000, "sha256": "76d4bf2e8fdf11f6da58549adfee2fd37c8a46be97d08de7a6d39340cc92593b"},
+      {"path": "prices.part-05", "size": 13720, "sha256": "81074607ee93b6271d05ac8264c861cb0e9cac4fd30f9246b2eac16d2b5abe34"}
+    ]
+  },
+  "encrypted_key": {
+    "path": "key.enc.b64",
+    "base64_size": 512,
+    "base64_sha256": "d560705add12afde62f91af0bb2e913031d9d2466cf64e8b0e000d72f89b4979",
+    "binary_size": 384,
+    "binary_sha256": "7f411bb00e4e2a7f478c5987529761e3eda2233a94e70d5f74fef55b96607e1a"
+  }
+}
