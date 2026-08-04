@@ -87,7 +87,6 @@ fi
 
 dc build --pull
 dc up -d db redis
-dc run --rm web python manage.py makemigrations erp --noinput
 dc run --rm web python manage.py migrate --noinput
 dc run --rm web python manage.py bootstrap_admin --credentials-file /runtime/admin_credentials.txt
 dc up -d --remove-orphans
