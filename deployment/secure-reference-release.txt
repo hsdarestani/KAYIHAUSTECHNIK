@@ -1,0 +1,4 @@
+KAYI secure reference-data release
+Validated locally: 25 sources, 3614 normalized rows
+Payload assembly: 85720 base64 bytes
+Requested: 2026-08-05T02:20:00+03:30
