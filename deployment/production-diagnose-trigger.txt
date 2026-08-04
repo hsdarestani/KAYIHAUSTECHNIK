@@ -1,0 +1,2 @@
+Inspect KAYI production host after interrupted Docker build.
+Requested: 2026-08-05T02:45:00+03:30
