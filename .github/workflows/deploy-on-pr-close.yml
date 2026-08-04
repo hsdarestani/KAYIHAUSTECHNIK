@@ -1,0 +1,127 @@
+name: Deploy production from approved PR
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kayi-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[deploy] KAYI production' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAIAPIKEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify and assemble source
+        run: bash scripts/unpack-source.sh
+      - name: Prepare Compose environment
+        run: cp .env.example .env
+      - name: Validate compose
+        run: docker compose config --quiet
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          envs: OPENAI_API_KEY
+          command_timeout: 35m
+          script: |
+            set -eu
+            export DEBIAN_FRONTEND=noninteractive
+            if ! command -v git >/dev/null 2>&1 || ! command -v docker >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y git docker.io curl openssl python3 coreutils
+            fi
+            systemctl enable --now docker
+            if ! docker compose version >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y docker-compose-v2 || apt-get install -y docker-compose-plugin || apt-get install -y docker-compose
+            fi
+            dc() {
+              if docker compose version >/dev/null 2>&1; then docker compose "$@"; else docker-compose "$@"; fi
+            }
+            mkdir -p /opt/kayi /opt/kayi-backups
+            if [ ! -d /opt/kayi/.git ]; then
+              rm -rf /opt/kayi/*
+              git clone https://github.com/hsdarestani/KAYIHAUSTECHNIK.git /opt/kayi
+            fi
+            cd /opt/kayi
+            git fetch origin main
+            git reset --hard origin/main
+            bash scripts/unpack-source.sh
+            umask 077
+            if [ ! -f .env ]; then
+              DJANGO_SECRET_KEY="$(openssl rand -hex 48)"
+              POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+              printf '%s\n' \
+                "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}" \
+                "DEBUG=0" \
+                "ALLOWED_HOSTS=kayi.smarbiz.sbs,91.107.144.64,localhost,127.0.0.1" \
+                "CSRF_TRUSTED_ORIGINS=https://kayi.smarbiz.sbs,http://91.107.144.64" \
+                "SECURE_SSL_REDIRECT=0" \
+                "COOKIE_SECURE=0" \
+                "TIME_ZONE=Europe/Berlin" \
+                "POSTGRES_DB=kayi" \
+                "POSTGRES_USER=kayi" \
+                "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+                "POSTGRES_HOST=db" \
+                "POSTGRES_PORT=5432" \
+                "CELERY_BROKER_URL=redis://redis:6379/0" \
+                "CELERY_RESULT_BACKEND=redis://redis:6379/1" \
+                "OPENAI_API_KEY=" \
+                "OPENAI_MODEL=gpt-5" \
+                "ORGANIZATION_NAME=KAYI Haustechnik" \
+                "INITIAL_ADMIN_USERNAME=admin" \
+                "INITIAL_ADMIN_EMAIL=admin@kayi.local" > .env
+            fi
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+            path = Path('.env')
+            lines = path.read_text().splitlines()
+            values = {}
+            order = []
+            for line in lines:
+                if '=' in line and not line.lstrip().startswith('#'):
+                    key, value = line.split('=', 1)
+                    values[key] = value
+                    order.append(key)
+            values['OPENAI_API_KEY'] = os.environ.get('OPENAI_API_KEY', '')
+            if 'OPENAI_API_KEY' not in order:
+                order.append('OPENAI_API_KEY')
+            path.write_text('\n'.join(f'{key}={values[key]}' for key in order) + '\n')
+            path.chmod(0o600)
+            PY
+            if dc ps --status running --services 2>/dev/null | grep -q '^db$'; then
+              set -a; . ./.env; set +a
+              dc exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "/opt/kayi-backups/predeploy-$(date +%Y%m%d-%H%M%S).sql.gz" || true
+              find /opt/kayi-backups -type f -mtime +14 -delete || true
+            fi
+            dc build --pull
+            dc up -d db redis
+            dc run --rm web python manage.py makemigrations erp --noinput
+            dc run --rm web python manage.py migrate --noinput
+            dc run --rm web python manage.py bootstrap_admin --credentials-file /runtime/admin_credentials.txt
+            dc up -d --remove-orphans
+            for attempt in $(seq 1 36); do
+              if curl -fsS http://127.0.0.1/api/health/ >/dev/null; then
+                echo "KAYI deployment healthy"
+                break
+              fi
+              if [ "$attempt" -eq 36 ]; then
+                dc logs --tail=250 web caddy worker beat
+                exit 1
+              fi
+              sleep 5
+            done
+            docker image prune -f
