@@ -35,7 +35,7 @@ dc() {
   fi
 }
 
-mkdir -p /opt/kayi /opt/kayi-backups
+mkdir -p /opt/kayi /opt/kayi-backups /opt/kayi-reference-data
 if [ ! -d /opt/kayi/.git ]; then
   rm -rf /opt/kayi/*
   git clone https://github.com/hsdarestani/KAYIHAUSTECHNIK.git /opt/kayi
@@ -101,11 +101,20 @@ dc build --pull
 dc up -d db redis
 dc run --rm web python manage.py migrate --noinput
 dc run --rm web python manage.py bootstrap_admin --credentials-file /runtime/admin_credentials.txt
+dc run --rm web python manage.py seed_demo_data --credentials-file /runtime/demo_credentials.txt
+
+if find /opt/kayi-reference-data -type f \( -iname '*.xlsx' -o -iname '*.xlsm' -o -iname '*.csv' -o -iname '*.pdf' -o -iname '*.003' -o -iname '*.p86' \) -print -quit | grep -q .; then
+  dc run --rm -v /opt/kayi-reference-data:/reference-data:ro web python manage.py import_reference_data /reference-data
+else
+  echo "No reference price files found yet in /opt/kayi-reference-data"
+fi
+
 dc up -d --remove-orphans
 
 for attempt in $(seq 1 36); do
   if curl -fsS http://127.0.0.1/api/health/ >/dev/null; then
     echo "KAYI deployment healthy"
+    echo "Reference files on host: $(find /opt/kayi-reference-data -type f | wc -l)"
     dc ps
     ss -lntup 2>/dev/null | grep -E '(:80|:443)' || true
     docker image prune -f
