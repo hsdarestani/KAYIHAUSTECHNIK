@@ -1,0 +1,35 @@
+name: Debug secure source assembly
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  debug-source:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == 'KAYI v2.1: Sichere Preisbibliothek und Produktionsdaten' && github.head_ref == 'feature/kayi-secure-reference-data' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Capture assembly output
+        id: assembly
+        shell: bash
+        run: |
+          set +e
+          bash -x scripts/unpack-source.sh > /tmp/source-assembly.log 2>&1
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload assembly log
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure-source-debug-${{ github.run_id }}
+          path: /tmp/source-assembly.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Fail after preserving log
+        if: ${{ steps.assembly.outputs.exit_code != '0' }}
+        run: exit 1
