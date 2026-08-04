@@ -1,0 +1,34 @@
+name: Prepare reference data encryption key
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-key:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[reference-key] KAYI reference data' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'maintenance/reference-data-key' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate persistent server key and expose public half
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 5m
+          script: |
+            set -eu
+            mkdir -p /opt/kayi-secrets
+            chmod 700 /opt/kayi-secrets
+            if [ ! -f /opt/kayi-secrets/reference-private.pem ]; then
+              openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out /opt/kayi-secrets/reference-private.pem
+              chmod 600 /opt/kayi-secrets/reference-private.pem
+            fi
+            openssl pkey -in /opt/kayi-secrets/reference-private.pem -pubout -out /opt/kayi-secrets/reference-public.pem
+            echo 'REFERENCE_PUBLIC_KEY_BEGIN'
+            cat /opt/kayi-secrets/reference-public.pem
+            echo 'REFERENCE_PUBLIC_KEY_END'
