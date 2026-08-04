@@ -81,10 +81,7 @@ path.chmod(0o600)
 PY
 
 if dc ps --status running --services 2>/dev/null | grep -q '^db$'; then
-  set -a
-  . ./.env
-  set +a
-  dc exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "/opt/kayi-backups/predeploy-$(date +%Y%m%d-%H%M%S).sql.gz" || true
+  dc exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "/opt/kayi-backups/predeploy-$(date +%Y%m%d-%H%M%S).sql.gz" || true
   find /opt/kayi-backups -type f -mtime +14 -delete || true
 fi
 
