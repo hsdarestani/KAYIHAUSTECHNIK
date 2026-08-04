@@ -18,3 +18,9 @@ replace_exact(
     '    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="object_locations")\n'
     '    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="object_locations")',
 )
+
+replace_exact(
+    "Dockerfile",
+    "COPY . .\nRUN useradd --create-home --uid 10001 appuser",
+    "COPY . .\nRUN python manage.py makemigrations erp --noinput\nRUN useradd --create-home --uid 10001 appuser",
+)
