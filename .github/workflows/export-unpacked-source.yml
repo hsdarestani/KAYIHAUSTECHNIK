@@ -20,7 +20,7 @@ jobs:
         run: |
           tar -czf /tmp/kayi-unpacked-source.tar.gz \
             config erp templates static tests manage.py requirements.txt \
-            Dockerfile docker-compose.yml Caddyfile entrypoint.sh .env.example
+            Dockerfile .env.example
       - uses: actions/upload-artifact@v4
         with:
           name: kayi-unpacked-source-${{ github.run_id }}
