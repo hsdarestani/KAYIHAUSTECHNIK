@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  issues:
+    types: [opened]
 
 permissions:
   contents: read
@@ -14,6 +16,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event_name != 'issues' || (github.event.issue.user.login == 'hsdarestani' && github.event.issue.title == '[deploy] KAYI production') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: production
