@@ -14,8 +14,9 @@
     "binary_sha256": "e954dba997af20e8618954c97fceb8868405fe03197106f7c3724879ce929263",
     "base64_size": 216320,
     "base64_sha256": "b127df3fb0b33e6f846aae477eb04cc8ac943e4461e35a2d74fcbc0e9161c113",
-    "part_count": 28,
-    "part_size": 8000
+    "part_count": 20,
+    "nominal_part_size": 16000,
+    "note": "Parts 005 and 010 are safely split into four ordered 4000-byte transfer segments."
   },
   "wrapped_key": {
     "base64_size": 512,
