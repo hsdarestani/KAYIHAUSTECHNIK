@@ -16,7 +16,7 @@ class NormalizedPriceImportTests(TestCase):
         root = Path(__file__).resolve().parents[1]
         encrypted = root / "reference_data" / "encrypted"
         parts = sorted(encrypted.glob("payload.part-*"))
-        self.assertEqual(len(parts), 28)
+        self.assertEqual(len(parts), 20)
         assembled = b"".join(part.read_bytes() for part in parts)
         self.assertEqual(len(assembled), 216320)
         self.assertEqual(
