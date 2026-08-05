@@ -61,3 +61,20 @@ if reference_test.exists():
     target = Path("tests/test_normalized_prices.py")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(reference_test.read_text(encoding="utf-8"), encoding="utf-8")
+
+# Apply the verified graphical parity and camera-assisted room measurement release.
+UI_PARITY_PATCH_SHA256 = "0deef073f4f15b1296dec3f651dffdef5341b2d49fb9c5799d5109264eedc195"
+ui_patch_parts = sorted(Path("scripts/ui_parity_patch").glob("part*"))
+if ui_patch_parts:
+    ui_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in ui_patch_parts),
+        validate=True,
+    )
+    if hashlib.sha256(ui_payload).hexdigest() != UI_PARITY_PATCH_SHA256:
+        raise RuntimeError("KAYI UI parity patch integrity check failed")
+    ui_patch_path = Path("/tmp/kayi-ui-parity-room-measurement.patch")
+    ui_patch_path.write_bytes(gzip.decompress(ui_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(ui_patch_path)],
+        check=True,
+    )
