@@ -27,24 +27,31 @@ jobs:
             git rev-parse HEAD
             echo '=== CONTAINERS ==='
             docker compose ps
+            echo '=== REFERENCE FILES ==='
+            find /opt/kayi-reference-data -maxdepth 6 -type f -printf '%P\t%s bytes\n' 2>/dev/null | sort | head -300 || true
+            echo "reference_file_count=$(find /opt/kayi-reference-data -type f 2>/dev/null | wc -l)"
             echo '=== APPLICATION DATA ==='
             docker compose exec -T web python manage.py shell -c "
+            from django.apps import apps
             from django.contrib.auth import get_user_model
-            from erp.models import CalendarEvent, CatalogItem, Organization, PriceItem, PriceSource, Project
+            Organization = apps.get_model('erp', 'Organization')
+            CalendarEvent = apps.get_model('erp', 'CalendarEvent')
+            Project = apps.get_model('erp', 'Project')
+            CatalogItem = apps.get_model('erp', 'CatalogItem')
             real = Organization.objects.exclude(settings__is_demo=True).first()
             demo = Organization.objects.filter(settings__is_demo=True).first()
+            print('models=', sorted(model.__name__ for model in apps.get_app_config('erp').get_models()))
             print('real_org=', real.name if real else None)
             print('demo_org=', demo.name if demo else None)
-            print('price_sources=', PriceSource.objects.filter(organization=real).count() if real else 0)
-            print('price_items=', PriceItem.objects.filter(organization=real).count() if real else 0)
             print('catalog_items=', CatalogItem.objects.filter(organization=real).count() if real else 0)
             print('demo_events=', CalendarEvent.objects.filter(organization=demo).count() if demo else 0)
             print('demo_projects=', Project.objects.filter(organization=demo).count() if demo else 0)
             print('demo_user=', get_user_model().objects.filter(username='demo').exists())
+            PriceSource = next((m for m in apps.get_app_config('erp').get_models() if m.__name__ == 'PriceSource'), None)
+            PriceItem = next((m for m in apps.get_app_config('erp').get_models() if m.__name__ == 'PriceItem'), None)
+            print('price_sources=', PriceSource.objects.filter(organization=real).count() if PriceSource and real else 0)
+            print('price_items=', PriceItem.objects.filter(organization=real).count() if PriceItem and real else 0)
             "
-            echo '=== REFERENCE FILES ==='
-            find /opt/kayi-reference-data -maxdepth 4 -type f -printf '%P\t%s bytes\n' 2>/dev/null | sort | head -200 || true
-            echo "reference_file_count=$(find /opt/kayi-reference-data -type f 2>/dev/null | wc -l)"
             echo '=== INTERNAL HEALTH ==='
             curl -fsS http://127.0.0.1/api/health/
       - name: Verify public HTTPS health
