@@ -1,1 +1,3 @@
-Prepare unpacked KAYI source export.
+latest_source_export=2026-08-05T14:39:00+03:30
+base=3296281a6a901a999e365ddcb1b4536dd66a6a7d
+purpose=generate-exact-room-measurement-migration
