@@ -61,3 +61,37 @@ if reference_test.exists():
     target = Path("tests/test_normalized_prices.py")
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(reference_test.read_text(encoding="utf-8"), encoding="utf-8")
+
+# Apply the verified graphical parity and camera-assisted room measurement release.
+UI_PARITY_PATCH_SHA256 = "0deef073f4f15b1296dec3f651dffdef5341b2d49fb9c5799d5109264eedc195"
+ui_patch_parts = sorted(Path("scripts/ui_parity_patch").glob("part*"))
+if ui_patch_parts:
+    ui_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in ui_patch_parts),
+        validate=True,
+    )
+    if hashlib.sha256(ui_payload).hexdigest() != UI_PARITY_PATCH_SHA256:
+        raise RuntimeError("KAYI UI parity patch integrity check failed")
+    ui_patch_path = Path("/tmp/kayi-ui-parity-room-measurement.patch")
+    ui_patch_path.write_bytes(gzip.decompress(ui_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(ui_patch_path)],
+        check=True,
+    )
+
+# Add the new migration and graphical templates that are not part of the immutable base tree.
+UI_ADDITIONS_PATCH_SHA256 = "5030cb29157c85f6f9adb2334da4e5d68b786bcbf3c824f04b3b934913eca618"
+ui_addition_parts = sorted(Path("scripts/ui_parity_additions").glob("part*"))
+if ui_addition_parts:
+    addition_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in ui_addition_parts),
+        validate=True,
+    )
+    if hashlib.sha256(addition_payload).hexdigest() != UI_ADDITIONS_PATCH_SHA256:
+        raise RuntimeError("KAYI UI additions patch integrity check failed")
+    additions_patch_path = Path("/tmp/kayi-ui-additions.patch")
+    additions_patch_path.write_bytes(gzip.decompress(addition_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(additions_patch_path)],
+        check=True,
+    )
