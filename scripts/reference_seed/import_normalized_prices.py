@@ -82,6 +82,9 @@ class Command(BaseCommand):
         imported_sources = 0
         for source_data in payload["sources"]:
             original_path = Path(source_data["path"])
+            source_sha = str(source_data.get("sha256") or "").lower()
+            if not re.fullmatch(r"[0-9a-f]{64}", source_sha):
+                raise CommandError(f"Ungültiger SHA256 für Preisquelle: {source_data.get('path', '')}")
             kind, display_name, supplier_name = _detect(original_path)
             supplier = None
             if supplier_name:
@@ -96,7 +99,7 @@ class Command(BaseCommand):
             items = source_data.get("items") or []
             source, _ = PriceSource.objects.update_or_create(
                 organization=org,
-                sha256=source_data["sha256"],
+                sha256=source_sha,
                 defaults={
                     "supplier": supplier,
                     "name": display_name,
@@ -135,7 +138,10 @@ class Command(BaseCommand):
 
             safe_dir = output_root / re.sub(r"[^A-Za-z0-9._-]+", "_", str(original_path.parent))
             safe_dir.mkdir(parents=True, exist_ok=True)
-            normalized_file = safe_dir / f"{original_path.stem}.normalized.csv"
+            # Different commercial sources can legitimately have the same parent and
+            # stem. Include a deterministic SHA token so no normalized file can
+            # overwrite another source while keeping the filename human-readable.
+            normalized_file = safe_dir / f"{original_path.stem}.{source_sha[:16]}.normalized.csv"
             with normalized_file.open("w", encoding="utf-8-sig", newline="") as handle:
                 writer = csv.writer(handle, delimiter=";")
                 writer.writerow(["Code", "Beschreibung", "Kategorie", "Einheit", "Einkaufspreis", "Verkaufspreis"])

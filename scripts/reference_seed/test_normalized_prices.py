@@ -71,5 +71,57 @@ class NormalizedPriceImportTests(TestCase):
             self.assertEqual(PriceSource.objects.filter(organization=org).count(), 1)
             self.assertEqual(PriceItem.objects.filter(organization=org).count(), 1)
             self.assertEqual(CatalogItem.objects.filter(organization=org, code="S1002").count(), 1)
-            self.assertTrue(any(output.rglob("*.csv")))
+            files = list(output.rglob("*.csv"))
+            self.assertEqual(len(files), 1)
+            self.assertIn("a" * 16, files[0].name)
             self.assertFalse(PriceSource.objects.filter(organization__settings__is_demo=True).exists())
+
+    def test_equal_paths_from_distinct_sources_create_distinct_files(self):
+        org = Organization.objects.create(name="KAYI Haustechnik")
+        payload = {
+            "version": 1,
+            "sources": [
+                {
+                    "path": "lieferanten/preise/Preisliste.xlsx",
+                    "filename": "Preisliste.xlsx",
+                    "sha256": "a" * 64,
+                    "size": 100,
+                    "items": [{
+                        "code": "A-1",
+                        "description": "Quelle A",
+                        "category": "Test",
+                        "unit": "Stk.",
+                        "purchase_price": "1.00",
+                        "sales_price": "2.00",
+                    }],
+                },
+                {
+                    "path": "lieferanten/preise/Preisliste.xlsx",
+                    "filename": "Preisliste.xlsx",
+                    "sha256": "b" * 64,
+                    "size": 101,
+                    "items": [{
+                        "code": "B-1",
+                        "description": "Quelle B",
+                        "category": "Test",
+                        "unit": "Stk.",
+                        "purchase_price": "3.00",
+                        "sales_price": "4.00",
+                    }],
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "prices.json.gz"
+            with gzip.open(fixture, "wt", encoding="utf-8") as handle:
+                json.dump(payload, handle)
+            output = Path(directory) / "normalized"
+            call_command("import_normalized_prices", str(fixture), "--output-dir", str(output))
+            files = sorted(output.rglob("*.csv"))
+            self.assertEqual(PriceSource.objects.filter(organization=org).count(), 2)
+            self.assertEqual(PriceItem.objects.filter(organization=org).count(), 2)
+            self.assertEqual(len(files), 2)
+            self.assertEqual({path.name for path in files}, {
+                f"Preisliste.{('a' * 16)}.normalized.csv",
+                f"Preisliste.{('b' * 16)}.normalized.csv",
+            })
