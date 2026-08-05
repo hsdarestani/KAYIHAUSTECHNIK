@@ -1,0 +1,51 @@
+name: Verify KAYI production data
+
+on:
+  push:
+    branches:
+      - maintenance/verify-kayi-production
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify production over SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 10m
+          script: |
+            set -eu
+            cd /opt/kayi
+            echo '=== COMMIT ==='
+            git rev-parse HEAD
+            echo '=== CONTAINERS ==='
+            docker compose ps
+            echo '=== APPLICATION DATA ==='
+            docker compose exec -T web python manage.py shell -c "
+            from django.contrib.auth import get_user_model
+            from erp.models import CalendarEvent, CatalogItem, Organization, PriceItem, PriceSource, Project
+            real = Organization.objects.exclude(settings__is_demo=True).first()
+            demo = Organization.objects.filter(settings__is_demo=True).first()
+            print('real_org=', real.name if real else None)
+            print('demo_org=', demo.name if demo else None)
+            print('price_sources=', PriceSource.objects.filter(organization=real).count() if real else 0)
+            print('price_items=', PriceItem.objects.filter(organization=real).count() if real else 0)
+            print('catalog_items=', CatalogItem.objects.filter(organization=real).count() if real else 0)
+            print('demo_events=', CalendarEvent.objects.filter(organization=demo).count() if demo else 0)
+            print('demo_projects=', Project.objects.filter(organization=demo).count() if demo else 0)
+            print('demo_user=', get_user_model().objects.filter(username='demo').exists())
+            "
+            echo '=== REFERENCE FILES ==='
+            find /opt/kayi-reference-data -maxdepth 4 -type f -printf '%P\t%s bytes\n' 2>/dev/null | sort | head -200 || true
+            echo "reference_file_count=$(find /opt/kayi-reference-data -type f 2>/dev/null | wc -l)"
+            echo '=== INTERNAL HEALTH ==='
+            curl -fsS http://127.0.0.1/api/health/
+      - name: Verify public HTTPS health
+        run: curl --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 8 --max-time 20 -fsS https://kayi.smarbiz.sbs/api/health/
