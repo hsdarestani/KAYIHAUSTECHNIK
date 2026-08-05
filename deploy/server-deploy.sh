@@ -37,7 +37,6 @@ dc() {
 mkdir -p \
   /opt/kayi \
   /opt/kayi-backups \
-  /opt/kayi-reference-data/raw \
   /opt/kayi-reference-data/normalized \
   /opt/kayi-secrets
 chmod 700 /opt/kayi-secrets
@@ -50,8 +49,6 @@ fi
 cd /opt/kayi
 git fetch origin main
 git reset --hard origin/main
-# Source assembly creates untracked application files. Remove only generated
-# files while preserving the host-only production environment.
 git clean -fdx -e .env
 bash scripts/unpack-source.sh
 
@@ -106,8 +103,6 @@ if dc ps --status running --services 2>/dev/null | grep -q '^db$'; then
   find /opt/kayi-backups -type f -mtime +14 -delete || true
 fi
 
-# Build from the exact tested source. Avoid an unnecessary base-image pull on
-# every release so a temporary registry interruption cannot break production.
 dc build
 dc up -d db redis
 dc run --rm web python manage.py migrate --noinput
@@ -139,24 +134,22 @@ PAYLOAD_B64="$TMP_ROOT/payload.b64"
 PAYLOAD_ENC="$TMP_ROOT/payload.enc"
 WRAPPED_KEY="$TMP_ROOT/key.enc"
 PASSPHRASE="$TMP_ROOT/passphrase"
-ARCHIVE="$TMP_ROOT/kayi-reference-data.tar.xz"
-EXTRACTED="$TMP_ROOT/extracted"
-mkdir -p "$EXTRACTED"
+PRICE_FIXTURE="$TMP_ROOT/kayi-prices.compact.xz"
 
 cat reference_data/encrypted/payload.part-* > "$PAYLOAD_B64"
-test "$(wc -c < "$PAYLOAD_B64")" -eq 814296
+test "$(wc -c < "$PAYLOAD_B64")" -eq 216320
 printf '%s  %s\n' \
-  'ffd3e1333e003e0360b747d1d0b1d56272a4824b430b0dd3fa9a91033a911821' \
+  'b127df3fb0b33e6f846aae477eb04cc8ac943e4461e35a2d74fcbc0e9161c113' \
   "$PAYLOAD_B64" | sha256sum --check
 base64 --decode "$PAYLOAD_B64" > "$PAYLOAD_ENC"
-test "$(wc -c < "$PAYLOAD_ENC")" -eq 610720
+test "$(wc -c < "$PAYLOAD_ENC")" -eq 162240
 printf '%s  %s\n' \
-  'c1ab1aa6667f84700019b420b4d677726f674f63802e066c2ceb88bef84ace38' \
+  'e954dba997af20e8618954c97fceb8868405fe03197106f7c3724879ce929263' \
   "$PAYLOAD_ENC" | sha256sum --check
 
 base64 --decode reference_data/encrypted/key.enc.b64 > "$WRAPPED_KEY"
 printf '%s  %s\n' \
-  '6a699ce73d98968a2333e9f773cdda3c9cd3e1c452bb19075dcaf6f77996710c' \
+  '70d9ef42d22dec38071e68981f938036d6acde7fcce7ace1af5e059169e5509b' \
   "$WRAPPED_KEY" | sha256sum --check
 openssl pkeyutl -decrypt \
   -inkey "$PRIVATE_KEY" \
@@ -166,27 +159,16 @@ openssl pkeyutl -decrypt \
   -pkeyopt rsa_oaep_md:sha256
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
   -in "$PAYLOAD_ENC" \
-  -out "$ARCHIVE" \
+  -out "$PRICE_FIXTURE" \
   -pass file:"$PASSPHRASE"
-test "$(wc -c < "$ARCHIVE")" -eq 610700
+test "$(wc -c < "$PRICE_FIXTURE")" -eq 162208
 printf '%s  %s\n' \
-  '51c88dd4f5987e14c406e95545b3323214480506f0d08e64b91a4337550f0770' \
-  "$ARCHIVE" | sha256sum --check
+  '6222ebdc2827767258fba4ef8beff21c2bf60864e2bffd37f33171c71c05a4d6' \
+  "$PRICE_FIXTURE" | sha256sum --check
 
-tar --no-same-owner -xJf "$ARCHIVE" -C "$EXTRACTED"
-test -f "$EXTRACTED/kayi-prices.compact.xz"
-test -f "$EXTRACTED/manifest.json"
-RAW_COUNT="$(find "$EXTRACTED/stammdaten" -type f | wc -l)"
-if [ "$RAW_COUNT" -ne 10 ]; then
-  echo "Expected 10 exact XLSX/CSV source files, found $RAW_COUNT" >&2
-  exit 1
-fi
-
-rm -rf /opt/kayi-reference-data/raw/stammdaten /opt/kayi-reference-data/normalized
-mkdir -p /opt/kayi-reference-data/raw /opt/kayi-reference-data/normalized
-cp -a "$EXTRACTED/stammdaten" /opt/kayi-reference-data/raw/
-install -m 600 "$EXTRACTED/kayi-prices.compact.xz" /opt/kayi-reference-data/kayi-prices.compact.xz
-install -m 600 "$EXTRACTED/manifest.json" /opt/kayi-reference-data/manifest.json
+rm -rf /opt/kayi-reference-data/normalized
+mkdir -p /opt/kayi-reference-data/normalized
+install -m 600 "$PRICE_FIXTURE" /opt/kayi-reference-data/kayi-prices.compact.xz
 install -m 600 reference_data/encrypted/manifest.json /opt/kayi-reference-data/secure-manifest.json
 
 dc run --rm \
@@ -195,9 +177,6 @@ dc run --rm \
   /reference-data/kayi-prices.compact.xz \
   --output-dir /reference-data/normalized
 
-# Release gates: production and demo data must be present and separated. A
-# failed assertion stops deployment before the new web containers replace the
-# currently running version.
 dc run --rm web python manage.py shell -c "
 from django.contrib.auth import get_user_model
 from erp.models import CalendarEvent, CatalogItem, Organization, PriceItem, PriceSource
@@ -213,7 +192,6 @@ assert get_user_model().objects.filter(username='demo').exists(), 'demo user mis
 print('KAYI release data verified:', 25, 'sources,', 13020, 'price rows')
 "
 
-test "$(find /opt/kayi-reference-data/raw/stammdaten -type f | wc -l)" -eq 10
 test "$(find /opt/kayi-reference-data/normalized -type f | wc -l)" -eq 25
 
 dc up -d --remove-orphans
@@ -221,7 +199,6 @@ dc up -d --remove-orphans
 for attempt in $(seq 1 36); do
   if curl -fsS http://127.0.0.1/api/health/ >/dev/null; then
     echo "KAYI deployment healthy"
-    echo "Exact XLSX/CSV files on host: $(find /opt/kayi-reference-data/raw/stammdaten -type f | wc -l)"
     echo "Normalized searchable source files: $(find /opt/kayi-reference-data/normalized -type f | wc -l)"
     dc ps
     ss -lntup 2>/dev/null | grep -E '(:80|:443)' || true
