@@ -39,6 +39,10 @@ jobs:
         run: cp .env.example .env
       - name: Compose validation
         run: docker compose config --quiet
+      - name: Apply secure reference permissions
+        run: |
+          python scripts/patch_reference_permissions.py
+          sh -n deploy/server-deploy.sh
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.5
         with:
