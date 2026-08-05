@@ -1,0 +1,30 @@
+{
+  "format_version": 4,
+  "description": "KAYI normalized searchable commercial price library encrypted for production host only.",
+  "sources": 25,
+  "normalized_rows": 13020,
+  "normalized_server_files": 25,
+  "plaintext": {
+    "filename": "kayi-prices.compact.xz",
+    "size": 162208,
+    "sha256": "6222ebdc2827767258fba4ef8beff21c2bf60864e2bffd37f33171c71c05a4d6"
+  },
+  "encrypted": {
+    "binary_size": 162240,
+    "binary_sha256": "e954dba997af20e8618954c97fceb8868405fe03197106f7c3724879ce929263",
+    "base64_size": 216320,
+    "base64_sha256": "b127df3fb0b33e6f846aae477eb04cc8ac943e4461e35a2d74fcbc0e9161c113",
+    "part_count": 20,
+    "nominal_part_size": 16000,
+    "note": "Parts 005 and 010 are safely split into four ordered 4000-byte transfer segments."
+  },
+  "wrapped_key": {
+    "base64_size": 512,
+    "base64_sha256": "5eb1c1fa3e604b65eb846c755ca0cd782c0aa15656dcc53983ff2ae3de1e4095",
+    "binary_size": 384,
+    "binary_sha256": "70d9ef42d22dec38071e68981f938036d6acde7fcce7ace1af5e059169e5509b"
+  },
+  "public_key_der_sha256": "cd1ce6b1ca51d079b417b42e96d582c70363bef0ba42cc1e408ffc64ba225b03",
+  "cipher": "AES-256-CBC/PBKDF2-SHA256/200000",
+  "key_wrap": "RSA-3072-OAEP-SHA256"
+}
