@@ -25,6 +25,11 @@ jobs:
             cd /opt/kayi
             echo '=== COMMIT ==='
             git rev-parse HEAD
+            echo '=== REFERENCE KEY ==='
+            test -s /opt/kayi-secrets/reference-private.pem
+            key_fingerprint="$(openssl pkey -in /opt/kayi-secrets/reference-private.pem -pubout -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+            echo "reference_public_key_der_sha256=${key_fingerprint}"
+            test "$key_fingerprint" = "cd1ce6b1ca51d079b417b42e96d582c70363bef0ba42cc1e408ffc64ba225b03"
             echo '=== CONTAINERS ==='
             docker compose ps
             echo '=== REFERENCE FILES ==='
