@@ -61,3 +61,5 @@ jobs:
             curl -sS -o /dev/null -w 'local_health_http=%{http_code}\n' http://127.0.0.1/api/health/
             curl -sS -o /dev/null -w 'public_ip_health_http=%{http_code}\n' --connect-timeout 5 http://91.107.144.64/api/health/
             curl -sS -o /dev/null -w 'domain_health_http=%{http_code}\n' --connect-timeout 5 https://kayi.smarbiz.sbs/api/health/
+
+            echo 'diagnostic_sync=2'
