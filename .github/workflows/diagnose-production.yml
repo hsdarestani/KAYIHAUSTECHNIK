@@ -22,27 +22,42 @@ jobs:
           command_timeout: 5m
           script: |
             set +e
-            echo '=== date / uptime ==='
-            date -Is
-            uptime
-            echo '=== memory ==='
-            free -h
-            echo '=== disk / inodes ==='
-            df -h
-            df -i
-            echo '=== docker ==='
-            systemctl is-active docker
-            docker version --format '{{.Server.Version}}'
-            docker system df
             cd /opt/kayi 2>/dev/null || exit 0
             if docker compose version >/dev/null 2>&1; then
-              docker compose ps -a
-              docker compose logs --tail=80 web db redis caddy worker beat
+              DC='docker compose'
             else
-              docker-compose ps -a
-              docker-compose logs --tail=80 web db redis caddy worker beat
+              DC='docker-compose'
             fi
-            echo '=== recent kernel OOM / kills ==='
-            dmesg -T | grep -Ei 'out of memory|oom|killed process|i/o error|no space' | tail -80
-            echo '=== recent docker service ==='
-            journalctl -u docker --no-pager -n 100
+
+            echo '=== release head ==='
+            git rev-parse HEAD
+            git status --short
+
+            echo '=== normalized reference-data summary ==='
+            NORMALIZED_COUNT="$(find /opt/kayi-reference-data/normalized -type f 2>/dev/null | wc -l | tr -d ' ')"
+            NORMALIZED_DIR_COUNT="$(find /opt/kayi-reference-data/normalized -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+            echo "normalized_file_count=${NORMALIZED_COUNT}"
+            echo "normalized_directory_count=${NORMALIZED_DIR_COUNT}"
+            find /opt/kayi-reference-data/normalized -type f -printf '%m %u:%g\n' 2>/dev/null | sort | uniq -c
+            stat -c 'fixture=%a %U:%G %s' /opt/kayi-reference-data/kayi-prices.compact.xz 2>/dev/null
+            stat -c 'root=%a %U:%G' /opt/kayi-reference-data 2>/dev/null
+            stat -c 'normalized=%a %U:%G' /opt/kayi-reference-data/normalized 2>/dev/null
+
+            echo '=== database release assertions ==='
+            $DC run --rm web python manage.py shell -c "
+            from erp.models import CalendarEvent, CatalogItem, Organization, PriceItem, PriceSource
+            real = Organization.objects.filter(name='KAYI Haustechnik').first()
+            demo = Organization.objects.filter(settings__is_demo=True).first()
+            print('real_org=', bool(real))
+            print('demo_org=', bool(demo))
+            print('sources=', PriceSource.objects.filter(organization=real).count() if real else -1)
+            print('prices=', PriceItem.objects.filter(organization=real).count() if real else -1)
+            print('catalog=', CatalogItem.objects.filter(organization=real).count() if real else -1)
+            print('demo_calendar=', CalendarEvent.objects.filter(organization=demo).count() if demo else -1)
+            "
+
+            echo '=== containers and health ==='
+            $DC ps -a
+            curl -sS -o /dev/null -w 'local_health_http=%{http_code}\n' http://127.0.0.1/api/health/
+            curl -sS -o /dev/null -w 'public_ip_health_http=%{http_code}\n' --connect-timeout 5 http://91.107.144.64/api/health/
+            curl -sS -o /dev/null -w 'domain_health_http=%{http_code}\n' --connect-timeout 5 https://kayi.smarbiz.sbs/api/health/
