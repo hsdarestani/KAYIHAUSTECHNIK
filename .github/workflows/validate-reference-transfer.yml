@@ -13,8 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Inspect transferred chunks
+      - name: Validate encrypted reference payload
+        shell: bash
         run: |
-          set -eu
-          find reference_data/encrypted -maxdepth 1 -type f -name 'payload.part-*' -print0 | sort -z | xargs -0 -r sha256sum
-          find reference_data/encrypted -maxdepth 1 -type f -name 'payload.part-*' -printf '%f %s\n' | sort
+          set -euo pipefail
+          mapfile -t parts < <(find reference_data/encrypted -maxdepth 1 -type f -name 'payload.part-*' | sort)
+          test "${#parts[@]}" -eq 20
+          cat "${parts[@]}" > /tmp/payload.b64
+          test "$(wc -c < /tmp/payload.b64)" -eq 216320
+          echo "b127df3fb0b33e6f846aae477eb04cc8ac943e4461e35a2d74fcbc0e9161c113  /tmp/payload.b64" | sha256sum -c -
+          base64 -d /tmp/payload.b64 > /tmp/payload.enc
+          test "$(wc -c < /tmp/payload.enc)" -eq 162240
+          echo "e954dba997af20e8618954c97fceb8868405fe03197106f7c3724879ce929263  /tmp/payload.enc" | sha256sum -c -
+          test "$(wc -c < reference_data/encrypted/key.enc.b64)" -eq 512
+          echo "5eb1c1fa3e604b65eb846c755ca0cd782c0aa15656dcc53983ff2ae3de1e4095  reference_data/encrypted/key.enc.b64" | sha256sum -c -
