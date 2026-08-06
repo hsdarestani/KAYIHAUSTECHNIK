@@ -158,21 +158,21 @@ apply_verified_patch(
 # compiles on Android while preserving UTF-8 payloads.
 replace_regex(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
-    r"Files\.writeString\(\s*payloadFile\.toPath\(\)\s*,\s*payload\.toString\(2\)\s*\)",
+    r"Files\.writeString\(\s*payloadFile\.toPath\(\)\s*,\s*payload\.toString\(2\)\s*\)".replace("\\\\", "\\"),
     "Files.write(payloadFile.toPath(),payload.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
 )
 replace_regex(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
-    r"Files\.writeString\(\s*metaFile\.toPath\(\)\s*,\s*meta\.toString\(2\)\s*\)",
+    r"Files\.writeString\(\s*metaFile\.toPath\(\)\s*,\s*meta\.toString\(2\)\s*\)".replace("\\\\", "\\"),
     "Files.write(metaFile.toPath(),meta.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
 )
 replace_regex(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
-    r"Files\.readString\(\s*new File\(scan\.payloadPath\)\.toPath\(\)\s*\)",
+    r"Files\.readString\(\s*new File\(scan\.payloadPath\)\.toPath\(\)\s*\)".replace("\\\\", "\\"),
     "new String(Files.readAllBytes(new File(scan.payloadPath).toPath()),java.nio.charset.StandardCharsets.UTF_8)",
 )
 replace_regex(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
-    r"Files\.readString\(\s*meta\.toPath\(\)\s*\)",
+    r"Files\.readString\(\s*meta\.toPath\(\)\s*\)".replace("\\\\", "\\"),
     "new String(Files.readAllBytes(meta.toPath()),java.nio.charset.StandardCharsets.UTF_8)",
 )
