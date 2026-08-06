@@ -59,6 +59,7 @@ jobs:
         run: |
           npx cap add ios
           npx cap sync ios
+          sed -i '' 's/\.iOS(.v15)/.iOS(.v16)/g' ios/App/CapApp-SPM/Package.swift
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
             /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
       - name: Compile iOS simulator application
@@ -70,5 +71,6 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
+            IPHONEOS_DEPLOYMENT_TARGET=16.0 \
             CODE_SIGNING_ALLOWED=NO \
             build
