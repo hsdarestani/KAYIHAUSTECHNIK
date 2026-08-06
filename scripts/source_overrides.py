@@ -103,3 +103,9 @@ apply_verified_patch(
     "kayi-native-room-scanner.patch",
     "KAYI native room scanner",
 )
+apply_verified_patch(
+    "scripts/simplified_room_editor_patch",
+    "a447e76527f1e516ec42f8384a9f7c54bccc22e5e1a1b15e8b26ed96d4324b94",
+    "kayi-simplified-room-editor.patch",
+    "KAYI simplified room scan editor",
+)
