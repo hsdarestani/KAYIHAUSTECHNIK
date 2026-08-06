@@ -168,8 +168,10 @@ printf '%s  %s\n' \
 
 rm -rf /opt/kayi-reference-data/normalized
 mkdir -p /opt/kayi-reference-data/normalized
-install -m 600 "$PRICE_FIXTURE" /opt/kayi-reference-data/kayi-prices.compact.xz
-install -m 600 reference_data/encrypted/manifest.json /opt/kayi-reference-data/secure-manifest.json
+install -o 10001 -g 10001 -m 600 "$PRICE_FIXTURE" /opt/kayi-reference-data/kayi-prices.compact.xz
+install -o 10001 -g 10001 -m 600 reference_data/encrypted/manifest.json /opt/kayi-reference-data/secure-manifest.json
+chown -R 10001:10001 /opt/kayi-reference-data/normalized
+chmod 700 /opt/kayi-reference-data/normalized
 
 dc run --rm \
   -v /opt/kayi-reference-data:/reference-data \
