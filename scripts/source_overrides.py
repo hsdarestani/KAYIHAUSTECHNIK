@@ -95,3 +95,37 @@ if ui_addition_parts:
         ["git", "apply", "--whitespace=nowarn", str(additions_patch_path)],
         check=True,
     )
+
+# Apply meeting-tested operational workflow release.
+WORKFLOW_PATCH_SHA256 = "bc8d471e29167f9dd0961b225fdc6cc2a92193967bc0f97c84689a27daf43c1d"
+workflow_patch_parts = sorted(Path("scripts/workflow_patch").glob("part*"))
+if workflow_patch_parts:
+    workflow_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in workflow_patch_parts),
+        validate=True,
+    )
+    if hashlib.sha256(workflow_payload).hexdigest() != WORKFLOW_PATCH_SHA256:
+        raise RuntimeError("KAYI operational workflow patch integrity check failed")
+    workflow_patch_path = Path("/tmp/kayi-operational-workflow.patch")
+    workflow_patch_path.write_bytes(gzip.decompress(workflow_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(workflow_patch_path)],
+        check=True,
+    )
+
+# Apply compatibility fixes found by the full release regression suite.
+WORKFLOW_FIX_PATCH_SHA256 = "006bd6da3685306be71d3aa65cefe0c55bd07b4da5340f4ab9cc2b8993de8b9a"
+workflow_fix_parts = sorted(Path("scripts/workflow_fix_patch").glob("part*"))
+if workflow_fix_parts:
+    workflow_fix_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in workflow_fix_parts),
+        validate=True,
+    )
+    if hashlib.sha256(workflow_fix_payload).hexdigest() != WORKFLOW_FIX_PATCH_SHA256:
+        raise RuntimeError("KAYI operational workflow fix patch integrity check failed")
+    workflow_fix_path = Path("/tmp/kayi-operational-workflow-fix.patch")
+    workflow_fix_path.write_bytes(gzip.decompress(workflow_fix_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(workflow_fix_path)],
+        check=True,
+    )
