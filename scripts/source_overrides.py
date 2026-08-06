@@ -2,7 +2,6 @@ from pathlib import Path
 import base64
 import gzip
 import hashlib
-import re
 import shutil
 import subprocess
 
@@ -17,15 +16,12 @@ def replace_exact(path: str, old: str, new: str) -> None:
     target.write_text(text.replace(old, new), encoding="utf-8")
 
 
-def replace_regex(path: str, pattern: str, replacement: str) -> None:
+def append_once(path: str, marker: str, content: str) -> None:
     target = Path(path)
     text = target.read_text(encoding="utf-8")
-    if replacement in text:
+    if marker in text:
         return
-    updated, count = re.subn(pattern, replacement, text)
-    if count != 1:
-        raise RuntimeError(f"Expected one source fragment in {path}, found {count}")
-    target.write_text(updated, encoding="utf-8")
+    target.write_text(text.rstrip() + "\n\n" + content.strip() + "\n", encoding="utf-8")
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -153,26 +149,35 @@ apply_verified_patch(
     "KAYI AI service picker",
 )
 
-# Android's java.nio.file.Files implementation does not expose Java 11's
-# readString/writeString helpers. Use Java 7 byte APIs so the ARCore plugin
-# compiles on Android while preserving UTF-8 payloads.
-replace_regex(
+# Android does not expose Java 11's Files.readString/writeString helpers.
+# Redirect both calls to a package-local UTF-8 compatibility helper.
+replace_exact(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
-    r"Files\.writeString\(\s*payloadFile\.toPath\(\)\s*,\s*payload\.toString\(2\)\s*\)".replace("\\\\", "\\"),
-    "Files.write(payloadFile.toPath(),payload.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
+    "Files.writeString",
+    "KayiUtf8Files.writeString",
 )
-replace_regex(
+replace_exact(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
+    "Files.readString",
+    "KayiUtf8Files.readString",
+)
+append_once(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
-    r"Files\.writeString\(\s*metaFile\.toPath\(\)\s*,\s*meta\.toString\(2\)\s*\)".replace("\\\\", "\\"),
-    "Files.write(metaFile.toPath(),meta.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
-)
-replace_regex(
-    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
-    r"Files\.readString\(\s*new File\(scan\.payloadPath\)\.toPath\(\)\s*\)".replace("\\\\", "\\"),
-    "new String(Files.readAllBytes(new File(scan.payloadPath).toPath()),java.nio.charset.StandardCharsets.UTF_8)",
-)
-replace_regex(
-    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
-    r"Files\.readString\(\s*meta\.toPath\(\)\s*\)".replace("\\\\", "\\"),
-    "new String(Files.readAllBytes(meta.toPath()),java.nio.charset.StandardCharsets.UTF_8)",
+    "final class KayiUtf8Files",
+    """
+final class KayiUtf8Files {
+    private KayiUtf8Files() {}
+
+    static void writeString(java.nio.file.Path path, String value) throws java.io.IOException {
+        java.nio.file.Files.write(path, value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    static String readString(java.nio.file.Path path) throws java.io.IOException {
+        return new String(
+            java.nio.file.Files.readAllBytes(path),
+            java.nio.charset.StandardCharsets.UTF_8
+        );
+    }
+}
+""",
 )
