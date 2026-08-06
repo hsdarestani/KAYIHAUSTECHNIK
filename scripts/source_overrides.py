@@ -140,3 +140,27 @@ apply_verified_patch(
     "kayi-project-wizard-ai.patch",
     "KAYI AI service picker",
 )
+
+# Android's java.nio.file.Files implementation does not expose Java 11's
+# readString/writeString helpers. Use the Java 7 byte APIs so the ARCore plugin
+# compiles on the Android toolchain while preserving UTF-8 payloads.
+replace_exact(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
+    "Files.writeString(payloadFile.toPath(),payload.toString(2))",
+    "Files.write(payloadFile.toPath(),payload.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
+)
+replace_exact(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
+    "Files.writeString(metaFile.toPath(),meta.toString(2))",
+    "Files.write(metaFile.toPath(),meta.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8))",
+)
+replace_exact(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
+    "Files.readString(new File(scan.payloadPath).toPath())",
+    "new String(Files.readAllBytes(new File(scan.payloadPath).toPath()),java.nio.charset.StandardCharsets.UTF_8)",
+)
+replace_exact(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
+    "Files.readString(meta.toPath())",
+    "new String(Files.readAllBytes(meta.toPath()),java.nio.charset.StandardCharsets.UTF_8)",
+)
