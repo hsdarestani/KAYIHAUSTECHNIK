@@ -71,6 +71,15 @@ apply_verified_patch(
     "KAYI app UX and pricing",
 )
 
+# Keep the web project's URL names distinct from DRF's generated API routes so
+# every in-app project link resolves to /projects/<id>/ rather than the browser API.
+apply_verified_patch(
+    "scripts/app_ux_pricing_fix_patch",
+    "8eacfc7daadda6ffe959a2671df552c5ba9152520251c5fe97df487851ed8f78",
+    "kayi-app-ux-pricing-fix.patch",
+    "KAYI project route fix",
+)
+
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
 # are loaded immediately in browsers and installed PWAs.
 replace_regex(
