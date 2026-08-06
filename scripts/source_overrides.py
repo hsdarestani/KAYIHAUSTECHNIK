@@ -2,6 +2,7 @@ from pathlib import Path
 import base64
 import gzip
 import hashlib
+import shutil
 import subprocess
 
 
@@ -15,6 +16,42 @@ def replace_exact(path: str, old: str, new: str) -> None:
     target.write_text(text.replace(old, new), encoding="utf-8")
 
 
+def replace_if_present(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    if new in text or old not in text:
+        return
+    target.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def append_once(path: str, marker: str, content: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    if marker in text:
+        return
+    target.write_text(text.rstrip() + "\n\n" + content.strip() + "\n", encoding="utf-8")
+
+
+def _remove_patch_additions(patch_bytes: bytes) -> None:
+    """Remove files introduced by a patch so source assembly is repeatable.
+
+    Text and binary Git patches do not always contain ``--- /dev/null``. Track
+    each ``diff --git`` target and its ``new file mode`` marker instead.
+    """
+    current_target: Path | None = None
+    additions: list[Path] = []
+    for line in patch_bytes.decode("utf-8", errors="replace").splitlines():
+        if line.startswith("diff --git a/") and " b/" in line:
+            current_target = Path(line.split(" b/", 1)[1])
+        elif line.startswith("new file mode ") and current_target is not None:
+            additions.append(current_target)
+    for target in additions:
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
+
+
 def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, label: str) -> None:
     parts = sorted(Path(directory).glob("part*"))
     if not parts:
@@ -26,8 +63,10 @@ def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, l
     actual = hashlib.sha256(payload).hexdigest()
     if actual != expected_sha256:
         raise RuntimeError(f"{label} patch integrity check failed: {actual}")
+    patch_bytes = gzip.decompress(payload)
+    _remove_patch_additions(patch_bytes)
     patch_path = Path("/tmp") / temp_name
-    patch_path.write_bytes(gzip.decompress(payload))
+    patch_path.write_bytes(patch_bytes)
     subprocess.run(
         ["git", "apply", "--whitespace=nowarn", str(patch_path)],
         check=True,
@@ -116,4 +155,43 @@ apply_verified_patch(
     "df8796d5c3ba78236e9a7191b8c2014230973a72976c9e7a2cf3c619d58bc7ff",
     "kayi-simplified-room-editor.patch",
     "KAYI simplified room scan editor",
+)
+apply_verified_patch(
+    "scripts/project_wizard_ai_patch",
+    "c7b34e9dbd8efa2ca4d30ffc09c038307d4a96c874384a0038493e3f60502197",
+    "kayi-project-wizard-ai.patch",
+    "KAYI AI service picker",
+)
+
+# Android does not expose Java 11's Files.readString/writeString helpers.
+# Redirect legacy occurrences to a package-local UTF-8 compatibility helper.
+replace_if_present(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
+    "Files.writeString",
+    "KayiUtf8Files.writeString",
+)
+replace_if_present(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
+    "Files.readString",
+    "KayiUtf8Files.readString",
+)
+append_once(
+    "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
+    "final class KayiUtf8Files",
+    """
+final class KayiUtf8Files {
+    private KayiUtf8Files() {}
+
+    static void writeString(java.nio.file.Path path, String value) throws java.io.IOException {
+        java.nio.file.Files.write(path, value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    static String readString(java.nio.file.Path path) throws java.io.IOException {
+        return new String(
+            java.nio.file.Files.readAllBytes(path),
+            java.nio.charset.StandardCharsets.UTF_8
+        );
+    }
+}
+""",
 )
