@@ -5,6 +5,7 @@ on:
     branches:
       - feature/simplified-room-scan-editor
       - fix/bando-price-source-wizard
+      - fix/app-ux-price-deployment
   pull_request:
     paths:
       - scripts/simplified_room_editor_patch/**
@@ -39,10 +40,12 @@ jobs:
         run: python manage.py migrate --noinput
       - name: Django checks
         run: python manage.py check
-      - name: Angebot workspace tests
-        run: python manage.py test tests.test_offer_workspace -v 2
+      - name: App UX and pricing tests
+        run: python manage.py test tests.test_app_ux_pricing -v 2
       - name: Room model editor tests
         run: python manage.py test tests.test_room_model_editor -v 2
+      - name: Normalized price source tests
+        run: python manage.py test tests.test_normalized_prices -v 2
       - name: Full regression suite
         run: python manage.py test -v 2
       - uses: actions/setup-node@v5
