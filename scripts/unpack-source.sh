@@ -121,5 +121,6 @@ PY
 
 tar -xzf "$ARCHIVE"
 python3 scripts/source_overrides.py
+python3 scripts/cache_bust_overrides.py
 
 echo "KAYI source tree assembled and verified."
