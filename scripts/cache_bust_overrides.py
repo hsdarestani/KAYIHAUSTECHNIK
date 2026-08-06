@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-1930"
-CACHE_NAME = "kayi-shell-v7-20260806"
+VERSION = "20260806-2030"
+CACHE_NAME = "kayi-shell-v8-20260806"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -55,8 +55,7 @@ def replace_regex(path: str, pattern: str, replacement: str) -> None:
     target.write_text(updated, encoding="utf-8")
 
 
-# Apply the final source-aware B&O pricing integration after all historical
-# source patches, then rotate the web/PWA assets that expose the new picker.
+# Use the selected B&O/insurance price source directly in the project wizard.
 apply_verified_patch(
     "scripts/bando_price_source_patch",
     "fa6895dc1434eb6abe9ff47b9269b869aee56d1d37e1688d971de2671d79dc00",
@@ -64,9 +63,18 @@ apply_verified_patch(
     "KAYI B&O price source wizard",
 )
 
-# The project wizard HTML was updated while browsers and the PWA worker still
-# served an older app.css/app.js. Give every release asset a new URL so the
-# matching CSS and JavaScript are loaded with the new markup immediately.
+# Complete the commercial workflow in one Angebot & Kalkulation workspace:
+# source order PDF, extracted fields, price source, grounded AI, calculation,
+# combined PDFs, customer approval and digital signature.
+apply_verified_patch(
+    "scripts/offer_workspace_patch",
+    "a091c00a549e076c41ea031f6694f2bffb283ddc8f221e75e4540cd1f9fd5242",
+    "kayi-offer-workspace.patch",
+    "KAYI Angebot & Kalkulation workspace",
+)
+
+# Every release asset receives a new URL so matching markup, CSS and JavaScript
+# are loaded immediately in browsers and installed PWAs.
 replace_regex(
     "templates/erp/base.html",
     r'href="\{% static \'css/app\.css\' %\}(?:\?v=[^"]*)?"',
@@ -78,8 +86,8 @@ replace_regex(
     f'src="{{% static \'js/app.js\' %}}?v={VERSION}"',
 )
 
-# Force the browser to check the new worker script instead of reusing the
-# previously cached registration. updateViaCache=none is important on iOS PWA.
+# Force iOS and Android PWAs to revalidate the worker instead of reusing an old
+# project wizard shell from the browser cache.
 replace_regex(
     "static/js/app.js",
     r'navigator\.serviceWorker\.register\("/sw\.js(?:\?v=[^"]*)?",\s*\{[^}]*scope:\s*"/"[^}]*\}\)\.catch\(\(\)\s*=>\s*\{\}\)',
