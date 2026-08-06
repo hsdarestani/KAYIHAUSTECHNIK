@@ -60,7 +60,7 @@ jobs:
         working-directory: native
         run: |
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
