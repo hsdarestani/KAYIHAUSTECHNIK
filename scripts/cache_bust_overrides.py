@@ -7,7 +7,7 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-2030"
+VERSION = "20260806-2035"
 CACHE_NAME = "kayi-shell-v8-20260806"
 
 
@@ -84,6 +84,11 @@ replace_regex(
     "templates/erp/base.html",
     r'src="\{% static \'js/app\.js\' %\}(?:\?v=[^"]*)?"',
     f'src="{{% static \'js/app.js\' %}}?v={VERSION}"',
+)
+replace_regex(
+    "templates/erp/quote_sign.html",
+    r'href="\{% static \'css/app\.css\' %\}(?:\?v=[^"]*)?"',
+    f'href="{{% static \'css/app.css\' %}}?v={VERSION}"',
 )
 
 # Force iOS and Android PWAs to revalidate the worker instead of reusing an old
