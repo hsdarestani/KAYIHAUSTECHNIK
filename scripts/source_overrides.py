@@ -148,6 +148,7 @@ apply_verified_patch(
     "kayi-native-room-scanner-android-fix.patch",
     "KAYI native room scanner Android compatibility",
 )
+
 # Keeps the original native USDZ/OBJ scan immutable while adding editable,
 # versioned parametric geometry. Every changed measurement returns to review.
 apply_verified_patch(
@@ -161,6 +162,12 @@ apply_verified_patch(
     "c7b34e9dbd8efa2ca4d30ffc09c038307d4a96c874384a0038493e3f60502197",
     "kayi-project-wizard-ai.patch",
     "KAYI AI service picker",
+)
+apply_verified_patch(
+    "scripts/wizard_inline_3d_ai_patch",
+    "241e0eb9667318ddc2f825e044784926741fc87801881e80fa1bc5a279a339c6",
+    "kayi-wizard-inline-3d-ai.patch",
+    "KAYI wizard inline 3D AI editor",
 )
 
 # Android does not expose Java 11's Files.readString/writeString helpers.
