@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-2135"
-CACHE_NAME = "kayi-shell-v10-20260806"
+VERSION = "20260807-0245"
+CACHE_NAME = "kayi-shell-v11-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -44,13 +44,19 @@ def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, l
     subprocess.run(["git", "apply", "--whitespace=nowarn", str(patch_path)], check=True)
 
 
-def replace_regex(path: str, pattern: str, replacement: str) -> None:
+def replace_regex(path: str, pattern: str, replacement: str, *, optional: bool = False) -> None:
     target = Path(path)
+    if not target.exists():
+        if optional:
+            return
+        raise RuntimeError(f"Cache-busting target does not exist: {path}")
     text = target.read_text(encoding="utf-8")
     if replacement in text:
         return
     updated, count = re.subn(pattern, replacement, text, count=1)
     if count != 1:
+        if optional:
+            return
         raise RuntimeError(f"Expected one cache-busting source fragment in {path}, found {count}")
     target.write_text(updated, encoding="utf-8")
 
@@ -81,6 +87,7 @@ replace_regex(
     "templates/erp/quote_sign.html",
     r'href="\{% static \'css/app\.css\' %\}(?:\?v=[^"]*)?"',
     f'href="{{% static \'css/app.css\' %}}?v={VERSION}"',
+    optional=True,
 )
 
 # Force iOS and Android PWAs to revalidate the worker instead of reusing an old
