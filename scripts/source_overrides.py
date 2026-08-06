@@ -105,7 +105,7 @@ apply_verified_patch(
 )
 apply_verified_patch(
     "scripts/simplified_room_editor_patch",
-    "a447e76527f1e516ec42f8384a9f7c54bccc22e5e1a1b15e8b26ed96d4324b94",
+    "1113c62d5876dd4705b7bd3f8ca5bcd51305c517e21f4ec79aaa28ba01bcd47d",
     "kayi-simplified-room-editor.patch",
     "KAYI simplified room scan editor",
 )
