@@ -1,1 +1,1 @@
-Export current assembled source for B&O price integration audit.
+Export current assembled source for B&O price integration audit, refreshed.
