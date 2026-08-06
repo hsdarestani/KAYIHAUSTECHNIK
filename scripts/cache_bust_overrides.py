@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-2135"
-CACHE_NAME = "kayi-shell-v10-20260806"
+VERSION = "20260807-0315"
+CACHE_NAME = "kayi-shell-v12-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -44,25 +44,40 @@ def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, l
     subprocess.run(["git", "apply", "--whitespace=nowarn", str(patch_path)], check=True)
 
 
-def replace_regex(path: str, pattern: str, replacement: str) -> None:
+def replace_regex(path: str, pattern: str, replacement: str, *, optional: bool = False) -> None:
     target = Path(path)
+    if not target.exists():
+        if optional:
+            return
+        raise RuntimeError(f"Cache-busting target does not exist: {path}")
     text = target.read_text(encoding="utf-8")
     if replacement in text:
         return
     updated, count = re.subn(pattern, replacement, text, count=1)
     if count != 1:
+        if optional:
+            return
         raise RuntimeError(f"Expected one cache-busting source fragment in {path}, found {count}")
     target.write_text(updated, encoding="utf-8")
 
 
-# One source-aware patch completes the B&O workflow end to end: the selected
-# insurance price list powers the project wizard and the central Angebot &
-# Kalkulation workspace, while AI can only select authoritative database items.
+# The source-aware patch fixes app navigation, onboarding, German 3D AI parsing,
+# commercial price-list selection, authoritative non-zero B&O prices and the
+# compact Angebot & Kalkulation workspace.
 apply_verified_patch(
     "scripts/offer_workspace_patch",
-    "84180dd5b9c2c0688882e989bd4cbbe2fc364593032a39c8e0dcfb85d71407d9",
-    "kayi-offer-workspace.patch",
-    "KAYI Angebot & Kalkulation workspace",
+    "c0deadf1bfce45824bb0bc0295a4cf1558bd7d41edb863c9f86e1a8fc13fc651",
+    "kayi-app-ux-pricing.patch",
+    "KAYI app UX and pricing",
+)
+
+# Keep the web project's URL names distinct from DRF's generated API routes so
+# every in-app project link resolves to /projects/<id>/ rather than the browser API.
+apply_verified_patch(
+    "scripts/app_ux_pricing_fix_patch",
+    "8eacfc7daadda6ffe959a2671df552c5ba9152520251c5fe97df487851ed8f78",
+    "kayi-app-ux-pricing-fix.patch",
+    "KAYI project route fix",
 )
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
@@ -81,10 +96,11 @@ replace_regex(
     "templates/erp/quote_sign.html",
     r'href="\{% static \'css/app\.css\' %\}(?:\?v=[^"]*)?"',
     f'href="{{% static \'css/app.css\' %}}?v={VERSION}"',
+    optional=True,
 )
 
 # Force iOS and Android PWAs to revalidate the worker instead of reusing an old
-# project wizard shell from the browser cache.
+# app shell from the browser cache.
 replace_regex(
     "static/js/app.js",
     r'navigator\.serviceWorker\.register\("/sw\.js(?:\?v=[^"]*)?",\s*\{[^}]*scope:\s*"/"[^}]*\}\)\.catch\(\(\)\s*=>\s*\{\}\)',
