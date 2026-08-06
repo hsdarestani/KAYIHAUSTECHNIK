@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-2035"
-CACHE_NAME = "kayi-shell-v8-20260806"
+VERSION = "20260806-2110"
+CACHE_NAME = "kayi-shell-v9-20260806"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -64,11 +64,11 @@ apply_verified_patch(
 )
 
 # Complete the commercial workflow in one Angebot & Kalkulation workspace:
-# source order PDF, extracted fields, price source, grounded AI, calculation,
-# combined PDFs, customer approval and digital signature.
+# source order PDF, extracted fields, price source, grounded multi-turn AI,
+# calculation, combined PDFs, customer approval and digital signature.
 apply_verified_patch(
     "scripts/offer_workspace_patch",
-    "a091c00a549e076c41ea031f6694f2bffb283ddc8f221e75e4540cd1f9fd5242",
+    "448c34f0824d12de4d700ce961dacb040c08b456969347b295735bd52de6b3ca",
     "kayi-offer-workspace.patch",
     "KAYI Angebot & Kalkulation workspace",
 )
