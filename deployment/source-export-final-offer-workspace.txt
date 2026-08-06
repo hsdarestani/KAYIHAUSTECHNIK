@@ -1,0 +1,1 @@
+Export and validate final B&O Angebot workspace source.
