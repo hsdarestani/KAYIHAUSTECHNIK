@@ -19,25 +19,21 @@ def replace_exact(path: str, old: str, new: str) -> None:
 def _remove_patch_additions(patch_bytes: bytes) -> None:
     """Remove files introduced by a patch so source assembly is repeatable.
 
-    The deployment keeps the previously assembled source as untracked files. The
-    base archive overwrites modified files but cannot remove files that an earlier
-    patch added, which makes the next `git apply` fail with "already exists".
+    Text and binary Git patches do not always contain ``--- /dev/null``. Track
+    each ``diff --git`` target and its ``new file mode`` marker instead.
     """
-    previous_was_devnull = False
+    current_target: Path | None = None
+    additions: list[Path] = []
     for line in patch_bytes.decode("utf-8", errors="replace").splitlines():
-        if line == "--- /dev/null":
-            previous_was_devnull = True
-            continue
-        if previous_was_devnull and line.startswith("+++ b/"):
-            target = Path(line[6:])
-            if target.is_symlink() or target.is_file():
-                target.unlink()
-            elif target.is_dir():
-                shutil.rmtree(target)
-            previous_was_devnull = False
-            continue
-        if line.startswith("--- "):
-            previous_was_devnull = False
+        if line.startswith("diff --git a/") and " b/" in line:
+            current_target = Path(line.split(" b/", 1)[1])
+        elif line.startswith("new file mode ") and current_target is not None:
+            additions.append(current_target)
+    for target in additions:
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.is_dir():
+            shutil.rmtree(target)
 
 
 def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, label: str) -> None:
