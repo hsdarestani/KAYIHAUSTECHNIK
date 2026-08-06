@@ -2,10 +2,14 @@ name: Room editor CI
 
 on:
   push:
-    branches: [feature/simplified-room-scan-editor]
+    branches:
+      - feature/simplified-room-scan-editor
+      - fix/bando-price-source-wizard
   pull_request:
     paths:
       - scripts/simplified_room_editor_patch/**
+      - scripts/offer_workspace_patch/**
+      - scripts/cache_bust_overrides.py
       - scripts/source_overrides.py
       - .github/workflows/room-editor-ci.yml
   workflow_dispatch:
@@ -16,11 +20,13 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - name: Verify and assemble source
-        run: bash scripts/unpack-source.sh
+      - name: Verify repeatable source assembly
+        run: |
+          bash scripts/unpack-source.sh
+          bash scripts/unpack-source.sh
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -33,6 +39,8 @@ jobs:
         run: python manage.py migrate --noinput
       - name: Django checks
         run: python manage.py check
+      - name: Angebot workspace tests
+        run: python manage.py test tests.test_offer_workspace -v 2
       - name: Room model editor tests
         run: python manage.py test tests.test_room_model_editor -v 2
       - name: Full regression suite
