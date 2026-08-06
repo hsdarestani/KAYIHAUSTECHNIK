@@ -1,1 +1,1 @@
-Export current assembled source for feature audit.
+Export current assembled source for feature audit, synchronized.
