@@ -1,0 +1,69 @@
+name: Native scanner CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install native dependencies
+        working-directory: native
+        run: npm install --no-audit --no-fund
+      - name: Generate and synchronize Android project
+        working-directory: native
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Build Android debug APK
+        working-directory: native/android
+        run: ./gradlew assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kayi-native-room-scanner-android-${{ github.run_id }}
+          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install native dependencies
+        working-directory: native
+        run: npm install --no-audit --no-fund
+      - name: Generate and synchronize iOS project
+        working-directory: native
+        run: |
+          npx cap add ios
+          npx cap sync ios
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
+            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
+      - name: Compile iOS simulator application
+        working-directory: native
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
