@@ -1,3 +1,3 @@
-latest_source_export=2026-08-06T15:25:00+03:30
+latest_source_export=2026-08-06T15:26:00+03:30
 base=b118d133daf8f2b763c4846847d43aa6e2248688
-purpose=native-room-scanner-roomplan-arcore-pass4
+purpose=native-room-scanner-roomplan-arcore-pass5
