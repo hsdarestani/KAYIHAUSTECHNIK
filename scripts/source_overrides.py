@@ -103,6 +103,8 @@ apply_verified_patch(
     "kayi-native-room-scanner.patch",
     "KAYI native room scanner",
 )
+# Keeps the original native USDZ/OBJ scan immutable while adding editable,
+# versioned parametric room geometry and the simplified scan-first workflow.
 apply_verified_patch(
     "scripts/simplified_room_editor_patch",
     "1113c62d5876dd4705b7bd3f8ca5bcd51305c517e21f4ec79aaa28ba01bcd47d",
