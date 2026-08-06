@@ -109,3 +109,9 @@ apply_verified_patch(
     "kayi-native-room-scanner-android-fix.patch",
     "KAYI native room scanner Android compatibility",
 )
+apply_verified_patch(
+    "scripts/native_room_scanner_migration_fix_patch",
+    "be4fe7fa7e688d5654518489dccdad9ff4485596c4c49627c63123660f7e135c",
+    "kayi-native-room-scanner-migration-fix.patch",
+    "KAYI native room scanner migration index alignment",
+)
