@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260806-2110"
-CACHE_NAME = "kayi-shell-v9-20260806"
+VERSION = "20260806-2135"
+CACHE_NAME = "kayi-shell-v10-20260806"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -55,20 +55,12 @@ def replace_regex(path: str, pattern: str, replacement: str) -> None:
     target.write_text(updated, encoding="utf-8")
 
 
-# Use the selected B&O/insurance price source directly in the project wizard.
-apply_verified_patch(
-    "scripts/bando_price_source_patch",
-    "fa6895dc1434eb6abe9ff47b9269b869aee56d1d37e1688d971de2671d79dc00",
-    "kayi-bando-price-source.patch",
-    "KAYI B&O price source wizard",
-)
-
-# Complete the commercial workflow in one Angebot & Kalkulation workspace:
-# source order PDF, extracted fields, price source, grounded multi-turn AI,
-# calculation, combined PDFs, customer approval and digital signature.
+# One source-aware patch completes the B&O workflow end to end: the selected
+# insurance price list powers the project wizard and the central Angebot &
+# Kalkulation workspace, while AI can only select authoritative database items.
 apply_verified_patch(
     "scripts/offer_workspace_patch",
-    "448c34f0824d12de4d700ce961dacb040c08b456969347b295735bd52de6b3ca",
+    "84180dd5b9c2c0688882e989bd4cbbe2fc364593032a39c8e0dcfb85d71407d9",
     "kayi-offer-workspace.patch",
     "KAYI Angebot & Kalkulation workspace",
 )
