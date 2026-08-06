@@ -2,6 +2,7 @@ from pathlib import Path
 import base64
 import gzip
 import hashlib
+import shutil
 import subprocess
 
 
@@ -15,6 +16,30 @@ def replace_exact(path: str, old: str, new: str) -> None:
     target.write_text(text.replace(old, new), encoding="utf-8")
 
 
+def _remove_patch_additions(patch_bytes: bytes) -> None:
+    """Remove files introduced by a patch so source assembly is repeatable.
+
+    The deployment keeps the previously assembled source as untracked files. The
+    base archive overwrites modified files but cannot remove files that an earlier
+    patch added, which makes the next `git apply` fail with "already exists".
+    """
+    previous_was_devnull = False
+    for line in patch_bytes.decode("utf-8", errors="replace").splitlines():
+        if line == "--- /dev/null":
+            previous_was_devnull = True
+            continue
+        if previous_was_devnull and line.startswith("+++ b/"):
+            target = Path(line[6:])
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+            elif target.is_dir():
+                shutil.rmtree(target)
+            previous_was_devnull = False
+            continue
+        if line.startswith("--- "):
+            previous_was_devnull = False
+
+
 def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, label: str) -> None:
     parts = sorted(Path(directory).glob("part*"))
     if not parts:
@@ -26,8 +51,10 @@ def apply_verified_patch(directory: str, expected_sha256: str, temp_name: str, l
     actual = hashlib.sha256(payload).hexdigest()
     if actual != expected_sha256:
         raise RuntimeError(f"{label} patch integrity check failed: {actual}")
+    patch_bytes = gzip.decompress(payload)
+    _remove_patch_additions(patch_bytes)
     patch_path = Path("/tmp") / temp_name
-    patch_path.write_bytes(gzip.decompress(payload))
+    patch_path.write_bytes(patch_bytes)
     subprocess.run(
         ["git", "apply", "--whitespace=nowarn", str(patch_path)],
         check=True,
@@ -110,4 +137,10 @@ apply_verified_patch(
     "df8796d5c3ba78236e9a7191b8c2014230973a72976c9e7a2cf3c619d58bc7ff",
     "kayi-simplified-room-editor.patch",
     "KAYI simplified room scan editor",
+)
+apply_verified_patch(
+    "scripts/project_wizard_ai_patch",
+    "c7b34e9dbd8efa2ca4d30ffc09c038307d4a96c874384a0038493e3f60502197",
+    "kayi-project-wizard-ai.patch",
+    "KAYI AI service picker",
 )
