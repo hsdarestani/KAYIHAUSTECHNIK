@@ -7,15 +7,18 @@ REPAIRED_DIR="${TMPDIR:-/tmp}/kayi-source-parts"
 rm -rf "$REPAIRED_DIR"
 mkdir -p "$REPAIRED_DIR"
 
-python3 - "$REPAIRED_DIR" <<'PY'
+python3 - "$REPAIRED_DIR" "$ARCHIVE" "$EXPECTED_SHA" <<'PY'
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import sys
 from pathlib import Path
 
 repaired_dir = Path(sys.argv[1])
+archive = Path(sys.argv[2])
+expected_archive_sha = sys.argv[3]
 block_size = 2000
 expected = {
     "01": {
@@ -97,18 +100,25 @@ if errors:
     print("Source payload verification failed:")
     print(json.dumps(errors, indent=2))
     raise SystemExit(1)
+
+encoded_parts: list[str] = []
+for source in sorted(Path(".bootstrap").glob("source.part-*")):
+    repaired = repaired_dir / source.name
+    selected = repaired if repaired.exists() else source
+    encoded_parts.append(selected.read_text(encoding="utf-8"))
+try:
+    archive_bytes = base64.b64decode("".join(encoded_parts), validate=True)
+except ValueError as exc:
+    raise SystemExit(f"Source archive base64 verification failed: {exc}") from exc
+actual_archive_sha = hashlib.sha256(archive_bytes).hexdigest()
+if actual_archive_sha != expected_archive_sha:
+    raise SystemExit(
+        f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}"
+    )
+archive.write_bytes(archive_bytes)
+print(f"{archive}: OK")
 PY
 
-for part in .bootstrap/source.part-*; do
-  name="$(basename "$part")"
-  if [ -f "$REPAIRED_DIR/$name" ]; then
-    cat "$REPAIRED_DIR/$name"
-  else
-    cat "$part"
-  fi
-done | base64 --decode > "$ARCHIVE"
-
-echo "${EXPECTED_SHA}  ${ARCHIVE}" | sha256sum --check
 tar -xzf "$ARCHIVE"
 python3 scripts/source_overrides.py
 
