@@ -129,3 +129,20 @@ if workflow_fix_parts:
         ["git", "apply", "--whitespace=nowarn", str(workflow_fix_path)],
         check=True,
     )
+
+# Backfill unique public share tokens safely for existing production price sources.
+WORKFLOW_MIGRATION_FIX_PATCH_SHA256 = "447b62935fe5a0cc3e1f2d8d92c245cc111684e9d79ec6e812e8299b38406530"
+workflow_migration_fix_parts = sorted(Path("scripts/workflow_migration_fix_patch").glob("part*"))
+if workflow_migration_fix_parts:
+    workflow_migration_fix_payload = base64.b64decode(
+        "".join(part.read_text(encoding="utf-8").strip() for part in workflow_migration_fix_parts),
+        validate=True,
+    )
+    if hashlib.sha256(workflow_migration_fix_payload).hexdigest() != WORKFLOW_MIGRATION_FIX_PATCH_SHA256:
+        raise RuntimeError("KAYI workflow migration fix patch integrity check failed")
+    workflow_migration_fix_path = Path("/tmp/kayi-workflow-migration-fix.patch")
+    workflow_migration_fix_path.write_bytes(gzip.decompress(workflow_migration_fix_payload))
+    subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(workflow_migration_fix_path)],
+        check=True,
+    )
