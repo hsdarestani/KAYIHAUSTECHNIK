@@ -16,6 +16,14 @@ def replace_exact(path: str, old: str, new: str) -> None:
     target.write_text(text.replace(old, new), encoding="utf-8")
 
 
+def replace_if_present(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    if new in text or old not in text:
+        return
+    target.write_text(text.replace(old, new), encoding="utf-8")
+
+
 def append_once(path: str, marker: str, content: str) -> None:
     target = Path(path)
     text = target.read_text(encoding="utf-8")
@@ -150,13 +158,13 @@ apply_verified_patch(
 )
 
 # Android does not expose Java 11's Files.readString/writeString helpers.
-# Redirect both calls to a package-local UTF-8 compatibility helper.
-replace_exact(
+# Redirect legacy occurrences to a package-local UTF-8 compatibility helper.
+replace_if_present(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java",
     "Files.writeString",
     "KayiUtf8Files.writeString",
 )
-replace_exact(
+replace_if_present(
     "native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/KayiRoomScannerPlugin.java",
     "Files.readString",
     "KayiUtf8Files.readString",
