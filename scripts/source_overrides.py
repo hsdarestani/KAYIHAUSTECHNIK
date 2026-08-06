@@ -107,7 +107,7 @@ apply_verified_patch(
 # versioned parametric geometry. Every changed measurement returns to review.
 apply_verified_patch(
     "scripts/simplified_room_editor_patch",
-    "1113c62d5876dd4705b7bd3f8ca5bcd51305c517e21f4ec79aaa28ba01bcd47d",
+    "df8796d5c3ba78236e9a7191b8c2014230973a72976c9e7a2cf3c619d58bc7ff",
     "kayi-simplified-room-editor.patch",
     "KAYI simplified room scan editor",
 )
