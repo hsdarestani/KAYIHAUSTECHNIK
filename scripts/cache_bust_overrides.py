@@ -78,7 +78,6 @@ def replace_text(path: str, old: str, new: str, *, optional: bool = False) -> No
 
 
 def improve_readability(path: str) -> None:
-    """Raise tiny UI copy to a readable floor without enlarging major headings."""
     target = Path(path)
     text = target.read_text(encoding="utf-8")
 
@@ -137,8 +136,6 @@ apply_verified_patch(
     "KAYI AI provider resilience",
 )
 
-# Apply the readability/room-summary release before the new workflow patch,
-# because the new patch is based on the exact current production source.
 improve_readability("static/css/app.css")
 replace_text(
     "static/js/app.js",
@@ -153,8 +150,6 @@ replace_text(
 replace_text("templates/erp/project_wizard.html", "✦ Automatically analyze photos", "✦ Fotos automatisch auswerten", optional=True)
 replace_text("templates/erp/project_wizard.html", "✦ Adapt model with AI", "✦ Modell mit KI anpassen", optional=True)
 
-# Clean up step 3 and expose the supplied B&O on-site Leistungsnachweis flow:
-# structured report + voice/text + actual quantities + customer signature + PDF.
 apply_verified_patch(
     "scripts/project_basics_bando_signoff_patch",
     "4f8197d7467b8b3cd18830d04477d8b8feb88de4cabfbfa1a9437afe9c3599df",
@@ -167,9 +162,13 @@ apply_verified_patch(
     "kayi-project-basics-bando-signoff-test-fix.patch",
     "KAYI B&O signoff regression test fix",
 )
+apply_verified_patch(
+    "scripts/project_basics_bando_signoff_code_fix_patch",
+    "6469bc44dc99bc2d8cd40b56406f9e1d93437aa1e64c9320ee5332917cafcdcb",
+    "kayi-project-basics-bando-signoff-code-fix.patch",
+    "KAYI B&O report line parsing fix",
+)
 
-# Every release asset receives a new URL so matching markup, CSS and JavaScript
-# are loaded immediately in browsers and installed PWAs.
 replace_regex(
     "templates/erp/base.html",
     r'href="\{% static \'css/app\.css\' %\}(?:\?v=[^"]*)?"',
