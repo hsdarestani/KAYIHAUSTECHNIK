@@ -90,6 +90,12 @@ apply_verified_patch(
     "kayi-angebot-prices-3d.patch",
     "KAYI Angebot, prices and 3D refinement",
 )
+apply_verified_patch(
+    "scripts/angebot_prices_3d_test_fix_patch",
+    "6ff42e96db83e511e597a5e4773fa6364c5e08df322d18b03a0554941c4bd163",
+    "kayi-angebot-prices-3d-test-fix.patch",
+    "KAYI Angebot PDF regression test fix",
+)
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
 # are loaded immediately in browsers and installed PWAs.
