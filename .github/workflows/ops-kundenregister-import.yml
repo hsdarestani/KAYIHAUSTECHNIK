@@ -1,0 +1,36 @@
+name: Prepare secure Kundenregister import
+
+on:
+  push:
+    branches:
+      - ops/import-kundenregister-20260807
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble current source
+        run: bash scripts/unpack-source.sh
+      - name: Pack importer source for inspection
+        run: |
+          tar -czf /tmp/kayi-importer-source.tgz erp templates tests static config requirements.txt manage.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kayi-importer-source
+          path: /tmp/kayi-importer-source.tgz
+          retention-days: 1
+          if-no-files-found: error
+      - name: Read production import public key
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 5m
+          script: |
+            set -eu
+            openssl pkey -in /opt/kayi-secrets/reference-private.pem -pubout
