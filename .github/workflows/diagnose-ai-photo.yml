@@ -1,0 +1,35 @@
+name: Diagnose AI and photo upload
+
+on:
+  push:
+    branches:
+      - fix/ai-photo-production-20260807
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Inspect production AI model and upload limits
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 10m
+          script: |
+            set -eu
+            cd /opt/kayi
+            echo '=== compose services ==='
+            docker compose ps || docker-compose ps
+            echo '=== configured OPENAI_MODEL ==='
+            if grep -q '^OPENAI_MODEL=' .env 2>/dev/null; then grep '^OPENAI_MODEL=' .env; else echo 'OPENAI_MODEL not set in .env'; fi
+            echo '=== django effective model + accessible candidates ==='
+            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+            $DC exec -T web python manage.py shell -c "from django.conf import settings; from erp.services.ai import get_client; print('EFFECTIVE_OPENAI_MODEL', settings.OPENAI_MODEL); ids=sorted(m.id for m in get_client().models.list().data); print('MODEL_CANDIDATES', [x for x in ids if x.startswith(('gpt-4.1','gpt-4o','gpt-5'))][:80])"
+            echo '=== reverse proxy upload limits ==='
+            (nginx -T 2>/dev/null | grep -Ei 'client_max_body_size|server_name|proxy_pass' || true)
+            (grep -RInE 'client_max_body_size|request_body|max_body|body_size' /etc/nginx /etc/caddy /opt/kayi 2>/dev/null | head -100 || true)
