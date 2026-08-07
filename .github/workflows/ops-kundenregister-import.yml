@@ -1,4 +1,4 @@
-name: Prepare secure Kundenregister import
+name: Import Kundenregister securely
 
 on:
   push:
@@ -9,28 +9,55 @@ permissions:
   contents: read
 
 jobs:
-  prepare:
+  import:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - name: Assemble current source
-        run: bash scripts/unpack-source.sh
-      - name: Pack importer source for inspection
-        run: |
-          tar -czf /tmp/kayi-importer-source.tgz erp templates tests static config requirements.txt manage.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kayi-importer-source
-          path: /tmp/kayi-importer-source.tgz
-          retention-days: 1
-          if-no-files-found: error
-      - name: Read production import public key
+      - name: Import encrypted customer register on production
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.HOST }}
           username: root
           password: ${{ secrets.PASS }}
-          command_timeout: 5m
+          command_timeout: 10m
           script: |
             set -eu
-            openssl pkey -in /opt/kayi-secrets/reference-private.pem -pubout
+            BRANCH='ops/import-kundenregister-20260807'
+            EXPECTED_SHA='30c4f56000765be1f864ad4ee07e2a1d382f39614b9ef4185ee377ffb7eb9863'
+            TMP_ROOT="$(mktemp -d /tmp/kayi-kundenregister.XXXXXX)"
+            cleanup_sensitive() {
+              if command -v shred >/dev/null 2>&1; then
+                find "$TMP_ROOT" -type f -exec shred -u {} \; 2>/dev/null || true
+              fi
+              rm -rf "$TMP_ROOT"
+            }
+            trap cleanup_sensitive EXIT INT TERM
+
+            cd /opt/kayi
+            git fetch origin "$BRANCH"
+            git show "origin/$BRANCH:ops/kundenregister.enc.b64" | base64 --decode > "$TMP_ROOT/kundenregister.enc"
+            git show "origin/$BRANCH:ops/kundenregister.key.enc.b64" | base64 --decode > "$TMP_ROOT/key.enc"
+
+            openssl pkeyutl -decrypt \
+              -inkey /opt/kayi-secrets/reference-private.pem \
+              -in "$TMP_ROOT/key.enc" \
+              -out "$TMP_ROOT/passphrase" \
+              -pkeyopt rsa_padding_mode:oaep \
+              -pkeyopt rsa_oaep_md:sha256
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+              -in "$TMP_ROOT/kundenregister.enc" \
+              -out "$TMP_ROOT/kundenregister.csv" \
+              -pass file:"$TMP_ROOT/passphrase"
+
+            printf '%s  %s\n' "$EXPECTED_SHA" "$TMP_ROOT/kundenregister.csv" | sha256sum --check
+
+            if docker compose version >/dev/null 2>&1; then
+              DC='docker compose'
+            else
+              DC='docker-compose'
+            fi
+
+            $DC run --rm \
+              -v "$TMP_ROOT/kundenregister.csv:/import/kundenregister.csv:ro" \
+              web python manage.py shell -c "from erp.models import Organization, Customer; from erp.services.importers import import_customers; org=Organization.objects.get(name='KAYI Haustechnik'); before=Customer.objects.filter(organization=org).count(); result=import_customers('/import/kundenregister.csv', org); after=Customer.objects.filter(organization=org).count(); tagged=Customer.objects.filter(organization=org, tags__contains=['Kundenregister']).count(); print('KUNDENREGISTER_IMPORT', result); print('CUSTOMER_COUNT_BEFORE', before); print('CUSTOMER_COUNT_AFTER', after); print('KUNDENREGISTER_TAGGED', tagged); assert not result['errors'], result['errors']; assert result['created'] + result['updated'] >= 128, result; assert tagged >= 128, tagged"
