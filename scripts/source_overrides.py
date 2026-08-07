@@ -176,6 +176,13 @@ apply_verified_patch(
     "KAYI wizard inline 3D AI editor test fix",
 )
 
+apply_verified_patch(
+    "scripts/ai_provider_resilience_patch",
+    "67763375707daa486b66c6934a02ac30476ff109686d52adb453bf69d11dc1cb",
+    "kayi-ai-provider-resilience.patch",
+    "KAYI AI provider resilience",
+)
+
 # Android does not expose Java 11's Files.readString/writeString helpers.
 # Redirect legacy occurrences to a package-local UTF-8 compatibility helper.
 replace_if_present(
