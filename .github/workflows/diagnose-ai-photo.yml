@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Inspect production AI model and upload limits
+      - name: Inspect production AI model and upload failure
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.HOST }}
@@ -23,13 +23,18 @@ jobs:
           script: |
             set -eu
             cd /opt/kayi
-            echo '=== compose services ==='
-            docker compose ps || docker-compose ps
-            echo '=== configured OPENAI_MODEL ==='
-            if grep -q '^OPENAI_MODEL=' .env 2>/dev/null; then grep '^OPENAI_MODEL=' .env; else echo 'OPENAI_MODEL not set in .env'; fi
-            echo '=== django effective model + accessible candidates ==='
             if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
-            $DC exec -T web python manage.py shell -c "from django.conf import settings; from erp.services.ai import get_client; print('EFFECTIVE_OPENAI_MODEL', settings.OPENAI_MODEL); ids=sorted(m.id for m in get_client().models.list().data); print('MODEL_CANDIDATES', [x for x in ids if x.startswith(('gpt-4.1','gpt-4o','gpt-5'))][:80])"
-            echo '=== reverse proxy upload limits ==='
-            (nginx -T 2>/dev/null | grep -Ei 'client_max_body_size|server_name|proxy_pass' || true)
-            (grep -RInE 'client_max_body_size|request_body|max_body|body_size' /etc/nginx /etc/caddy /opt/kayi 2>/dev/null | head -100 || true)
+            echo '=== configured model ==='
+            grep '^OPENAI_MODEL=' .env 2>/dev/null || true
+            echo '=== actual model call tests ==='
+            $DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; c=get_client(); candidates=['gpt-4.1-mini','gpt-4.1','gpt-4o-mini','gpt-5-mini'];
+for m in candidates:
+  try:
+    r=c.responses.create(model=m,input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST',m,'OK',repr(r.output_text))
+  except Exception as e: print('MODEL_TEST',m,'FAIL',type(e).__name__,str(e)[:300])"
+            echo '=== Caddyfile ==='
+            ($DC exec -T caddy sh -c 'cat /etc/caddy/Caddyfile' || true)
+            echo '=== relevant web logs around photo failure ==='
+            ($DC logs --since '2026-08-07T11:55:00Z' --until '2026-08-07T12:10:00Z' web 2>&1 | grep -Ei 'measurements/analyze|RequestDataTooBig|413|403|502|Traceback|CSRF|Bad Request|Too Large' | tail -150 || true)
+            echo '=== relevant caddy logs around photo failure ==='
+            ($DC logs --since '2026-08-07T11:55:00Z' --until '2026-08-07T12:10:00Z' caddy 2>&1 | grep -Ei 'measurements/analyze|413|403|502|error' | tail -150 || true)
