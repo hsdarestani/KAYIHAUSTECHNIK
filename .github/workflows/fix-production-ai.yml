@@ -1,0 +1,33 @@
+name: Fix production AI model
+
+on:
+  push:
+    branches:
+      - fix/ai-photo-production-20260807
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Switch production to accessible multimodal model and smoke test
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          password: ${{ secrets.PASS }}
+          command_timeout: 10m
+          script: |
+            set -eu
+            cd /opt/kayi
+            if grep -q '^OPENAI_MODEL=' .env; then
+              sed -i 's/^OPENAI_MODEL=.*/OPENAI_MODEL=gpt-4.1-mini/' .env
+            else
+              printf '\nOPENAI_MODEL=gpt-4.1-mini\n' >> .env
+            fi
+            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+            $DC up -d --force-recreate web worker beat
+            $DC exec -T web python manage.py shell -c "from django.conf import settings; from erp.services.ai import chat, structured_extract; print('EFFECTIVE_OPENAI_MODEL',settings.OPENAI_MODEL); out,usage=chat([{'role':'user','content':'Antworte nur mit OK.'}]); print('CHAT_SMOKE',out[:80]); data=structured_extract('Setze ok auf true.','smoke',{'type':'object','properties':{'ok':{'type':'boolean'}},'required':['ok'],'additionalProperties':False}); print('STRUCTURED_SMOKE',data); assert data.get('ok') is True"
