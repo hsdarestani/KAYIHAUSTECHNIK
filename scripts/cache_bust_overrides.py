@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260807-1200"
-CACHE_NAME = "kayi-shell-v13-20260807"
+VERSION = "20260807-1245"
+CACHE_NAME = "kayi-shell-v14-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -95,6 +95,16 @@ apply_verified_patch(
     "6ff42e96db83e511e597a5e4773fa6364c5e08df322d18b03a0554941c4bd163",
     "kayi-angebot-prices-3d-test-fix.patch",
     "KAYI Angebot PDF regression test fix",
+)
+
+# Step 5 now loads the real positions of the selected commercial price list
+# instead of generic zero-priced catalog placeholders. This patch also adds an
+# idempotent customer-register importer that matches existing customers by K-Nr.
+apply_verified_patch(
+    "scripts/wizard_live_prices_customer_import_patch",
+    "24fddb1c5baad12e9d41a9d7b037e8d7f943d384fda57a015e7cbe9ac63d9245",
+    "kayi-wizard-live-prices-customer-import.patch",
+    "KAYI wizard live prices and customer import",
 )
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
