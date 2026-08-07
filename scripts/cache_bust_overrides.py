@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260807-0315"
-CACHE_NAME = "kayi-shell-v12-20260807"
+VERSION = "20260807-1200"
+CACHE_NAME = "kayi-shell-v13-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -78,6 +78,17 @@ apply_verified_patch(
     "8eacfc7daadda6ffe959a2671df552c5ba9152520251c5fe97df487851ed8f78",
     "kayi-app-ux-pricing-fix.patch",
     "KAYI project route fix",
+)
+
+# Refine the live project flow after the pricing data is present: render true
+# front-wall openings in 3D, resolve wizard totals against the selected
+# commercial price source, expose quote PDFs directly, and replace the crowded
+# price-library side rails with a compact top selector and full-width results.
+apply_verified_patch(
+    "scripts/angebot_prices_3d_patch",
+    "fed44d6fe2c16ee4ae590f172e821fce2802d7be11509b41df1b9863cb2cc444",
+    "kayi-angebot-prices-3d.patch",
+    "KAYI Angebot, prices and 3D refinement",
 )
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
