@@ -17,6 +17,39 @@ jobs:
         run: |
           bash scripts/unpack-source.sh
           bash scripts/unpack-source.sh
+      - name: Inspect Leistungsnachweis integration points
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          specs = {
+              "templates/erp/base.html": ["Projekte", "Aufgaben", "Angebote", "Betrieb", "list/projects", "project_list"],
+              "erp/urls.py": ["site-report", "site_report", "project"],
+              "erp/views.py": ["site_report", "SiteReport", "project_list", "project_detail"],
+              "erp/models.py": ["class SiteReport", "SiteReport", "signed", "signature"],
+              "templates/erp/project_detail.html": ["Leistungsnachweis", "site-report", "site_report", "Dokument"],
+              "templates/erp/list.html": ["Projekte", "Export CSV", "Neu anlegen"],
+          }
+          for filename, needles in specs.items():
+              path = Path(filename)
+              if not path.exists():
+                  print(f"=== MISSING {filename} ===")
+                  continue
+              lines = path.read_text(encoding="utf-8").splitlines()
+              print(f"=== {filename} ({len(lines)} lines) ===")
+              hits = [i for i, line in enumerate(lines, 1) if any(n.lower() in line.lower() for n in needles)]
+              shown = set()
+              for hit in hits[:30]:
+                  start = max(1, hit - 12)
+                  end = min(len(lines), hit + 28)
+                  key = (start, end)
+                  if key in shown:
+                      continue
+                  shown.add(key)
+                  print(f"--- lines {start}-{end} ---")
+                  for n in range(start, end + 1):
+                      print(f"{n}: {lines[n-1]}")
+          PY
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
