@@ -161,6 +161,12 @@ apply_verified_patch(
     "kayi-project-basics-bando-signoff.patch",
     "KAYI project basics and B&O signoff",
 )
+apply_verified_patch(
+    "scripts/project_basics_bando_signoff_test_fix_patch",
+    "cdd78433b080c1b2202397932a38d9274c86b615f3cdd82143bc1ba31d709f53",
+    "kayi-project-basics-bando-signoff-test-fix.patch",
+    "KAYI B&O signoff regression test fix",
+)
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
 # are loaded immediately in browsers and installed PWAs.
