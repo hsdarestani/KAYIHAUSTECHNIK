@@ -1,0 +1,25 @@
+name: Export AI patch base
+
+on:
+  push:
+    branches:
+      - tmp/export-ai-base-20260807
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble source
+        run: bash scripts/unpack-source.sh
+      - name: Pack relevant source
+        run: tar -czf /tmp/kayi-ai-base.tgz config erp static templates tests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kayi-ai-base
+          path: /tmp/kayi-ai-base.tgz
+          retention-days: 1
+          if-no-files-found: error
