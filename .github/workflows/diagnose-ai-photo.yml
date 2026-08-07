@@ -27,11 +27,10 @@ jobs:
             echo '=== configured model ==='
             grep '^OPENAI_MODEL=' .env 2>/dev/null || true
             echo '=== actual model call tests ==='
-            $DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; c=get_client(); candidates=['gpt-4.1-mini','gpt-4.1','gpt-4o-mini','gpt-5-mini'];
-for m in candidates:
-  try:
-    r=c.responses.create(model=m,input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST',m,'OK',repr(r.output_text))
-  except Exception as e: print('MODEL_TEST',m,'FAIL',type(e).__name__,str(e)[:300])"
+            ($DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; r=get_client().responses.create(model='gpt-4.1-mini',input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST gpt-4.1-mini OK',repr(r.output_text))") || true
+            ($DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; r=get_client().responses.create(model='gpt-4.1',input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST gpt-4.1 OK',repr(r.output_text))") || true
+            ($DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; r=get_client().responses.create(model='gpt-4o-mini',input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST gpt-4o-mini OK',repr(r.output_text))") || true
+            ($DC exec -T web python manage.py shell -c "from erp.services.ai import get_client; r=get_client().responses.create(model='gpt-5-mini',input='Reply with exactly OK',store=False,max_output_tokens=8); print('MODEL_TEST gpt-5-mini OK',repr(r.output_text))") || true
             echo '=== Caddyfile ==='
             ($DC exec -T caddy sh -c 'cat /etc/caddy/Caddyfile' || true)
             echo '=== relevant web logs around photo failure ==='
