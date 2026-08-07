@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260807-1600"
-CACHE_NAME = "kayi-shell-v15-20260807"
+VERSION = "20260807-1745"
+CACHE_NAME = "kayi-shell-v16-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -58,6 +58,48 @@ def replace_regex(path: str, pattern: str, replacement: str, *, optional: bool =
         if optional:
             return
         raise RuntimeError(f"Expected one cache-busting source fragment in {path}, found {count}")
+    target.write_text(updated, encoding="utf-8")
+
+
+def replace_text(path: str, old: str, new: str, *, optional: bool = False) -> None:
+    target = Path(path)
+    if not target.exists():
+        if optional:
+            return
+        raise RuntimeError(f"Text replacement target does not exist: {path}")
+    text = target.read_text(encoding="utf-8")
+    if new in text:
+        return
+    if old not in text:
+        if optional:
+            return
+        raise RuntimeError(f"Expected source fragment not found in {path}: {old[:80]!r}")
+    target.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def improve_readability(path: str) -> None:
+    """Raise tiny UI copy to a readable floor without enlarging major headings."""
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+
+    def font_floor(match: re.Match[str]) -> str:
+        size = float(match.group(1))
+        if size < 12:
+            return "font-size:12px"
+        return match.group(0)
+
+    updated = re.sub(r"font-size:(\d+(?:\.\d+)?)px", font_floor, text)
+    updated = re.sub(r"(body\{[^{}]*?font-size:)14px", r"\g<1>15px", updated, count=1)
+    updated = re.sub(r"(\.btn\{[^{}]*?font-size:)13px", r"\g<1>14px", updated, count=1)
+
+    # Keep genuinely dense calendar/mobile labels compact, but still substantially
+    # larger than the old 7-9 px values.
+    updated += (
+        "\n/* App-wide readability pass */\n"
+        ".mobile-nav a,.calendar-event small,.month-event,.time-axis>div:not(.calendar-corner),"
+        ".bar-group>small{font-size:11px}\n"
+        ".form-control,input,select,textarea{line-height:1.45}\n"
+    )
     target.write_text(updated, encoding="utf-8")
 
 
@@ -114,6 +156,37 @@ apply_verified_patch(
     "1d09e3ee28a843282f642561bab3641a760a372f5f939e0dc2e902b01813e57e",
     "kayi-ai-provider-resilience.patch",
     "KAYI AI provider resilience",
+)
+
+# Readability is deliberately enforced after all feature patches so every app
+# surface, including newer wizard/AI controls, inherits the same minimum text size.
+improve_readability("static/css/app.css")
+
+# Normalize the compact 3D summary. Model normalization stores Decimal values as
+# strings such as "60.000"; showing those raw looks like sixty-thousand in German.
+replace_text(
+    "static/js/app.js",
+    'const decimal = new Intl.NumberFormat("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});',
+    'const decimal = new Intl.NumberFormat("de-DE", {minimumFractionDigits: 2, maximumFractionDigits: 2});\n  const compactNumber = new Intl.NumberFormat("de-DE", {maximumFractionDigits: 2});',
+)
+replace_text(
+    "static/js/app.js",
+    "setText('[data-model-summary]', `${state.openings.length} Öffnungen · ${state.objects.filter((item) => item.enabled !== false).length} Objekte · ${state.materials.tile_width_cm} × ${state.materials.tile_height_cm} cm`);",
+    "setText('[data-model-summary]', `${state.openings.length} Öffnungen · ${state.objects.filter((item) => item.enabled !== false).length} Objekte · ${compactNumber.format(numberValue(state.materials.tile_width_cm))} × ${compactNumber.format(numberValue(state.materials.tile_height_cm))} cm`);",
+)
+
+# Defensive German labels in case an older wizard fragment is ever reintroduced.
+replace_text(
+    "templates/erp/project_wizard.html",
+    "✦ Automatically analyze photos",
+    "✦ Fotos automatisch auswerten",
+    optional=True,
+)
+replace_text(
+    "templates/erp/project_wizard.html",
+    "✦ Adapt model with AI",
+    "✦ Modell mit KI anpassen",
+    optional=True,
 )
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
