@@ -276,7 +276,7 @@ checks = {
     "erp/urls.py": 'name="site-report-list"',
     "templates/erp/base.html": "Leistungsnachweise</a>",
     "erp/workflow_views.py": "def site_report_list(request):",
-    "templates/erp/site_report_list.html": "B&O-Projekte ohne Leistungsnachweis",
+    "templates/erp/site_report_list.html": "B&amp;O-Projekte ohne Leistungsnachweis",
     "tests/test_workflow_release.py": "test_leistungsnachweise_overview_lists_reports_and_respects_technician_scope",
 }
 for filename, marker in checks.items():
