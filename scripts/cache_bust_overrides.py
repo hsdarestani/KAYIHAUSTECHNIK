@@ -7,8 +7,8 @@ import shutil
 import subprocess
 
 
-VERSION = "20260807-1245"
-CACHE_NAME = "kayi-shell-v14-20260807"
+VERSION = "20260807-1600"
+CACHE_NAME = "kayi-shell-v15-20260807"
 
 
 def _remove_patch_additions(patch_bytes: bytes) -> None:
@@ -105,6 +105,15 @@ apply_verified_patch(
     "24fddb1c5baad12e9d41a9d7b037e8d7f943d384fda57a015e7cbe9ac63d9245",
     "kayi-wizard-live-prices-customer-import.patch",
     "KAYI wizard live prices and customer import",
+)
+
+# Keep every AI surface operational when a configured model requires
+# account verification, and make frontend failures proxy-safe.
+apply_verified_patch(
+    "scripts/ai_provider_resilience_patch",
+    "1d09e3ee28a843282f642561bab3641a760a372f5f939e0dc2e902b01813e57e",
+    "kayi-ai-provider-resilience.patch",
+    "KAYI AI provider resilience",
 )
 
 # Every release asset receives a new URL so matching markup, CSS and JavaScript
