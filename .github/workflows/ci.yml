@@ -17,36 +17,6 @@ jobs:
         run: |
           bash scripts/unpack-source.sh
           bash scripts/unpack-source.sh
-      - name: Inspect site report list integration details
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          def show(filename, start, end):
-              lines = Path(filename).read_text(encoding="utf-8").splitlines()
-              print(f"=== {filename} lines {start}-{min(end, len(lines))} / {len(lines)} ===")
-              for n in range(start, min(end, len(lines)) + 1):
-                  print(f"{n}: {lines[n-1]}")
-
-          show("erp/workflow_views.py", 1, 120)
-          lines = Path("erp/workflow_views.py").read_text(encoding="utf-8").splitlines()
-          for i, line in enumerate(lines, 1):
-              if "def site_report_create" in line or "def site_report_pdf" in line:
-                  show("erp/workflow_views.py", max(1, i - 25), i + 110)
-
-          test_lines = Path("tests/test_workflow_release.py").read_text(encoding="utf-8").splitlines()
-          show("tests/test_workflow_release.py", 1, min(170, len(test_lines)))
-          for i, line in enumerate(test_lines, 1):
-              if "test_bando_site_report" in line:
-                  show("tests/test_workflow_release.py", max(1, i - 35), i + 95)
-
-          css = Path("static/css/app.css").read_text(encoding="utf-8").splitlines()
-          needles = (".page-head", ".panel", ".data-table", ".table", ".badge", ".empty", ".list-toolbar", ".search")
-          print("=== relevant CSS ===")
-          for i, line in enumerate(css, 1):
-              if any(needle in line for needle in needles):
-                  print(f"{i}: {line}")
-          PY
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
