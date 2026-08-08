@@ -104,17 +104,24 @@ def audit_forms(page, label: str) -> tuple[int, int]:
         classes = form.get_attribute("class") or ""
         if "kayi-form-polished" not in classes:
             fail(f"{label}: polished form #{index + 1} is missing its visual class")
-        visual_control = form.locator(
+
+        candidates = form.locator(
             'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]), select, textarea'
-        ).first
-        if visual_control.count():
+        )
+        visual_control = None
+        for candidate_index in range(candidates.count()):
+            candidate = candidates.nth(candidate_index)
+            if candidate.is_visible():
+                visual_control = candidate
+                break
+        if visual_control is not None:
             metrics = visual_control.evaluate(
                 """el => { const s = getComputedStyle(el); return {h: el.getBoundingClientRect().height, r: parseFloat(s.borderRadius) || 0}; }"""
             )
             if metrics["h"] < 39:
-                fail(f"{label}: polished control is too short ({metrics['h']:.1f}px)")
+                fail(f"{label}: polished visible control is too short ({metrics['h']:.1f}px)")
             if metrics["r"] < 7:
-                fail(f"{label}: polished control lost rounded field styling")
+                fail(f"{label}: polished visible control lost rounded field styling")
     return audited, polished
 
 
