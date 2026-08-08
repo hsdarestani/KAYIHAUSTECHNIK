@@ -47,6 +47,45 @@ def _apply_patch() -> None:
     )
 
 
+def _update_room_editor_regression() -> None:
+    """Keep 3D regression coverage while removing 3D from core project creation."""
+    path = Path("tests/test_room_model_editor.py")
+    text = path.read_text(encoding="utf-8")
+    new_name = "test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow"
+    if new_name in text:
+        return
+    old = '''    def test_project_wizard_renders_responsive_material_sources_and_inline_editor(self):
+        response = self.client.get(reverse("project-create"))
+        self.assertContains(response, 'class="material-source-grid"')
+        self.assertContains(response, 'data-inline-room-model="1"')
+        self.assertContains(response, 'data-model-ai-apply')
+        self.assertContains(response, 'data-model-openings="front"')
+        self.assertContains(response, reverse("project-room-model-suggestions"))
+        self.assertContains(response, reverse("project-wizard-price-preview"))
+'''
+    new = '''    def test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow(self):
+        response = self.client.get(reverse("project-create"))
+        self.assertContains(response, "3-Schritte-Projektassistent")
+        self.assertNotContains(response, 'class="material-source-grid"')
+        self.assertNotContains(response, 'data-inline-room-model="1"')
+        self.assertNotContains(response, 'data-model-ai-apply')
+
+        project = self.client.get(reverse("project-detail", args=[self.project.pk]))
+        self.assertContains(project, "3D-Modell optional")
+        self.assertContains(project, reverse("configurator") + f"?project={self.project.pk}")
+
+        configurator = self.client.get(
+            reverse("configurator") + f"?project={self.project.pk}&measurement={self.measurement.pk}"
+        )
+        self.assertContains(configurator, "data-room-model-editor")
+        self.assertContains(configurator, reverse("configurator-model-save"))
+        self.assertContains(configurator, reverse("project-room-model-suggestions"))
+'''
+    if old not in text:
+        raise RuntimeError("Could not locate legacy inline 3D wizard regression test")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
 def _guard() -> None:
     wizard = _read("templates/erp/project_wizard.html")
     steps = re.findall(
@@ -101,6 +140,11 @@ def _guard() -> None:
             "test_bando_draft_stays_pending_and_can_be_continued",
             "3-Schritte-Projektassistent",
         ],
+        "tests/test_room_model_editor.py": [
+            "test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow",
+            "3D-Modell optional",
+            "data-room-model-editor",
+        ],
     }
     for filename, markers in required_markers.items():
         text = _read(filename)
@@ -114,5 +158,6 @@ def _guard() -> None:
 
 if not _already_applied():
     _apply_patch()
+_update_room_editor_regression()
 _guard()
 print("KAYI UX-flow hardening applied and verified.")
