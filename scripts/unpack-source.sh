@@ -127,5 +127,6 @@ python3 scripts/leistungsnachweise_index.py
 python3 scripts/ux_flow_hardening.py
 python3 scripts/restore_nine_step_wizard.py
 python3 scripts/event_form_layout.py
+python3 scripts/event_form_layout_fix.py
 
 echo "KAYI source tree assembled and verified."
