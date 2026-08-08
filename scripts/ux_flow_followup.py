@@ -37,6 +37,20 @@ replace_once(
       <label><span>Versionsnotiz</span><input class="form-control" data-model-label placeholder="z. B. Fenster verschoben"></label>''',
 )
 
+# The first-run tutorial must describe the new project-centric workflow rather than
+# teaching the old nine-screen creation flow.
+replace_once(
+    "static/js/app.js",
+    '{icon:"＋", title:"Projekt sauber anlegen", text:"Der Projektassistent führt von Kunde und Mitarbeitern über Aufmaß und Leistungen bis zum Angebot.", highlight:"Neues Projekt", detail:"Bei B&O/Versicherung wählst du die passende Versicherungspreisliste – Lieferantenlisten wie JOKA gehören nur zu Material."},',
+    '{icon:"＋", title:"Projekt in 3 Schritten starten", text:"Der Assistent legt zuerst Auftrag, Kunde, Projektdaten und Team an. Aufmaß, Leistungen, Material und Angebot folgen danach als klare nächste Schritte im Projekt.", highlight:"3-Schritte-Projektstart", detail:"Bei B&O/Versicherung kannst du den Originalauftrag direkt beim Start hochladen; KAYI verbindet ihn anschließend mit der passenden Preisliste."},',
+)
+
+replace_once(
+    "static/js/app.js",
+    '{icon:"◈", title:"3D-Modell bearbeiten", text:"Maße, Fenster, Türen, Farben und Fliesen lassen sich manuell oder per Beschreibung ändern. Jede Änderung bleibt prüfpflichtig.", highlight:"KAYI AI Live Edit", detail:"Zum Beispiel: Fenster 1 × 1,5 m, Tür gegenüber 74 cm, beige Wände und grauer Boden, Fliesen 60 × 60 cm."},',
+    '{icon:"◈", title:"3D nur bei Bedarf", text:"Das 3D-Modell ist kein Pflichtschritt mehr. Öffne es im Projekt, wenn Raumgeometrie, Materialien oder Varianten wirklich relevant sind.", highlight:"Optionaler 3D-Konfigurator", detail:"Im Konfigurator kannst du Maße, Öffnungen, Farben und Objekte weiterhin manuell oder mit KAYI AI anpassen; jede Änderung bleibt prüfpflichtig."},',
+)
+
 # Unsigned reports are drafts by design. The archive must offer continuation,
 # not a final-looking PDF action, until a real customer signature exists.
 replace_once(
@@ -50,10 +64,11 @@ replace_once(
         self.assertContains(response, "Max Kunde")''',
 )
 
-# Regression guards: the dedicated configurator must expose the real AI endpoint
-# and draft reports must remain editable rather than masquerading as final PDFs.
+# Regression guards: the dedicated configurator must expose the real AI endpoint,
+# the tutorial must match the simplified flow, and drafts must remain editable.
 configurator = Path("templates/erp/configurator.html").read_text(encoding="utf-8")
 workflow_tests = Path("tests/test_workflow_release.py").read_text(encoding="utf-8")
+app_js = Path("static/js/app.js").read_text(encoding="utf-8")
 for marker in (
     "data-ai-url=\"{% url 'project-room-model-suggestions' %}\"",
     "data-model-ai-prompt",
@@ -62,6 +77,9 @@ for marker in (
 ):
     if marker not in configurator:
         raise RuntimeError(f"Configurator AI follow-up guard failed: {marker!r}")
+for marker in ("Projekt in 3 Schritten starten", "3-Schritte-Projektstart", "3D nur bei Bedarf"):
+    if marker not in app_js:
+        raise RuntimeError(f"Tutorial follow-up guard failed: {marker!r}")
 if 'reverse("site-report-edit", args=[foreign_report.pk])' not in workflow_tests:
     raise RuntimeError("Draft Leistungsnachweis archive regression was not updated")
 
