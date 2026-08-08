@@ -91,6 +91,11 @@ replace_once(
         self.assertEqual(wizard.content.decode().count('data-step="'), 9)''',
 )
 replace_once(
+    "tests/test_v2.py",
+    '        self.assertContains(response, "3-Schritte-Projektassistent")',
+    '        self.assertContains(response, "9-Schritte-Projektassistent")',
+)
+replace_once(
     "tests/test_room_model_editor.py",
     '''    def test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow(self):
         response = self.client.get(reverse("project-create"))
