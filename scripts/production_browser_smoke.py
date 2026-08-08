@@ -107,6 +107,24 @@ def main() -> None:
                 if marker and marker not in page.content():
                     fail(f"/{path} is missing expected marker {marker!r}")
 
+            response = page.goto(urljoin(base_url, "events/new/"), wait_until="networkidle", timeout=30_000)
+            if response is None or response.status >= 500:
+                fail(f"/events/new/ returned {response.status if response else 'no response'}")
+            if "/login/" in page.url:
+                fail("/events/new/ unexpectedly redirected to login")
+            if "Termin anlegen" not in page.locator("body").inner_text():
+                fail("event creation screen is missing its heading")
+            if page.locator("body.event-form-page").count() != 1:
+                fail("event creation screen did not activate the refined page layout")
+            if page.locator(".event-form-layout").count() != 1:
+                fail("event creation screen is missing the refined two-column layout")
+            if page.locator(".event-form-section").count() < 4:
+                fail("event creation screen is missing one or more grouped form sections")
+            event_text = page.locator("body").inner_text()
+            for marker in ("Teilnehmer & Erinnerungen", "Beginn", "Ende", "Ganztägig"):
+                if marker not in event_text:
+                    fail(f"refined event form is missing German UI marker {marker!r}")
+
             page.goto(urljoin(base_url, "projects/new/"), wait_until="networkidle", timeout=30_000)
             steps = page.locator("section.wizard-step")
             if steps.count() != 9:
@@ -160,7 +178,7 @@ def main() -> None:
         user.password = old_password_hash
         user.save(update_fields=["password"])
 
-    print("KAYI browser smoke passed: login, tutorial gate, dashboard, full 9-step wizard, reports, prices and project detail.")
+    print("KAYI browser smoke passed: login, tutorial gate, refined event form, dashboard, full 9-step wizard, reports, prices and project detail.")
 
 
 if __name__ == "__main__":
