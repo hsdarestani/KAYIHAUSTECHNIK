@@ -61,8 +61,8 @@ if [ ! -f .env ]; then
     "DEBUG=0" \
     "ALLOWED_HOSTS=kayi.smarbiz.sbs,91.107.144.64,localhost,127.0.0.1" \
     "CSRF_TRUSTED_ORIGINS=https://kayi.smarbiz.sbs,http://91.107.144.64" \
-    "SECURE_SSL_REDIRECT=0" \
-    "COOKIE_SECURE=0" \
+    "SECURE_SSL_REDIRECT=1" \
+    "COOKIE_SECURE=1" \
     "TIME_ZONE=Europe/Berlin" \
     "POSTGRES_DB=kayi" \
     "POSTGRES_USER=kayi" \
@@ -72,7 +72,8 @@ if [ ! -f .env ]; then
     "CELERY_BROKER_URL=redis://redis:6379/0" \
     "CELERY_RESULT_BACKEND=redis://redis:6379/1" \
     "OPENAI_API_KEY=" \
-    "OPENAI_MODEL=gpt-5" \
+    "OPENAI_MODEL=gpt-4.1-mini" \
+    "OPENAI_FALLBACK_MODEL=gpt-4.1-mini" \
     "ORGANIZATION_NAME=KAYI Haustechnik" \
     "INITIAL_ADMIN_USERNAME=admin" \
     "INITIAL_ADMIN_EMAIL=admin@kayi.local" > .env
@@ -91,9 +92,17 @@ for line in lines:
         key, value = line.split('=', 1)
         values[key] = value
         order.append(key)
-values['OPENAI_API_KEY'] = os.environ.get('OPENAI_API_KEY', '')
-if 'OPENAI_API_KEY' not in order:
-    order.append('OPENAI_API_KEY')
+forced = {
+    'OPENAI_API_KEY': os.environ.get('OPENAI_API_KEY', ''),
+    'OPENAI_MODEL': 'gpt-4.1-mini',
+    'OPENAI_FALLBACK_MODEL': 'gpt-4.1-mini',
+    'SECURE_SSL_REDIRECT': '1',
+    'COOKIE_SECURE': '1',
+}
+for key, value in forced.items():
+    values[key] = value
+    if key not in order:
+        order.append(key)
 path.write_text('\n'.join(f'{key}={values[key]}' for key in order) + '\n')
 path.chmod(0o600)
 PY
@@ -200,12 +209,8 @@ dc up -d --remove-orphans
 
 for attempt in $(seq 1 36); do
   if curl -fsS http://127.0.0.1/api/health/ >/dev/null; then
-    echo "KAYI deployment healthy"
-    echo "Normalized searchable source files: $(find /opt/kayi-reference-data/normalized -type f | wc -l)"
-    dc ps
-    ss -lntup 2>/dev/null | grep -E '(:80|:443)' || true
-    docker image prune -f
-    exit 0
+    echo "KAYI application health endpoint is ready"
+    break
   fi
   if [ "$attempt" -eq 36 ]; then
     dc logs --tail=250 web caddy worker beat
@@ -213,3 +218,31 @@ for attempt in $(seq 1 36); do
   fi
   sleep 5
 done
+
+# Verify the public HTTPS entry point as users see it.
+curl -fsS --retry 3 --retry-delay 1 https://kayi.smarbiz.sbs/login/ >/dev/null
+
+# Run a real Chromium smoke test against the just-built image. The temporary
+# runserver disables secure-cookie redirects only inside the disposable smoke
+# container; production services keep the secure settings above.
+dc run --rm \
+  -e DEBUG=1 \
+  -e SECURE_SSL_REDIRECT=0 \
+  -e COOKIE_SECURE=0 \
+  web sh -lc '
+    python manage.py runserver 127.0.0.1:8001 --noreload >/tmp/kayi-smoke-server.log 2>&1 &
+    pid=$!
+    trap "kill $pid 2>/dev/null || true" EXIT
+    for attempt in $(seq 1 30); do
+      if curl -fsS http://127.0.0.1:8001/login/ >/dev/null; then break; fi
+      if [ "$attempt" -eq 30 ]; then cat /tmp/kayi-smoke-server.log; exit 1; fi
+      sleep 1
+    done
+    python scripts/production_browser_smoke.py http://127.0.0.1:8001
+  '
+
+echo "KAYI deployment healthy and user-flow smoke tests passed"
+echo "Normalized searchable source files: $(find /opt/kayi-reference-data/normalized -type f | wc -l)"
+dc ps
+ss -lntup 2>/dev/null | grep -E '(:80|:443)' || true
+docker image prune -f

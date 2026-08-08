@@ -10,7 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - name: Verify repeatable source assembly
@@ -30,9 +30,49 @@ jobs:
       - name: Django checks
         run: python manage.py check
       - name: Tests
-        run: python manage.py test -v 2
+        run: |
+          set -o pipefail
+          python manage.py test -v 2 2>&1 | tee /tmp/kayi-tests.log
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayi-test-diagnostics-${{ github.run_id }}
+          path: /tmp/kayi-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Python syntax
-        run: python -m compileall -q config erp tests
+        run: python -m compileall -q config erp tests scripts/production_browser_smoke.py
+      - name: Install Chromium for browser smoke
+        run: python -m playwright install --with-deps chromium
+      - name: Browser smoke tests
+        env:
+          DEBUG: "1"
+          SECURE_SSL_REDIRECT: "0"
+          COOKIE_SECURE: "0"
+        run: |
+          python manage.py seed_demo_data --credentials-file /tmp/kayi-demo-credentials.txt
+          python manage.py runserver 127.0.0.1:8000 --noreload >/tmp/kayi-runserver.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/login/ >/dev/null; then break; fi
+            if [ "$attempt" -eq 30 ]; then cat /tmp/kayi-runserver.log; exit 1; fi
+            sleep 1
+          done
+          set -o pipefail
+          python scripts/production_browser_smoke.py http://127.0.0.1:8000 2>&1 | tee /tmp/kayi-browser-smoke.log
+      - name: Upload browser smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayi-browser-smoke-${{ github.run_id }}
+          path: |
+            /tmp/kayi-browser-smoke.log
+            /tmp/kayi-runserver.log
+            /tmp/kayi-browser-smoke.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Prepare Compose environment
         run: cp .env.example .env
       - name: Compose validation

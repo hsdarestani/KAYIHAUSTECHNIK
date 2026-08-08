@@ -1,11 +1,9 @@
-name: Deploy production
+name: Deploy production after merged PR
 
 on:
-  push:
-    branches: [main]
+  pull_request:
+    types: [closed]
   workflow_dispatch:
-  issues:
-    types: [opened]
 
 permissions:
   contents: read
@@ -16,7 +14,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ github.event_name != 'issues' || (github.event.issue.user.login == 'hsdarestani' && github.event.issue.title == '[deploy] KAYI production') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -24,13 +22,15 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAIAPIKEY }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Verify and assemble source
         run: bash scripts/unpack-source.sh
 
       - name: Validate assembled application
         run: |
-          python3 -m compileall -q erp config tests
+          python3 -m compileall -q erp config tests scripts/production_browser_smoke.py
           node --check static/js/app.js
           cp .env.example .env
           docker compose config --quiet
@@ -39,7 +39,8 @@ jobs:
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.HOST }}
-          username: root
+          username: ${{ secrets.DEPLOY_USER || 'root' }}
+          key: ${{ secrets.SSH_KEY }}
           password: ${{ secrets.PASS }}
           envs: OPENAI_API_KEY
           command_timeout: 40m
