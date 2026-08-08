@@ -125,5 +125,6 @@ python3 scripts/cache_bust_overrides.py
 python3 scripts/project_wizard_visibility_fix.py
 python3 scripts/leistungsnachweise_index.py
 python3 scripts/ux_flow_hardening.py
+python3 scripts/restore_nine_step_wizard.py
 
 echo "KAYI source tree assembled and verified."
