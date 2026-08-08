@@ -37,6 +37,15 @@ replace_once(
       <label><span>Versionsnotiz</span><input class="form-control" data-model-label placeholder="z. B. Fenster verschoben"></label>''',
 )
 
+# The simplified wizard keeps the legacy form id because app.js still binds its
+# lightweight review listener to this stable hook. Losing it produced a real
+# pageerror even though the three navigation buttons themselves still worked.
+replace_once(
+    "templates/erp/project_wizard.html",
+    '<form method="post" enctype="multipart/form-data" class="wizard-form">{% csrf_token %}',
+    '<form method="post" enctype="multipart/form-data" class="wizard-form" id="projectWizardForm">{% csrf_token %}',
+)
+
 # The first-run tutorial must describe the new project-centric workflow rather than
 # teaching the old nine-screen creation flow.
 replace_once(
@@ -65,10 +74,12 @@ replace_once(
 )
 
 # Regression guards: the dedicated configurator must expose the real AI endpoint,
-# the tutorial must match the simplified flow, and drafts must remain editable.
+# the tutorial must match the simplified flow, the wizard hook must be present,
+# and drafts must remain editable.
 configurator = Path("templates/erp/configurator.html").read_text(encoding="utf-8")
 workflow_tests = Path("tests/test_workflow_release.py").read_text(encoding="utf-8")
 app_js = Path("static/js/app.js").read_text(encoding="utf-8")
+wizard = Path("templates/erp/project_wizard.html").read_text(encoding="utf-8")
 for marker in (
     "data-ai-url=\"{% url 'project-room-model-suggestions' %}\"",
     "data-model-ai-prompt",
@@ -80,6 +91,8 @@ for marker in (
 for marker in ("Projekt in 3 Schritten starten", "3-Schritte-Projektstart", "3D nur bei Bedarf"):
     if marker not in app_js:
         raise RuntimeError(f"Tutorial follow-up guard failed: {marker!r}")
+if 'id="projectWizardForm"' not in wizard:
+    raise RuntimeError("Simplified wizard lost the stable projectWizardForm JS hook")
 if 'reverse("site-report-edit", args=[foreign_report.pk])' not in workflow_tests:
     raise RuntimeError("Draft Leistungsnachweis archive regression was not updated")
 
