@@ -8,15 +8,25 @@ import subprocess
 from pathlib import Path
 
 
-PATCH_DIR = Path("scripts/ux_flow_hardening_v2")
+PATCH_DIR = Path("scripts/ux_flow_hardening_v3")
 EXPECTED_GZIP_SHA256 = "1d3c07772465d4d2af971b303a044b7b423336b960d63d6f647745204ee89729"
 EXPECTED_PATCH_SHA256 = "efdb2c19ddce841f7191e34caf5486fd5d552db88fce300bbb77af4955c7c2e4"
 EXPECTED_PARTS = {
-    "part01": (6000, "d00876331dcf7abecda2beeec2b9c378e714ed410f2c32dd47a55759a6799588"),
-    "part02": (6000, "c3d3f00d08e10eaaf609af6a294ceb56cb18757e6462dd694925a00b262f3e95"),
-    "part03": (6000, "3f0e219797965e63b286c3524f725f8660af8a76dca7788b5ad7dd33863fcec0"),
-    "part04": (6000, "77090dfffbe6442b2033baaac8f80fd68aec5031cb9053975ae4e6e86663534c"),
-    "part05": (4152, "990eeef82089c406445b3b3befa36dd7653cae20076de35fc8f6a01d801ac55f"),
+    "part01": (2000, "ae9236962ee65649420cb08dce3de829be2b3cd355016bd312487eff9bd60f19"),
+    "part02": (2000, "787e283b25ceb900dc9e051909bd707d3b5a597a58c50694c359eb89c1648e73"),
+    "part03": (2000, "7e60d7a427ab2477faa89a9da222a297474fb14a200067350b5856a3d95a56dc"),
+    "part04": (2000, "c9a31125d759d56c674d304de80dd5caf8693939fd271b6e317bac4a2ce5c77c"),
+    "part05": (2000, "65a0fb3d793d261aeab907fd42d32b915fb7fb394d513de47dd3767449c30d69"),
+    "part06": (2000, "ecff0a2a476c0bacacccf65c9c68a4af70890e5091763efe075360cc3ac7572b"),
+    "part07": (2000, "c9e9e8b8973f3224618f4388fafaff9e9d739edaf570aed6d6fdfce706984aee"),
+    "part08": (2000, "1aa42b72bb8adf637ec2d40da97f84e06de57b0acc0ea454213ab29ba2459112"),
+    "part09": (2000, "e7f4feece652d2d375c0b8d6598211917eaaf914faa2b8ead9f150a4bbb481df"),
+    "part10": (2000, "d3e7ed3f6002e5d696b017b33a3f4b3bb2eb82b41fc468dba4db72a9a309ad07"),
+    "part11": (2000, "3790650f7e6bf2220a7f7bad7bf787bcb858760202fdda86a14fbdb277b56e78"),
+    "part12": (2000, "6fe1c0bf91a9bede1db4612687b66332d907ba1391ad03ee40ca78773efcdc50"),
+    "part13": (2000, "a9e28d0f2612fb2edc5893e095c1ab5d4c1c0e846fad8f24ca1a70f8c0279d0b"),
+    "part14": (2000, "6bc473fdb0fd7879cf2360104e47f4569a868a649fe3ed20d4ad16561e0c9198"),
+    "part15": (152, "6bfda5dbeacee1b090fd3dd780f73cfd2d2a3d590735e177e3dc71d3a1221ced"),
 }
 PATCH_PATH = Path("/tmp/kayi-ux-flow-hardening.patch")
 
