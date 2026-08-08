@@ -7,6 +7,13 @@ import sys
 from pathlib import Path
 from urllib.parse import urljoin
 
+# Executing `python scripts/production_browser_smoke.py` makes `scripts/` the
+# first import root. Add the repository root explicitly so Django's `config`
+# package is importable in CI and inside the production smoke container.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 import django
