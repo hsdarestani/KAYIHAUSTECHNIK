@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import secrets
 import sys
+from pathlib import Path
 from urllib.parse import urljoin
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -17,8 +18,26 @@ from django.contrib.auth import get_user_model
 from erp.models import Project
 
 
+SCREENSHOT_PATH = Path("/tmp/kayi-browser-smoke.png")
+
+
 def fail(message: str) -> None:
     raise RuntimeError(f"KAYI browser smoke failed: {message}")
+
+
+def dismiss_first_run_tutorial(page) -> None:
+    """Complete the real first-run tutorial gate before testing app controls."""
+    overlay = page.locator("[data-tutorial-overlay]")
+    if overlay.count() == 0:
+        return
+    # The production UI opens the tutorial 450 ms after page init for a fresh user.
+    page.wait_for_timeout(650)
+    if overlay.is_visible():
+        skip = page.locator("[data-tutorial-skip]")
+        if skip.count() == 0:
+            fail("first-run tutorial opened without a skip control")
+        skip.click()
+        overlay.wait_for(state="hidden", timeout=5_000)
 
 
 def main() -> None:
@@ -38,6 +57,7 @@ def main() -> None:
 
     page_errors: list[str] = []
     browser = None
+    page = None
     try:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
@@ -54,6 +74,7 @@ def main() -> None:
                 page.click('button[type="submit"], button.btn-primary')
             if "/login/" in page.url:
                 fail("login did not establish an authenticated session")
+            dismiss_first_run_tutorial(page)
 
             checks = [
                 ("", "Dashboard"),
@@ -97,13 +118,22 @@ def main() -> None:
             context.close()
             browser.close()
             browser = None
+    except Exception as exc:
+        if page is not None:
+            try:
+                page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
+            except Exception:
+                pass
+            print(f"Browser smoke failed at URL: {page.url}", file=sys.stderr)
+        print(str(exc), file=sys.stderr)
+        raise
     finally:
         if browser is not None:
             browser.close()
         user.password = old_password_hash
         user.save(update_fields=["password"])
 
-    print("KAYI browser smoke passed: login, dashboard, 3-step wizard, reports, prices and project detail.")
+    print("KAYI browser smoke passed: login, tutorial gate, dashboard, 3-step wizard, reports, prices and project detail.")
 
 
 if __name__ == "__main__":
