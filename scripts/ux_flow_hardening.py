@@ -112,6 +112,12 @@ def _guard() -> None:
             "ohne abgeschlossenen Leistungsnachweis",
             "Weiterbearbeiten",
         ],
+        "templates/erp/configurator.html": [
+            "data-ai-url=\"{% url 'project-room-model-suggestions' %}\"",
+            "data-model-ai-prompt",
+            "data-model-ai-apply",
+            "Modell mit KI anpassen",
+        ],
         "static/js/app.js": [
             "const lastStep = Math.max(1, steps.length);",
             "/sw.js?v=20260808-2100",
@@ -131,6 +137,7 @@ def _guard() -> None:
         "Dockerfile": ["RUN python manage.py makemigrations --check --dry-run"],
         "tests/test_workflow_release.py": [
             "test_bando_draft_stays_pending_and_can_be_continued",
+            'reverse("site-report-edit", args=[foreign_report.pk])',
             "3-Schritte-Projektassistent",
         ],
         "tests/test_room_model_editor.py": [
@@ -151,5 +158,6 @@ def _guard() -> None:
 
 if not _already_applied():
     _apply_patch()
+subprocess.run(["python3", "scripts/ux_flow_followup.py"], check=True)
 _guard()
 print("KAYI UX-flow hardening applied and verified.")
