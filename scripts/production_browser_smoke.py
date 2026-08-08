@@ -112,7 +112,7 @@ def main() -> None:
                 fail(f"/events/new/ returned {response.status if response else 'no response'}")
             if "/login/" in page.url:
                 fail("/events/new/ unexpectedly redirected to login")
-            if "Termin anlegen" not in page.content():
+            if "Termin anlegen" not in page.locator("body").inner_text():
                 fail("event creation screen is missing its heading")
             if page.locator("body.event-form-page").count() != 1:
                 fail("event creation screen did not activate the refined page layout")
@@ -120,9 +120,9 @@ def main() -> None:
                 fail("event creation screen is missing the refined two-column layout")
             if page.locator(".event-form-section").count() < 4:
                 fail("event creation screen is missing one or more grouped form sections")
-            event_html = page.content()
+            event_text = page.locator("body").inner_text()
             for marker in ("Teilnehmer & Erinnerungen", "Beginn", "Ende", "Ganztägig"):
-                if marker not in event_html:
+                if marker not in event_text:
                     fail(f"refined event form is missing German UI marker {marker!r}")
 
             page.goto(urljoin(base_url, "projects/new/"), wait_until="networkidle", timeout=30_000)
