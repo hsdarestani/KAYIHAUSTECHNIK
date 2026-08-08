@@ -8,8 +8,16 @@ import subprocess
 from pathlib import Path
 
 
-PATCH_DIR = Path("scripts/ux_flow_hardening_patch")
-EXPECTED_GZIP_SHA256 = "2ef39ae8ab0ad494805112e17b27603937034fcae1d580b8470aeef874f9932c"
+PATCH_DIR = Path("scripts/ux_flow_hardening_v2")
+EXPECTED_GZIP_SHA256 = "1d3c07772465d4d2af971b303a044b7b423336b960d63d6f647745204ee89729"
+EXPECTED_PATCH_SHA256 = "efdb2c19ddce841f7191e34caf5486fd5d552db88fce300bbb77af4955c7c2e4"
+EXPECTED_PARTS = {
+    "part01": (6000, "d00876331dcf7abecda2beeec2b9c378e714ed410f2c32dd47a55759a6799588"),
+    "part02": (6000, "c3d3f00d08e10eaaf609af6a294ceb56cb18757e6462dd694925a00b262f3e95"),
+    "part03": (6000, "3f0e219797965e63b286c3524f725f8660af8a76dca7788b5ad7dd33863fcec0"),
+    "part04": (6000, "77090dfffbe6442b2033baaac8f80fd68aec5031cb9053975ae4e6e86663534c"),
+    "part05": (4152, "990eeef82089c406445b3b3befa36dd7653cae20076de35fc8f6a01d801ac55f"),
+}
 PATCH_PATH = Path("/tmp/kayi-ux-flow-hardening.patch")
 
 
@@ -28,62 +36,37 @@ def _already_applied() -> bool:
 
 def _apply_patch() -> None:
     parts = sorted(PATCH_DIR.glob("part*"))
-    if not parts:
-        raise RuntimeError("UX-flow hardening patch parts are missing")
-    payload = base64.b64decode(
-        "".join(part.read_text(encoding="utf-8").strip() for part in parts),
-        validate=True,
-    )
+    if [part.name for part in parts] != list(EXPECTED_PARTS):
+        raise RuntimeError(f"Unexpected UX hardening part set: {[part.name for part in parts]!r}")
+
+    encoded_parts: list[str] = []
+    for part in parts:
+        text = part.read_text(encoding="utf-8").strip()
+        expected_length, expected_sha = EXPECTED_PARTS[part.name]
+        actual_sha = hashlib.sha256(text.encode()).hexdigest()
+        if len(text) != expected_length or actual_sha != expected_sha:
+            raise RuntimeError(
+                f"UX hardening {part.name} integrity failed: length={len(text)} sha={actual_sha}"
+            )
+        encoded_parts.append(text)
+
+    payload = base64.b64decode("".join(encoded_parts), validate=True)
     actual = hashlib.sha256(payload).hexdigest()
     if actual != EXPECTED_GZIP_SHA256:
         raise RuntimeError(
-            f"UX-flow hardening patch integrity check failed: expected {EXPECTED_GZIP_SHA256}, got {actual}"
+            f"UX-flow hardening gzip integrity failed: expected {EXPECTED_GZIP_SHA256}, got {actual}"
         )
     patch_bytes = gzip.decompress(payload)
+    patch_sha = hashlib.sha256(patch_bytes).hexdigest()
+    if patch_sha != EXPECTED_PATCH_SHA256:
+        raise RuntimeError(
+            f"UX-flow hardening patch integrity failed: expected {EXPECTED_PATCH_SHA256}, got {patch_sha}"
+        )
     PATCH_PATH.write_bytes(patch_bytes)
     subprocess.run(
         ["git", "apply", "--whitespace=nowarn", str(PATCH_PATH)],
         check=True,
     )
-
-
-def _update_room_editor_regression() -> None:
-    """Keep 3D regression coverage while removing 3D from core project creation."""
-    path = Path("tests/test_room_model_editor.py")
-    text = path.read_text(encoding="utf-8")
-    new_name = "test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow"
-    if new_name in text:
-        return
-    old = '''    def test_project_wizard_renders_responsive_material_sources_and_inline_editor(self):
-        response = self.client.get(reverse("project-create"))
-        self.assertContains(response, 'class="material-source-grid"')
-        self.assertContains(response, 'data-inline-room-model="1"')
-        self.assertContains(response, 'data-model-ai-apply')
-        self.assertContains(response, 'data-model-openings="front"')
-        self.assertContains(response, reverse("project-room-model-suggestions"))
-        self.assertContains(response, reverse("project-wizard-price-preview"))
-'''
-    new = '''    def test_project_wizard_keeps_material_and_3d_tools_outside_core_creation_flow(self):
-        response = self.client.get(reverse("project-create"))
-        self.assertContains(response, "3-Schritte-Projektassistent")
-        self.assertNotContains(response, 'class="material-source-grid"')
-        self.assertNotContains(response, 'data-inline-room-model="1"')
-        self.assertNotContains(response, 'data-model-ai-apply')
-
-        project = self.client.get(reverse("project-detail", args=[self.project.pk]))
-        self.assertContains(project, "3D-Modell optional")
-        self.assertContains(project, reverse("configurator") + f"?project={self.project.pk}")
-
-        configurator = self.client.get(
-            reverse("configurator") + f"?project={self.project.pk}&measurement={self.measurement.pk}"
-        )
-        self.assertContains(configurator, "data-room-model-editor")
-        self.assertContains(configurator, reverse("configurator-model-save"))
-        self.assertContains(configurator, reverse("project-room-model-suggestions"))
-'''
-    if old not in text:
-        raise RuntimeError("Could not locate legacy inline 3D wizard regression test")
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
 def _guard() -> None:
@@ -158,6 +141,5 @@ def _guard() -> None:
 
 if not _already_applied():
     _apply_patch()
-_update_room_editor_regression()
 _guard()
 print("KAYI UX-flow hardening applied and verified.")
