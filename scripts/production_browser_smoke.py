@@ -57,6 +57,17 @@ def main() -> None:
     if user is None:
         fail(f"smoke user {username!r} does not exist")
 
+    # Resolve all Django ORM state before Playwright starts its sync event loop.
+    organization_id = getattr(getattr(user, "profile", None), "organization_id", None)
+    project_pk = None
+    if organization_id:
+        project_pk = (
+            Project.objects.filter(organization_id=organization_id)
+            .order_by("-pk")
+            .values_list("pk", flat=True)
+            .first()
+        )
+
     old_password_hash = user.password
     temporary_password = secrets.token_urlsafe(24)
     user.set_password(temporary_password)
@@ -111,10 +122,8 @@ def main() -> None:
             if page.locator("section.wizard-step.active").get_attribute("data-step") != "3":
                 fail("project wizard could not advance to step 3")
 
-            organization_id = getattr(getattr(user, "profile", None), "organization_id", None)
-            project = Project.objects.filter(organization_id=organization_id).order_by("-pk").first() if organization_id else None
-            if project is not None:
-                response = page.goto(urljoin(base_url, f"projects/{project.pk}/"), wait_until="domcontentloaded", timeout=30_000)
+            if project_pk is not None:
+                response = page.goto(urljoin(base_url, f"projects/{project_pk}/"), wait_until="domcontentloaded", timeout=30_000)
                 if response is None or response.status >= 500:
                     fail(f"project detail returned {response.status if response else 'no response'}")
                 if "Nächste Schritte" not in page.content():
@@ -136,7 +145,10 @@ def main() -> None:
         raise
     finally:
         if browser is not None:
-            browser.close()
+            try:
+                browser.close()
+            except Exception:
+                pass
         user.password = old_password_hash
         user.save(update_fields=["password"])
 
