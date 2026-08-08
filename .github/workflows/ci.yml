@@ -30,7 +30,17 @@ jobs:
       - name: Django checks
         run: python manage.py check
       - name: Tests
-        run: python manage.py test -v 2
+        run: |
+          set -o pipefail
+          python manage.py test -v 2 2>&1 | tee /tmp/kayi-tests.log
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayi-test-diagnostics-${{ github.run_id }}
+          path: /tmp/kayi-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Python syntax
         run: python -m compileall -q config erp tests scripts/production_browser_smoke.py
       - name: Install Chromium for browser smoke
