@@ -37,7 +37,6 @@ def dismiss_first_run_tutorial(page) -> None:
     overlay = page.locator("[data-tutorial-overlay]")
     if overlay.count() == 0:
         return
-    # The production UI opens the tutorial 450 ms after page init for a fresh user.
     page.wait_for_timeout(650)
     if overlay.is_visible():
         skip = page.locator("[data-tutorial-skip]")
@@ -57,7 +56,6 @@ def main() -> None:
     if user is None:
         fail(f"smoke user {username!r} does not exist")
 
-    # Resolve all Django ORM state before Playwright starts its sync event loop.
     organization_id = getattr(getattr(user, "profile", None), "organization_id", None)
     project_pk = None
     if organization_id:
@@ -96,7 +94,7 @@ def main() -> None:
 
             checks = [
                 ("", "Dashboard"),
-                ("projects/new/", "3-Schritte-Projektassistent"),
+                ("projects/new/", "9-Schritte-Projektassistent"),
                 ("site-reports/", "Leistungsnachweise"),
                 ("prices/", "Preislisten"),
             ]
@@ -111,16 +109,26 @@ def main() -> None:
 
             page.goto(urljoin(base_url, "projects/new/"), wait_until="networkidle", timeout=30_000)
             steps = page.locator("section.wizard-step")
-            if steps.count() != 3:
-                fail(f"project wizard rendered {steps.count()} steps instead of 3")
+            if steps.count() != 9:
+                fail(f"project wizard rendered {steps.count()} steps instead of 9")
             if page.locator("section.wizard-step.active").get_attribute("data-step") != "1":
                 fail("project wizard did not start at step 1")
-            page.click("[data-wizard-next]")
-            if page.locator("section.wizard-step.active").get_attribute("data-step") != "2":
-                fail("project wizard could not advance to step 2")
-            page.click("[data-wizard-next]")
-            if page.locator("section.wizard-step.active").get_attribute("data-step") != "3":
-                fail("project wizard could not advance to step 3")
+
+            wizard_html = page.content()
+            for marker in (
+                'class="material-source-grid"',
+                'data-inline-room-model="1"',
+                'data-model-ai-apply',
+                'data-quote="gross"',
+            ):
+                if marker not in wizard_html:
+                    fail(f"nine-step wizard is missing specialist tool marker {marker!r}")
+
+            for expected_step in range(2, 10):
+                page.click("[data-wizard-next]")
+                active_step = page.locator("section.wizard-step.active").get_attribute("data-step")
+                if active_step != str(expected_step):
+                    fail(f"project wizard could not advance to step {expected_step}; active={active_step!r}")
 
             if project_pk is not None:
                 response = page.goto(urljoin(base_url, f"projects/{project_pk}/"), wait_until="domcontentloaded", timeout=30_000)
@@ -152,7 +160,7 @@ def main() -> None:
         user.password = old_password_hash
         user.save(update_fields=["password"])
 
-    print("KAYI browser smoke passed: login, tutorial gate, dashboard, 3-step wizard, reports, prices and project detail.")
+    print("KAYI browser smoke passed: login, tutorial gate, dashboard, full 9-step wizard, reports, prices and project detail.")
 
 
 if __name__ == "__main__":
