@@ -1,0 +1,16 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Kunden · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead">
+  <div><div class="nx-kicker">Kundenstamm</div><h1>Kunden</h1><p>Kontakte, Objekte und laufende Projekte an einem Ort.</p></div>
+  <div class="nx-actions"><a class="nx-btn nx-btn-primary" href="{% url 'next-customer-create' %}">＋ Neuer Kunde</a></div>
+</div>
+<section class="nx-card">
+  <form class="nx-toolbar" method="get"><div class="nx-search" style="display:block;max-width:none"><input name="q" value="{{ query }}" placeholder="Name, Firma, E-Mail, Telefon oder Kundennummer …"></div><button class="nx-btn" type="submit">Suchen</button>{% if query %}<a class="nx-btn nx-btn-ghost" href="{% url 'next-customers' %}">Zurücksetzen</a>{% endif %}</form>
+  <div class="nx-table-wrap"><table class="nx-table"><thead><tr><th>Kunde</th><th>Kontakt</th><th>Adresse</th><th>Typ</th><th>Nr.</th><th></th></tr></thead><tbody>
+  {% for customer in customers %}
+    <tr><td><strong>{{ customer.display_name }}</strong>{% if customer.company %}<div class="nx-muted">{{ customer.first_name }} {{ customer.last_name }}</div>{% endif %}</td><td>{{ customer.email|default:'–' }}<div class="nx-muted">{{ customer.mobile|default:customer.phone|default:'–' }}</div></td><td>{{ customer.street|default:'–' }}<div class="nx-muted">{{ customer.postal_code }} {{ customer.city }}</div></td><td><span class="nx-badge">{{ customer.get_type_display }}</span></td><td>{{ customer.number }}</td><td><a class="nx-btn nx-btn-ghost" href="{% url 'next-customer-detail' customer.pk %}">Öffnen →</a></td></tr>
+  {% empty %}<tr><td colspan="6"><div class="nx-empty"><b>Keine Kunden gefunden.</b>Lege einen neuen Kunden an oder ändere die Suche.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
