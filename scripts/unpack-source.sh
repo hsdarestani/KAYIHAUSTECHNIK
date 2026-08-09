@@ -132,5 +132,6 @@ python3 scripts/global_form_polish.py
 python3 scripts/global_form_polish_balance_fix.py
 python3 scripts/global_form_smoke_fix.py
 python3 scripts/ashkan_ux_fixes.py
+python3 scripts/integration_overrides.py
 
 echo "KAYI source tree assembled and verified."
