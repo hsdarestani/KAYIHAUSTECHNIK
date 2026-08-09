@@ -1,0 +1,22 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{{ customer.display_name }} · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead">
+  <div><div class="nx-kicker">{{ customer.number }}</div><h1>{{ customer.display_name }}</h1><p>{{ customer.email|default:'Keine E-Mail' }} · {{ customer.mobile|default:customer.phone|default:'Keine Telefonnummer' }}</p></div>
+  <div class="nx-actions"><a class="nx-btn" href="{% url 'next-appointment-create' %}?customer={{ customer.pk }}">＋ Termin</a><a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}?customer={{ customer.pk }}">＋ Projekt</a></div>
+</div>
+<div class="nx-grid nx-grid-2">
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 14px"><div><h2>Kundendaten</h2><p>Änderungen werden direkt gespeichert.</p></div></div>
+    <form class="nx-form" method="post">{% csrf_token %}<div class="nx-form-grid">{% for field in form %}<div class="nx-field {% if field.name == 'notes' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div><div class="nx-form-actions"><button class="nx-btn nx-btn-primary" type="submit">Änderungen speichern</button></div></form>
+  </section>
+  <div class="nx-grid">
+    <section class="nx-card"><div class="nx-card-head"><div><h2>Objekte</h2><p>Rechnungsadresse und abweichende Einsatzorte.</p></div></div><div class="nx-divider"></div><div class="nx-timeline">
+      {% for location in locations %}<div class="nx-event"><div class="nx-event-time">⌖</div><div><b>{{ location.name }}</b><small>{{ location.street }}, {{ location.postal_code }} {{ location.city }}{% if location.floor %} · {{ location.floor }}{% endif %}</small></div><span class="nx-badge">Objekt</span></div>{% empty %}<div class="nx-empty"><b>Keine weiteren Objekte.</b>Die Kundenadresse wird als Standard genutzt.</div>{% endfor %}
+    </div></section>
+    <section class="nx-card"><div class="nx-card-head"><div><h2>Projekte</h2><p>Alle Aufträge dieses Kunden.</p></div></div><div class="nx-divider"></div><div class="nx-timeline">
+      {% for project in projects %}<a class="nx-event" href="{% url 'next-project-detail' project.pk %}"><div class="nx-event-time">{{ project.number|slice:'-4:' }}</div><div><b>{{ project.title }}</b><small>{{ project.number }} · zuletzt {{ project.updated_at|date:'d.m.Y' }}</small></div><span class="nx-badge {% if project.status == 'in_progress' %}nx-badge-success{% endif %}">{{ project.get_status_display }}</span></a>{% empty %}<div class="nx-empty"><b>Noch kein Projekt.</b><a href="{% url 'next-project-create' %}?customer={{ customer.pk }}">Ersten Auftrag anlegen →</a></div>{% endfor %}
+    </div></section>
+  </div>
+</div>
+{% endblock %}
