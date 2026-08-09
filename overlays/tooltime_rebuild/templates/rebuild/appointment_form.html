@@ -1,0 +1,9 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Neuer Termin · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Einsatz planen</div><h1>Neuer Termin</h1><p>Titel, Zeitpunkt, Projekt und Mitarbeiter. Die Baustellendokumentation passiert später direkt im Termin.</p></div></div>
+<form class="nx-form" method="post">{% csrf_token %}
+  <section class="nx-card nx-card-pad"><div class="nx-card-head" style="padding:0 0 16px"><div><h2>Termin</h2><p>Der Monteur sieht anschließend nur die Informationen, die er vor Ort braucht.</p></div></div><div class="nx-form-grid">{% for field in form %}<div class="nx-field {% if field.name == 'notes' or field.name == 'attendees' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div></section>
+  <div class="nx-form-actions"><a class="nx-btn" href="{% url 'next-appointments' %}">Abbrechen</a><button class="nx-btn nx-btn-accent" type="submit">Termin speichern</button></div>
+</form>
+{% endblock %}
