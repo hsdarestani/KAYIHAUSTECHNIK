@@ -1,0 +1,20 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Neuer Kunde · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Kundenstamm</div><h1>Neuen Kunden anlegen</h1><p>Nur das eintragen, was jetzt bekannt ist. Alles Weitere kann später ergänzt werden.</p></div></div>
+<form class="nx-form" method="post">{% csrf_token %}
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 16px"><div><h2>Kundendaten</h2><p>Firma oder Privatkunde, Kontakt und Rechnungsadresse.</p></div></div>
+    <div class="nx-form-grid">
+      {% for field in form %}<div class="nx-field {% if field.name == 'notes' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+    </div>
+  </section>
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 16px"><div><h2>Ausführungsort <span class="nx-muted" style="font-weight:500">optional</span></h2><p>Nur ausfüllen, wenn der Einsatzort von der Rechnungsadresse abweicht.</p></div></div>
+    <div class="nx-form-grid">
+      {% for field in location_form %}<div class="nx-field {% if field.name == 'access_notes' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+    </div>
+  </section>
+  <div class="nx-form-actions"><a class="nx-btn" href="{% url 'next-customers' %}">Abbrechen</a><button class="nx-btn nx-btn-primary" type="submit">Kunde anlegen</button></div>
+</form>
+{% endblock %}
