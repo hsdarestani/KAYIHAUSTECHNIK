@@ -1,0 +1,11 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Projekte · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Aufträge</div><h1>Projekte</h1><p>Wie ein digitaler Projektordner: Termine, Dokumentation, Angebot, Rechnung und Dateien zusammen.</p></div><div class="nx-actions"><a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}">＋ Neues Projekt</a></div></div>
+<section class="nx-card">
+  <form class="nx-toolbar" method="get"><div class="nx-search" style="display:block;max-width:none"><input name="q" value="{{ query }}" placeholder="Projekt, Kunde oder Nummer suchen …"></div><select class="nx-control" name="status"><option value="">Alle Status</option>{% for value,label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="nx-btn" type="submit">Filtern</button></form>
+  <div class="nx-table-wrap"><table class="nx-table"><thead><tr><th>Projekt</th><th>Kunde</th><th>Ort</th><th>Status</th><th>Priorität</th><th>Verantwortlich</th><th></th></tr></thead><tbody>
+  {% for project in projects %}<tr><td><strong>{{ project.title }}</strong><div class="nx-muted">{{ project.number }}</div></td><td>{{ project.customer.display_name }}</td><td>{% if project.object_location %}{{ project.object_location.city }}{% else %}{{ project.customer.city|default:'–' }}{% endif %}</td><td><span class="nx-badge {% if project.status == 'in_progress' %}nx-badge-success{% elif project.status == 'waiting' %}nx-badge-warn{% endif %}">{{ project.get_status_display }}</span></td><td>{{ project.get_priority_display }}</td><td>{% if project.manager %}{{ project.manager.first_name }} {{ project.manager.last_name }}{% else %}<span class="nx-muted">–</span>{% endif %}</td><td><a class="nx-btn nx-btn-ghost" href="{% url 'next-project-detail' project.pk %}">Öffnen →</a></td></tr>{% empty %}<tr><td colspan="7"><div class="nx-empty"><b>Noch keine Projekte.</b>Lege einen Auftrag mit Kunde und Ausführungsort an.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
