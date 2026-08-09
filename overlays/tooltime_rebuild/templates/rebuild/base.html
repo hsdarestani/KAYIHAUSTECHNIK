@@ -1,0 +1,54 @@
+{% load static %}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111418">
+  <title>{% block title %}KAYI{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260810-1">
+</head>
+<body class="nx-body">
+<div class="nx-shell">
+  <aside class="nx-sidebar">
+    <a class="nx-brand" href="{% url 'next-dashboard' %}">
+      <span class="nx-brandmark">K</span>
+      <span><strong>KAYI</strong><small>Work OS</small></span>
+    </a>
+    <nav class="nx-nav">
+      <div class="nx-nav-label">Übersicht</div>
+      <a class="{% if request.resolver_match.url_name == 'next-dashboard' %}is-active{% endif %}" href="{% url 'next-dashboard' %}"><span class="nx-ico">⌂</span>Start</a>
+      <a class="{% if 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-appointments' %}"><span class="nx-ico">◫</span>Termine</a>
+      <a class="{% if 'project' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-projects' %}"><span class="nx-ico">▣</span>Projekte</a>
+      <a class="{% if 'customer' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-customers' %}"><span class="nx-ico">◎</span>Kunden</a>
+      <div class="nx-nav-label">Büro</div>
+      <a class="{% if 'quote' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-quotes' %}"><span class="nx-ico">◇</span>Angebote</a>
+      <a class="{% if 'invoice' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-invoices' %}"><span class="nx-ico">€</span>Rechnungen</a>
+      <a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span class="nx-ico">◷</span>Zeiterfassung</a>
+      <div class="nx-nav-label">Werkzeuge</div>
+      <a href="{% url 'next-field' %}"><span class="nx-ico">⌁</span>Monteur-App</a>
+      <a class="{% if request.resolver_match.url_name == 'next-tooltime-migration' %}is-active{% endif %}" href="{% url 'next-tooltime-migration' %}"><span class="nx-ico">⇄</span>ToolTime Import</a>
+      <a class="{% if request.resolver_match.url_name == 'next-settings' %}is-active{% endif %}" href="{% url 'next-settings' %}"><span class="nx-ico">⚙</span>Einstellungen</a>
+    </nav>
+    <div class="nx-sidebar-foot">KAYI Next · neue Oberfläche<br>Bestehende Daten bleiben erhalten.</div>
+  </aside>
+  <main class="nx-main">
+    <header class="nx-topbar">
+      <button class="nx-menu-btn" type="button" data-nx-menu aria-label="Menü">☰</button>
+      <form class="nx-search" action="{% url 'next-projects' %}" method="get"><input name="q" placeholder="Projekt, Kunde, Nummer suchen …" autocomplete="off"></form>
+      <div class="nx-top-actions">
+        <a class="nx-btn nx-btn-ghost" href="{% url 'next-appointment-create' %}">＋ Termin</a>
+        <a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}">＋ Projekt</a>
+        <div class="nx-avatar">{{ request.user.username|slice:':2'|upper }}</div>
+      </div>
+    </header>
+    <div class="nx-content">
+      {% if messages %}<div class="nx-messages">{% for message in messages %}<div class="nx-message">{{ message }}</div>{% endfor %}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+<script src="{% static 'js/kayi-next.js' %}?v=20260810-1" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
