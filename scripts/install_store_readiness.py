@@ -115,28 +115,24 @@ def patch_android_scanner_compatibility() -> None:
 
     # java.time.Instant and java.nio.file Files/toPath are API 26. KAYI keeps
     # Android 7/API 24 support, so use only java.io APIs available on minSdk 24.
-    if "Instant.now().toString()" in text:
-        text = text.replace(
-            "Instant.now().toString()",
-            'new java.text.SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ss.SSSZ", java.util.Locale.US).format(new java.util.Date())',
-        )
+    text = text.replace(
+        "Instant.now().toString()",
+        'new java.text.SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ss.SSSZ", java.util.Locale.US).format(new java.util.Date())',
+    )
     text = text.replace("import java.time.Instant;\n", "")
     text = text.replace("import java.time.Instant;\r\n", "")
 
     if "import java.io.FileOutputStream;" not in text:
         text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
 
-    text = text.replace(
-        "java.nio.file.Files.write(geometryFile.toPath(), geometryJson.getBytes(StandardCharsets.UTF_8));",
-        "writeUtf8(geometryFile, geometryJson);",
-    )
-    text = text.replace(
-        "java.nio.file.Files.write(metadataFile.toPath(), metadataJson.getBytes(StandardCharsets.UTF_8));",
-        "writeUtf8(metadataFile, metadataJson);",
-    )
+    # Rewrite every fully-qualified NIO write, independent of variable names or
+    # formatting. Turning Files.write(file.toPath(), bytes) into writeBytes(file,
+    # bytes) avoids all API 26 Files/Path calls while preserving exact payloads.
+    text = text.replace("java.nio.file.Files.write(", "writeBytes(")
+    text = text.replace(".toPath(),", ",")
 
-    helper = '''    private static void writeUtf8(File file, String value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value.getBytes(StandardCharsets.UTF_8));\n            stream.flush();\n        }\n    }\n\n'''
-    if "private static void writeUtf8(" not in text:
+    helper = '''    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n\n'''
+    if "private static void writeBytes(" not in text:
         marker = "    private void writePayload() throws Exception {\n"
         if marker not in text:
             raise RuntimeError("Could not locate Android scanner writePayload method for API24 compatibility patch")
@@ -175,8 +171,8 @@ def guard() -> None:
         remaining = [item for item in forbidden if item in scanner_text]
         if remaining:
             raise RuntimeError(f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}")
-        if "private static void writeUtf8(" not in scanner_text:
-            raise RuntimeError("Android scanner API24-compatible UTF-8 file writer was not installed")
+        if "private static void writeBytes(" not in scanner_text:
+            raise RuntimeError("Android scanner API24-compatible byte writer was not installed")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
