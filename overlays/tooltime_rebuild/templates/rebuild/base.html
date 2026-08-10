@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111418">
   <title>{% block title %}KAYI{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260810-2">
+  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260810-3">
+  <link rel="stylesheet" href="{% static 'css/kayi-next-field.css' %}?v=20260810-3">
 </head>
 <body class="nx-body {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}nx-field-role{% endif %}">
 <div class="nx-shell">
@@ -51,7 +52,7 @@
   </main>
 </div>
 {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<nav class="nx-field-bottom"><a class="{% if request.resolver_match.url_name == 'next-field' or 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-field' %}"><span>◫</span>Termine</a><a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span>◷</span>Zeit</a><a class="{% if request.resolver_match.url_name == 'next-settings' %}is-active{% endif %}" href="{% url 'next-settings' %}"><span>◎</span>Konto</a></nav>{% endif %}
-<script src="{% static 'js/kayi-next.js' %}?v=20260810-2" defer></script>
+<script src="{% static 'js/kayi-next.js' %}?v=20260810-3" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
