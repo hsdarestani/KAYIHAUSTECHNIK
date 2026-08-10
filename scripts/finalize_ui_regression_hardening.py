@@ -23,7 +23,7 @@ css = (ROOT / "static/css/kayi-next.css").read_text(encoding="utf-8")
 js = (ROOT / "static/js/kayi-next.js").read_text(encoding="utf-8")
 if "\\n.nx-checkbox-input" in css or "\\n(() =>" in js:
     raise RuntimeError("UI hardening assets still contain escaped line separators")
-if ".nx-checkbox-input" not in css or "data.nxAddBound" not in js:
+if ".nx-checkbox-input" not in css or "dataset.nxAddBound" not in js:
     raise RuntimeError("UI hardening assets are incomplete")
 
 print("KAYI UI hardening assets normalized and verified.")
