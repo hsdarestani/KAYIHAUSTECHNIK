@@ -133,7 +133,12 @@ python3 scripts/global_form_polish_balance_fix.py
 python3 scripts/global_form_smoke_fix.py
 python3 scripts/ashkan_ux_fixes.py
 python3 scripts/integration_overrides.py
-# Final product layer: replaces the legacy entry flow without touching the data model.
+# Primary product layer.
 python3 scripts/install_tooltime_rebuild.py
+# Final business rules must run after every UI/field overlay. This guarantees
+# B&O price provenance and office approval cannot be overwritten by an older
+# KAYI Next layer during CI or production assembly.
+python3 scripts/install_bo_pricing.py
+python3 scripts/install_manager_review.py
 
-echo "KAYI source tree assembled and verified with ToolTime-parity rebuild."
+echo "KAYI source tree assembled and verified with ToolTime-parity rebuild, B&O pricing and office Einsatzprüfung."
