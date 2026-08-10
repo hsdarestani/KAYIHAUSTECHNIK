@@ -124,6 +124,9 @@ runpy.run_path(str(ROOT / "scripts" / "patch_store_browser_smoke.py"), run_name=
 # giant checkboxes, English form labels, dead quote-position controls or missing
 # project document download/navigation affordances.
 runpy.run_path(str(ROOT / "scripts" / "ui_regression_hardening.py"), run_name="__main__")
+# Fix the original +Position binding at its source. The original JS searched for
+# the button inside the table even though the button is in the table card header.
+runpy.run_path(str(ROOT / "scripts" / "document_position_binding_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "project_row_navigation_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "catalog_interaction_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "catalog_browser_smoke_patch.py"), run_name="__main__")
