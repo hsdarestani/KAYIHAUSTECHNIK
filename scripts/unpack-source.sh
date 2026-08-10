@@ -139,6 +139,7 @@ python3 scripts/install_tooltime_rebuild.py
 # B&O price provenance and office approval cannot be overwritten by an older
 # KAYI Next layer during CI or production assembly.
 python3 scripts/install_bo_pricing.py
+python3 scripts/install_bo_direct_search.py
 python3 scripts/install_manager_review.py
 
-echo "KAYI source tree assembled and verified with ToolTime-parity rebuild, B&O pricing and office Einsatzprüfung."
+echo "KAYI source tree assembled and verified with ToolTime-parity rebuild, direct B&O VA04 search and office Einsatzprüfung."
