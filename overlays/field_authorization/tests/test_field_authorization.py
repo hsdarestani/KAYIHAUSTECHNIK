@@ -76,8 +76,8 @@ class FieldAuthorizationTests(TestCase):
 
     def test_field_page_keeps_flow_simple_and_locks_start_before_signature(self):
         response = self.client.get(reverse("next-appointment-detail", args=[self.event.pk]))
-        self.assertContains(response, "Auftrag aufnehmen &amp; freigeben")
-        self.assertContains(response, "Vorher-Fotos &amp; Raum")
+        self.assertContains(response, "Auftrag aufnehmen & freigeben")
+        self.assertContains(response, "Vorher-Fotos & Raum")
         self.assertContains(response, "Kundenfreigabe")
         self.assertContains(response, "Erst Freigabe unterschreiben")
         self.assertContains(response, "Raummodell v1")
