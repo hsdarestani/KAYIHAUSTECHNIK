@@ -120,4 +120,9 @@ runpy.run_path(str(ROOT / "scripts" / "patch_store_test_contract.py"), run_name=
 # The deployment smoke itself must verify the same public pages Store reviewers
 # and Google account-deletion crawlers will use after rollout.
 runpy.run_path(str(ROOT / "scripts" / "patch_store_browser_smoke.py"), run_name="__main__")
-print("KAYI Next, specialist flows, German-only UI, browser audit and store readiness installed and verified.")
+# Last-mile UX contract: no specialist or store overlay is allowed to reintroduce
+# giant checkboxes, English form labels, dead quote-position controls or missing
+# project document download/navigation affordances.
+runpy.run_path(str(ROOT / "scripts" / "ui_regression_hardening.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "finalize_ui_regression_hardening.py"), run_name="__main__")
+print("KAYI Next, specialist flows, German-only UI, browser audit, store readiness and UI regression hardening installed and verified.")
