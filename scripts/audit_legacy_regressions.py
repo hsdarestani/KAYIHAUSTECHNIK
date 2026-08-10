@@ -39,4 +39,14 @@ for rel in TARGETS:
             shown += 1
             if shown >= 18:
                 break
+
+ai_path = ROOT / "erp/services/ai.py"
+if ai_path.exists():
+    lines = ai_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    print("AUDIT suggest_catalog_services implementation:")
+    for number in range(69, min(116, len(lines) + 1)):
+        compact = " ".join(lines[number - 1].strip().split())
+        if len(compact) > 320:
+            compact = compact[:317] + "..."
+        print(f"  AI L{number}: {compact}")
 print("--- end legacy QA audit ---")
