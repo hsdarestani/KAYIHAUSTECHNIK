@@ -5,7 +5,7 @@ from pathlib import Path
 
 CSS_PATH = Path("static/css/kayi-next.css")
 MARKER = "/* KAYI READABILITY PASS 2026-08-10 */"
-CACHE_VERSION = "20260810-8"
+CACHE_VERSION = "20260810-9"
 
 CSS = r'''
 
