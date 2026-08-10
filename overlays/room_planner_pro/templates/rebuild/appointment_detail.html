@@ -1,0 +1,53 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{{ event.title }} · KAYI{% endblock %}
+{% block content %}
+<div class="nx-field-shell">
+  <div class="nx-pagehead"><div><div class="nx-kicker">Einsatz · {{ event.starts_at|date:'d.m.Y' }}</div><h1>{{ event.title }}</h1><p>{% if event.project %}{{ event.project.number }} · {{ event.project.customer.display_name }}{% else %}Interner Termin{% endif %}</p></div><div class="nx-actions"><a class="nx-btn" href="{% url 'next-appointments' %}">← Termine</a>{% if event.project %}<a class="nx-btn" href="{% url 'next-project-detail' event.project.pk %}">Projekt</a>{% endif %}</div></div>
+
+  {% if event.project %}
+  <section class="nx-job-address">
+    <small>Kunde & Einsatzort</small>
+    <h2>{{ event.project.customer.display_name }}</h2>
+    <p>{% if event.project.object_location %}{{ event.project.object_location.street }}, {{ event.project.object_location.postal_code }} {{ event.project.object_location.city }}{% elif event.location %}{{ event.location }}{% else %}{{ event.project.customer.street }}, {{ event.project.customer.postal_code }} {{ event.project.customer.city }}{% endif %}</p>
+    <div class="nx-job-actions">
+      {% with phone=event.project.customer.mobile|default:event.project.customer.phone %}{% if phone %}<a href="tel:{{ phone }}">☎ Anrufen</a>{% else %}<span></span>{% endif %}{% endwith %}
+      {% if event.location %}<a href="https://www.google.com/maps/search/?api=1&query={{ event.location|urlencode }}" target="_blank">⌁ Navigation</a>{% elif event.project.object_location %}<a href="https://www.google.com/maps/search/?api=1&query={{ event.project.object_location.street|urlencode }}%20{{ event.project.object_location.postal_code|urlencode }}%20{{ event.project.object_location.city|urlencode }}" target="_blank">⌁ Navigation</a>{% endif %}
+      <button type="button" class="accent {% if running %}nx-btn-danger{% endif %}" data-time-toggle="{% url 'next-time-toggle' event.pk %}" {% if not employee %}disabled{% endif %}>{% if running %}■ Arbeit stoppen{% else %}▶ Arbeit starten{% endif %}</button>
+    </div>
+  </section>
+
+  <section class="nx-card" style="margin-top:14px">
+    <div class="nx-card-head"><div><h2>Dokumentation</h2><p>Fotos, Leistungen, Material, Bericht und Kundenunterschrift in einem Ablauf.</p></div><span class="nx-badge nx-badge-info">Offline-fähig</span></div>
+    <form action="{% url 'next-appointment-document' event.pk %}" method="post" enctype="multipart/form-data" data-documentation-form>{% csrf_token %}
+      <div class="nx-doc-section" data-voice-box>
+        <div class="nx-doc-title"><div><b>Arbeitsbericht</b><small>Tippen oder direkt diktieren</small></div><div class="nx-actions"><button type="button" class="nx-voice-btn" data-voice title="Diktieren">🎙</button><button type="button" class="nx-btn" data-ai-structure="{% url 'next-ai-report' event.pk %}">AI strukturieren</button></div></div>
+        <textarea class="nx-control" name="report_text" data-voice-target placeholder="Was wurde vor Ort gemacht? Zum Beispiel: Rohrbruch lokalisiert, Leitung repariert, Anlage geprüft …"></textarea>
+      </div>
+      <div class="nx-doc-section">
+        <div class="nx-doc-title"><div><b>Fotos</b><small>Baustelle, Schaden, Ergebnis</small></div></div>
+        <label class="nx-photo-drop">📷 Fotos aufnehmen oder auswählen<br><input type="file" name="photos" accept="image/*" capture="environment" multiple></label>
+      </div>
+      <div class="nx-doc-section">
+        <div class="nx-grid nx-grid-2">
+          <div class="nx-field"><label>Leistungen</label><textarea class="nx-control" name="services" placeholder="Ausgeführte Arbeiten"></textarea></div>
+          <div class="nx-field"><label>Material</label><textarea class="nx-control" name="material" placeholder="Verwendetes Material"></textarea></div>
+        </div>
+      </div>
+      <div class="nx-doc-section">
+        <div class="nx-doc-title"><div><b>Raum & 3D</b><small>Aufmaß, AI-Fotoerkennung und Ausführungsplan</small></div>{% if event.project %}<a class="nx-btn" href="{% url 'next-room-planner' event.project.pk %}">Raumplanung 3D öffnen →</a>{% endif %}</div>
+      </div>
+      <div class="nx-doc-section">
+        <div class="nx-doc-title"><div><b>Kundenunterschrift</b><small>Bestätigung direkt auf dem Gerät</small></div><button type="button" class="nx-btn nx-btn-ghost" data-signature-clear>Löschen</button></div>
+        <div class="nx-field" style="margin-bottom:10px"><label>Name</label><input class="nx-control" name="customer_name" value="{{ event.project.customer.display_name }}"></div>
+        <div><canvas class="nx-signature"></canvas><input type="hidden" name="signature_data"></div>
+      </div>
+      <div class="nx-doc-section"><button class="nx-btn nx-btn-accent" style="width:100%;min-height:52px" type="submit">✓ Einsatz dokumentieren</button><p class="nx-muted" style="text-align:center;font-size:10px;margin:9px 0 0">Bei fehlendem Netz wird lokal gespeichert und später automatisch synchronisiert.</p></div>
+    </form>
+  </section>
+
+  {% if documents %}<section class="nx-card" style="margin-top:14px"><div class="nx-card-head"><div><h2>Bereits dokumentiert</h2></div></div><div class="nx-timeline">{% for document in documents %}<a class="nx-event" href="{{ document.file.url }}" target="_blank"><div class="nx-event-time">{{ document.created_at|date:'H:i' }}</div><div><b>{{ document.title }}</b><small>{{ document.get_category_display }}</small></div><span>→</span></a>{% endfor %}</div></section>{% endif %}
+  {% else %}
+  <section class="nx-card nx-card-pad"><h2>Interner Termin</h2><p class="nx-muted">Für Baustellendokumentation muss der Termin einem Projekt zugeordnet sein.</p></section>
+  {% endif %}
+</div>
+{% endblock %}
