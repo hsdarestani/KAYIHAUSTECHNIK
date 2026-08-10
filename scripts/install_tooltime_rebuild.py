@@ -22,7 +22,8 @@ def copy_tree(source: Path, target: Path) -> None:
 
 def patch_urls() -> None:
     path = ROOT / "erp" / "urls.py"
-    text = path.read_text(encoding="utf-8")
+    original = path.read_text(encoding="utf-8")
+    text = original
     if "include(\"erp.rebuild_urls\")" in text or "include('erp.rebuild_urls')" in text:
         return
     if "from django.urls import" in text:
@@ -33,7 +34,7 @@ def patch_urls() -> None:
                 if "include" not in names:
                     names.append("include")
                 lines[index] = "from django.urls import " + ", ".join(names)
-                text = "\n".join(lines) + ("\n" if path.read_text(encoding="utf-8").endswith("\n") else "")
+                text = "\n".join(lines) + ("\n" if original.endswith("\n") else "")
                 break
     else:
         text = "from django.urls import include\n" + text
@@ -59,7 +60,10 @@ def guard() -> None:
         ROOT / "templates" / "rebuild" / "document_editor.html",
         ROOT / "templates" / "rebuild" / "migration.html",
         ROOT / "static" / "css" / "kayi-next.css",
+        ROOT / "static" / "css" / "kayi-next-field.css",
         ROOT / "static" / "js" / "kayi-next.js",
+        ROOT / "scripts" / "production_browser_smoke.py",
+        ROOT / "tests" / "test_tooltime_rebuild.py",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -67,13 +71,16 @@ def guard() -> None:
     urls = (ROOT / "erp" / "urls.py").read_text(encoding="utf-8")
     if "include(\"erp.rebuild_urls\")" not in urls:
         raise RuntimeError("KAYI Next URL overlay was not installed")
+    smoke = (ROOT / "scripts" / "production_browser_smoke.py").read_text(encoding="utf-8")
+    if "KAYI Next browser smoke" not in smoke:
+        raise RuntimeError("Legacy production browser smoke was not replaced")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
 copy_tree(OVERLAY / "templates", ROOT / "templates")
 copy_tree(OVERLAY / "static", ROOT / "static")
-if (OVERLAY / "tests").exists():
-    copy_tree(OVERLAY / "tests", ROOT / "tests")
+copy_tree(OVERLAY / "tests", ROOT / "tests")
+copy_tree(OVERLAY / "scripts", ROOT / "scripts")
 patch_urls()
 guard()
 print("KAYI Next ToolTime-parity rebuild installed and verified.")
