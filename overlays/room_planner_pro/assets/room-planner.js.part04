@@ -1,0 +1,104 @@
+ue, opacity: 0.24, side: THREE.DoubleSide });
+
+  switch (o.kind) {
+    case 'radiator': {
+      const bars = Math.max(5, Math.round(w / 0.08));
+      for (let i = 0; i < bars; i++) addPart(g, box(w / bars * 0.62, h, d * 0.7, white), -w / 2 + (i + 0.5) * w / bars, 0, 0);
+      addPart(g, box(w, 0.035, d, chrome), 0, h / 2 - 0.03, 0); break;
+    }
+    case 'toilet': {
+      addPart(g, box(w * 0.72, h * 0.45, d * 0.78, white), 0, -h * 0.22, d * 0.06);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.37, w * 0.29, h * 0.28, 28), white); bowl.scale.z = 1.25; addPart(g, bowl, 0, 0, d * 0.05, Math.PI / 2, 0, 0);
+      addPart(g, box(w * 0.86, h * 0.52, d * 0.25, white), 0, h * 0.2, -d * 0.34); break;
+    }
+    case 'bathtub':
+    case 'shower': {
+      const lowH = o.kind === 'bathtub' ? h : Math.min(0.12, h * 0.1);
+      addPart(g, box(w, lowH, d, white), 0, -h / 2 + lowH / 2, 0);
+      const rimH = o.kind === 'bathtub' ? h * 0.8 : h;
+      const rimT = Math.min(0.055, Math.min(w, d) * 0.08);
+      if (o.kind === 'bathtub') {
+        addPart(g, box(rimT, rimH, d, white), -w / 2 + rimT / 2, -h / 2 + rimH / 2, 0);
+        addPart(g, box(rimT, rimH, d, white), w / 2 - rimT / 2, -h / 2 + rimH / 2, 0);
+        addPart(g, box(w - rimT * 2, rimH, rimT, white), 0, -h / 2 + rimH / 2, -d / 2 + rimT / 2);
+        addPart(g, box(w - rimT * 2, rimH, rimT, white), 0, -h / 2 + rimH / 2, d / 2 - rimT / 2);
+      } else {
+        addPart(g, box(0.018, h, d, glass), -w / 2, 0, 0);
+        addPart(g, box(w, h, 0.018, glass), 0, 0, -d / 2);
+      }
+      break;
+    }
+    case 'vanity':
+    case 'sink': {
+      addPart(g, box(w, h * 0.62, d, base), 0, -h * 0.19, 0);
+      const basin = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.27, Math.min(w, d) * 0.34, h * 0.12, 28), white); basin.scale.z = 1.25; addPart(g, basin, 0, h * 0.22, 0, 0, 0, 0);
+      addPart(g, cylinder(0.018, h * 0.28, chrome, 18), 0, h * 0.36, -d * 0.18); break;
+    }
+    case 'table': {
+      addPart(g, box(w, 0.06, d, base), 0, h / 2 - 0.03, 0);
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx, sz]) => addPart(g, box(0.06, h - 0.06, 0.06, dark), sx*(w/2-0.07), -0.03, sz*(d/2-0.07))); break;
+    }
+    case 'chair': {
+      addPart(g, box(w, 0.06, d, base), 0, -h * 0.12, 0);
+      addPart(g, box(w, h * 0.46, 0.06, base), 0, h * 0.23, -d / 2 + 0.03);
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx, sz]) => addPart(g, box(0.045, h * 0.45, 0.045, dark), sx*(w/2-0.06), -h * 0.34, sz*(d/2-0.06))); break;
+    }
+    case 'sofa': {
+      addPart(g, box(w, h * 0.46, d, base), 0, -h * 0.27, 0);
+      addPart(g, box(w, h * 0.55, d * 0.22, base), 0, h * 0.19, -d / 2 + d * 0.11);
+      addPart(g, box(w * 0.05, h * 0.55, d, base), -w/2+w*.025, 0, 0); addPart(g, box(w*.05,h*.55,d,base),w/2-w*.025,0,0); break;
+    }
+    case 'bed': {
+      addPart(g, box(w, h * 0.36, d, material(0xd6dbe3)), 0, -h * 0.2, 0);
+      addPart(g, box(w, h * 0.7, 0.09, base), 0, h * 0.12, -d / 2 + 0.045); break;
+    }
+    case 'washing_machine':
+    case 'dryer':
+    case 'dishwasher': {
+      addPart(g, box(w, h, d, base), 0, 0, 0);
+      if (o.kind !== 'dishwasher') {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(Math.min(w,h)*.23, .025, 12, 40), dark); addPart(g, ring, 0, 0.02, d/2+.006, Math.PI/2,0,0);
+        const glassDoor = cylinder(Math.min(w,h)*.2, .025, glass, 36); addPart(g, glassDoor,0,.02,d/2+.01,Math.PI/2,0,0);
+      } else addPart(g, box(w*.82,.025,d*.02,dark),0,h*.36,d/2+.012);
+      break;
+    }
+    case 'fridge': {
+      addPart(g, box(w, h, d, base), 0, 0, 0); addPart(g, box(.02,h*.78,.025,dark),w*.34,.04,d/2+.015); addPart(g, box(w*.9,.012,d*.02,dark),0,h*.08,d/2+.015); break;
+    }
+    case 'oven': {
+      addPart(g, box(w, h, d, material(0x52565c,{metalness:.2})),0,0,0); addPart(g, box(w*.82,h*.55,.025,material(0x181a1d,{roughness:.2})),0,-h*.08,d/2+.015); break;
+    }
+    case 'stove': {
+      addPart(g, box(w,h,d,material(0x202226,{roughness:.18})),0,0,0); [[-.24,-.2],[.24,-.2],[-.24,.2],[.24,.2]].forEach(([px,pz])=>{ const ring=new THREE.Mesh(new THREE.TorusGeometry(Math.min(w,d)*.13,.01,8,30),chrome); addPart(g,ring,px*w,.02,pz*d,Math.PI/2,0,0); }); break;
+    }
+    case 'kitchen_base':
+    case 'kitchen_wall':
+    case 'cabinet':
+    case 'wardrobe':
+    case 'shelf': {
+      addPart(g, box(w,h,d,base),0,0,0);
+      if (o.kind === 'shelf') for(let i=1;i<5;i++) addPart(g,box(w*.9,.025,d*.88,material(0xb38d67)),0,-h/2+i*h/5,0);
+      else { addPart(g, box(.018,h*.9,.018,dark),-.04,0,d/2+.012); addPart(g, box(.018,h*.9,.018,dark),.04,0,d/2+.012); }
+      break;
+    }
+    case 'boiler':
+    case 'water_heater':
+    case 'heat_pump': {
+      if (o.kind === 'water_heater') { const cyl=cylinder(w*.46,h,base,36); addPart(g,cyl,0,0,0); }
+      else addPart(g, box(w,h,d,base),0,0,0);
+      addPart(g,box(w*.28,h*.12,.022,dark),0,h*.24,d/2+.012); break;
+    }
+    case 'socket':
+    case 'switch': {
+      addPart(g, box(w,h,d,base),0,0,0); if(o.kind==='socket'){ addPart(g,cylinder(w*.08,.012,dark,20),-w*.18,0,d/2+.008,Math.PI/2,0,0); addPart(g,cylinder(w*.08,.012,dark,20),w*.18,0,d/2+.008,Math.PI/2,0,0); } else addPart(g,box(w*.55,h*.55,.01,material(0xdedede)),0,0,d/2+.008); break;
+    }
+    case 'pipe': { const c=cylinder(Math.min(w,d)/2,h,material(0xaeb5bb,{metalness:.45,roughness:.25}),24); addPart(g,c,0,0,0); break; }
+    case 'drain': { const c=cylinder(Math.min(w,d)/2,h,chrome,30); addPart(g,c,0,0,0); const grate=new THREE.Mesh(new THREE.TorusGeometry(Math.min(w,d)*.35,.006,8,24),dark); addPart(g,grate,0,h/2+.008,0,Math.PI/2,0,0); break; }
+    case 'column': addPart(g,box(w,h,d,base),0,0,0); break;
+    default: addPart(g,box(w,h,d,base),0,0,0);
+  }
+  return g;
+}
+
+function placeObjectGroup(g, o) {
+  const w = state.room.w
