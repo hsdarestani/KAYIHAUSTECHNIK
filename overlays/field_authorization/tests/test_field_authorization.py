@@ -126,12 +126,13 @@ class FieldAuthorizationTests(TestCase):
         TimeEntry.objects.create(organization=self.org, employee=self.employee, project=self.project, started_at="2026-08-10T10:05:00+00:00", description="running")
         after = SimpleUploadedFile("nachher.png", PNG, content_type="image/png")
         with patch("erp.field_authorization_views.html_to_pdf_bytes", return_value=b"%PDF-1.4 completion"):
-            response = self.client.post(reverse("field-complete-job", args=[self.event.pk]), data={"report_text": "Ventil ersetzt, Anlage entlüftet und geprüft.", "services": "Thermostatventil ersetzt; Funktion geprüft", "material": "1 Thermostatventil", "after_photos": after, "completion_signature_data": SIGNATURE})
+            response = self.client.post(reverse("field-complete-job", args=[self.event.pk]), data={"report_text": "Ventil ersetzt, Anlage entlüftet und geprüft.", "services": "Thermostatventil ersetzt; Funktion geprüft", "material": "1 Thermostatventil", "after_photos": after, "customer_reviewed": "1", "completion_signature_data": SIGNATURE})
         self.assertEqual(response.status_code, 200, response.content)
         completion = Document.objects.get(metadata__kind="field_completion", metadata__event_id=self.event.pk)
         self.assertEqual(completion.metadata["authorization_document_id"], authorization.pk)
         self.assertEqual(completion.mime_type, "application/pdf")
         self.assertTrue(Document.objects.filter(metadata__phase="after", category="photo").exists())
+        self.assertTrue(Document.objects.filter(metadata__kind="field_completion_signature", metadata__event_id=self.event.pk).exists())
         self.assertFalse(TimeEntry.objects.filter(project=self.project, ended_at__isnull=True).exists())
         self.assertEqual(self.client.get(reverse("field-completion-pdf", args=[self.event.pk])).status_code, 200)
 
