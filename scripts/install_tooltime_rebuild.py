@@ -126,4 +126,7 @@ runpy.run_path(str(ROOT / "scripts" / "patch_store_browser_smoke.py"), run_name=
 runpy.run_path(str(ROOT / "scripts" / "ui_regression_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "catalog_interaction_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "finalize_ui_regression_hardening.py"), run_name="__main__")
+# Read-only diagnostic of legacy routes still present behind KAYI Next. This does
+# not reapply old fixes; it reports what survived in the actual assembled source.
+runpy.run_path(str(ROOT / "scripts" / "audit_legacy_regressions.py"), run_name="__main__")
 print("KAYI Next, specialist flows, German-only UI, browser audit, store readiness and UI regression hardening installed and verified.")
