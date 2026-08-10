@@ -1,0 +1,96 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}{{ event.title }} · KAYI{% endblock %}
+{% block content %}
+<div class="fa-mobile-shell" data-field-authorization-root>
+  <div class="nx-pagehead fa-head"><div><div class="nx-kicker">Einsatz · {{ event.starts_at|date:'d.m.Y H:i' }}</div><h1>{{ event.title }}</h1><p>{% if event.project %}{{ event.project.number }} · {{ event.project.customer.display_name }}{% else %}Interner Termin{% endif %}</p></div><div class="nx-actions"><a class="nx-btn" href="{% url 'next-field' %}">← Einsätze</a>{% if event.project %}<a class="nx-btn" href="{% url 'next-project-detail' event.project.pk %}">Projekt</a>{% endif %}</div></div>
+
+  {% if project_missing %}
+    <section class="fa-card"><div class="fa-alert fa-alert-danger">Dieser Termin ist keinem Projekt zugeordnet. Für eine Kundenfreigabe bitte zuerst ein Projekt hinterlegen.</div></section>
+  {% else %}
+  <section class="fa-site-card">
+    <div><small>Kunde & Einsatzort</small><h2>{{ event.project.customer.display_name }}</h2><p>{% if event.project.object_location %}{{ event.project.object_location.street }}, {{ event.project.object_location.postal_code }} {{ event.project.object_location.city }}{% elif event.location %}{{ event.location }}{% else %}{{ event.project.customer.street }}, {{ event.project.customer.postal_code }} {{ event.project.customer.city }}{% endif %}</p></div>
+    <div class="fa-site-actions">{% with phone=event.project.customer.mobile|default:event.project.customer.phone %}{% if phone %}<a href="tel:{{ phone }}">☎ Anrufen</a>{% endif %}{% endwith %}{% if event.location %}<a href="https://www.google.com/maps/search/?api=1&query={{ event.location|urlencode }}" target="_blank">⌁ Navigation</a>{% endif %}{% if room_revision %}<a href="{% url 'next-room-planner' event.project.pk %}?measurement={{ measurement.pk }}">◇ Raum & 3D</a>{% endif %}</div>
+  </section>
+
+  <div class="fa-progress">
+    <span class="is-done"><i>1</i>Kunde</span>
+    <span class="{% if authorization %}is-done{% else %}is-active{% endif %}"><i>2</i>Freigabe</span>
+    <span class="{% if running or completion %}is-done{% elif authorization %}is-active{% endif %}"><i>3</i>Arbeit</span>
+    <span class="{% if completion %}is-done{% endif %}"><i>4</i>Abschluss</span>
+  </div>
+
+  {% if authorization %}
+  <section class="fa-card fa-approved-card">
+    <div class="fa-approved-mark">✓</div><div><div class="nx-kicker">Kundenfreigabe vorhanden</div><h2>{{ authorization_data.totals.gross }} € brutto · {% if authorization_data.pricing_mode == 'fixed' %}Festpreis{% elif authorization_data.pricing_mode == 'estimate' %}Kostenschätzung{% else %}nach Aufwand{% endif %}</h2><p>{{ authorization_data.scope|truncatechars:220 }}</p><div class="fa-inline-meta"><span>Signiert: {{ authorization.created_at|date:'d.m.Y H:i' }}</span><span>Version {{ authorization.metadata.authorization_version }}</span><span>Hash {{ authorization.metadata.snapshot_sha256|slice:':12' }}</span></div></div>
+    <div class="fa-approved-actions"><a class="nx-btn nx-btn-primary" href="{% url 'field-authorization-pdf' event.pk %}" target="_blank">PDF öffnen</a><button class="nx-btn" type="button" data-toggle-revision>Änderung / Nachtrag</button></div>
+  </section>
+  {% endif %}
+
+  <section class="fa-card" data-authorization-card {% if authorization %}hidden{% endif %}>
+    <div class="fa-section-head"><span>2</span><div><h2>Auftrag aufnehmen & freigeben</h2><p>Vorher dokumentieren, Preis zeigen und direkt vom Kunden unterschreiben lassen.</p></div></div>
+    <form method="post" enctype="multipart/form-data" action="{% url 'field-authorization-sign' event.pk %}" data-authorization-form>{% csrf_token %}
+      <div class="fa-block">
+        <div class="fa-block-head"><div><b>Zustand / Kundenwunsch</b><small>Per Voice erfassen und mit AI strukturieren.</small></div><div class="nx-actions"><button type="button" class="fa-mic" data-voice-button aria-label="Diktieren">🎙</button><button type="button" class="nx-btn" data-auth-ai="{% url 'field-authorization-ai' event.pk %}">✦ AI strukturieren</button></div></div>
+        <textarea class="nx-control" name="issue" rows="4" data-voice-target placeholder="Was ist defekt oder gewünscht?">{{ event.notes }}</textarea>
+      </div>
+      <div class="fa-block"><div class="fa-block-head"><div><b>Freizugebender Leistungsumfang</b><small>Klar formulieren, was durchgeführt werden darf.</small></div></div><textarea class="nx-control" name="scope" rows="4" data-scope-target placeholder="z. B. Ventil prüfen, defektes Thermostatventil ersetzen, Anlage entlüften und Funktion testen."></textarea></div>
+
+      <div class="fa-block">
+        <div class="fa-block-head"><div><b>Vorher-Fotos & Raum</b><small>Diese Anlagen werden Bestandteil der unterschriebenen Freigabe.</small></div>{% if room_revision %}<a class="nx-btn" href="{% url 'next-room-planner' event.project.pk %}?measurement={{ measurement.pk }}">3D bearbeiten →</a>{% endif %}</div>
+        <label class="fa-photo-drop"><input type="file" name="before_photos" accept="image/jpeg,image/png,image/webp" capture="environment" multiple data-photo-input="before"><span>📷</span><b>Vorher-Fotos aufnehmen</b><small>Schaden, Einbausituation, Typenschild, Anschlüsse …</small></label>
+        <div class="fa-photo-preview" data-photo-preview="before"></div>
+        {% if room_revision %}<div class="fa-room-attachment"><div><span class="fa-3d-badge">3D</span><div><b>Raummodell v{{ room_revision.revision }}</b><small>Wird mit exakt dieser Revision in der Freigabe dokumentiert.</small></div></div><img src="{% url 'field-room-plan-preview' event.pk %}" alt="Raumplan"><input type="hidden" name="room_revision_id" value="{{ room_revision.pk }}"></div>{% endif %}
+      </div>
+
+      <div class="fa-block">
+        <div class="fa-block-head"><div><b>Preisgrundlage</b><small>Der Kunde sieht genau diese Positionen vor der Unterschrift.</small></div><button type="button" class="nx-btn" data-add-price-row>＋ Position</button></div>
+        <div class="fa-segmented fa-price-mode">{% for value,label in pricing_modes %}<label><input type="radio" name="pricing_mode" value="{{ value }}" {% if forloop.first %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</div>
+        <div class="fa-price-table" data-price-table>
+          <div class="fa-price-row fa-price-head"><span>Leistung / Material</span><span>Menge</span><span>Einzel €</span><span>MwSt.</span><span></span></div>
+          <div class="fa-price-row" data-price-row><input class="nx-control" name="item_description" placeholder="z. B. Thermostatventil ersetzen"><div class="fa-qty"><input class="nx-control" name="item_quantity" type="number" min="0" step="0.01" value="1"><input class="nx-control" name="item_unit" value="Stk."></div><input class="nx-control" name="item_price" type="number" min="0" step="0.01" value="0.00"><select class="nx-control" name="item_tax"><option value="19">19 %</option><option value="7">7 %</option><option value="0">0 %</option></select><button type="button" class="fa-remove-row" data-remove-row aria-label="Position löschen">×</button></div>
+        </div>
+        <div class="fa-price-summary"><label data-cap-wrap hidden><span>Kostenlimit brutto</span><div><input class="nx-control" name="price_cap_gross" type="number" min="0" step="0.01" placeholder="optional"><em>€</em></div></label><div><small>Netto</small><b data-total-net>0,00 €</b></div><div><small>MwSt.</small><b data-total-tax>0,00 €</b></div><div class="fa-total-main"><small>Brutto</small><b data-total-gross>0,00 €</b></div></div>
+      </div>
+
+      <div class="fa-block fa-sign-block">
+        <div class="fa-block-head"><div><b>Kundenfreigabe</b><small>Vor Unterschrift Preis, Umfang, Bilder und Raumplan gemeinsam zeigen.</small></div></div>
+        <label class="fa-field"><span>Name Auftraggeber</span><input class="nx-control" name="signer_name" value="{{ event.project.customer.display_name }}" required></label>
+        <canvas class="fa-signature" data-signature-canvas></canvas><input type="hidden" name="signature_data" data-signature-data><button type="button" class="nx-btn nx-btn-ghost" data-signature-clear>Unterschrift löschen</button>
+        <label class="fa-consent"><input type="checkbox" name="consent" required><span>Ich bestätige den beschriebenen Auftrag, die Preisgrundlage und die gezeigten Anlagen und beauftrage die Ausführung. Änderungen oder Zusatzarbeiten benötigen eine neue Freigabe, sofern sie nicht von dieser Preisgrundlage gedeckt sind.</span></label>
+        <button class="nx-btn nx-btn-primary fa-primary-action" type="submit">✓ Unterschreiben & Auftrag freigeben</button><div class="fa-form-status" data-auth-status></div>
+      </div>
+    </form>
+  </section>
+
+  <section class="fa-card fa-work-card">
+    <div class="fa-section-head"><span>3</span><div><h2>Arbeit durchführen</h2><p>{% if authorization %}Freigabe liegt vor. Arbeitszeit kann gestartet werden.{% else %}Start wird erst nach Kundenunterschrift freigeschaltet.{% endif %}</p></div></div>
+    <button type="button" class="fa-work-toggle {% if running %}is-running{% endif %}" data-time-toggle="{% url 'next-time-toggle' event.pk %}" {% if not authorization and not running %}disabled{% endif %}>{% if running %}<span>■</span><b>Arbeit stoppen</b><small>Zeiterfassung läuft seit {{ running.started_at|date:'H:i' }}</small>{% elif authorization %}<span>▶</span><b>Arbeit starten</b><small>Freigabe v{{ authorization.metadata.authorization_version }} ist dokumentiert</small>{% else %}<span>🔒</span><b>Erst Freigabe unterschreiben</b><small>Preis und Leistungsumfang müssen bestätigt sein</small>{% endif %}</button>
+    {% if authorization %}<div class="fa-locked-scope"><small>Freigegebener Umfang</small><p>{{ authorization_data.scope }}</p><a href="{% url 'field-authorization-pdf' event.pk %}" target="_blank">Freigabe-PDF ansehen →</a></div>{% endif %}
+  </section>
+
+  {% if authorization %}
+  <section class="fa-card">
+    <div class="fa-section-head"><span>4</span><div><h2>Abschluss & Vorher/Nachher</h2><p>Ergebnis dokumentieren. Der Abschluss wird mit der ursprünglichen Freigabe zu einer Einsatzakte.</p></div></div>
+    {% if completion %}
+      <div class="fa-complete-success"><span>✓</span><div><b>Einsatz dokumentiert</b><small>{{ completion.created_at|date:'d.m.Y H:i' }} · Abschluss-PDF und Anlagen sind archiviert.</small></div><a class="nx-btn nx-btn-primary" href="{% url 'field-completion-pdf' event.pk %}" target="_blank">Abschluss-PDF</a></div>
+    {% else %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'field-complete-job' event.pk %}" data-completion-form>{% csrf_token %}
+      <div class="fa-voice-field"><label class="fa-field"><span>Arbeitsbericht</span><textarea class="nx-control" name="report_text" rows="4" data-voice-target placeholder="Was wurde tatsächlich gemacht?"></textarea></label><button type="button" class="fa-mic" data-voice-button>🎙</button></div>
+      <div class="nx-actions fa-ai-row"><button type="button" class="nx-btn" data-completion-ai="{% url 'next-ai-report' event.pk %}">✦ Bericht mit AI strukturieren</button></div>
+      <div class="fa-grid-2"><label class="fa-field"><span>Ausgeführte Leistungen</span><textarea class="nx-control" name="services" rows="3" data-services-target></textarea></label><label class="fa-field"><span>Material</span><textarea class="nx-control" name="material" rows="3" data-material-target></textarea></label></div>
+      <label class="fa-photo-drop"><input type="file" name="after_photos" accept="image/jpeg,image/png,image/webp" capture="environment" multiple data-photo-input="after"><span>📷</span><b>Nachher-Fotos aufnehmen</b><small>Ergebnis, Funktion, Einbausituation</small></label><div class="fa-photo-preview" data-photo-preview="after"></div>
+      {% if room_revision %}<div class="fa-room-finish"><div><b>3D / Aufmaß aktualisieren?</b><small>Wenn sich Positionen geändert haben, Raumplan vor dem Abschluss aktualisieren.</small></div><a class="nx-btn" href="{% url 'next-room-planner' event.project.pk %}?measurement={{ measurement.pk }}">Raum & 3D öffnen →</a></div>{% endif %}
+      <details class="fa-final-sign"><summary>Optional: Kundenunterschrift zum Abschluss</summary><canvas class="fa-signature" data-completion-signature-canvas></canvas><input type="hidden" name="completion_signature_data" data-completion-signature-data><button type="button" class="nx-btn nx-btn-ghost" data-completion-signature-clear>Löschen</button></details>
+      <button class="nx-btn nx-btn-primary fa-primary-action" type="submit">✓ Einsatz abschließen & PDF erzeugen</button><div class="fa-form-status" data-completion-status></div>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if before_docs or after_docs %}<section class="fa-card"><div class="fa-section-head"><span>◎</span><div><h2>Vorher / Nachher</h2><p>Alle Fotoanlagen bleiben direkt beim Einsatz archiviert.</p></div></div><div class="fa-doc-grid">{% for doc in before_docs %}<a href="{{ doc.file.url }}" target="_blank"><span class="fa-doc-phase">Vorher</span><b>{{ doc.title }}</b></a>{% endfor %}{% for doc in after_docs %}<a href="{{ doc.file.url }}" target="_blank"><span class="fa-doc-phase is-after">Nachher</span><b>{{ doc.title }}</b></a>{% endfor %}</div></section>{% endif %}
+  {% endif %}
+</div>
+<link rel="stylesheet" href="{% static 'css/field-authorization.css' %}?v=20260810-1">
+<script src="{% static 'js/field-authorization.js' %}?v=20260810-1" defer></script>
+{% endblock %}

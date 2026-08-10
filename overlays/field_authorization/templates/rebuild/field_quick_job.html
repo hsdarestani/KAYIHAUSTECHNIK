@@ -1,0 +1,32 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}Schnellauftrag · KAYI{% endblock %}
+{% block content %}
+<div class="fa-mobile-shell">
+  <div class="nx-pagehead fa-head"><div><div class="nx-kicker">Vor Ort · neuer Auftrag</div><h1>Schnellauftrag</h1><p>Kunde wählen oder direkt anlegen. Danach Zustand, Preis und Unterschrift in einem Ablauf.</p></div><div class="nx-actions"><a class="nx-btn" href="{% url 'next-field' %}">← Einsätze</a></div></div>
+  {% if error %}<div class="fa-alert fa-alert-danger">{{ error }}</div>{% endif %}
+  <form method="post" class="fa-card fa-quick-form" data-quick-job-form>{% csrf_token %}
+    <div class="fa-section-head"><span>1</span><div><h2>Kunde</h2><p>Bestehenden Kunden auswählen oder neuen Kunden anlegen.</p></div></div>
+    <div class="fa-segmented" data-customer-mode>
+      <label><input type="radio" name="customer_mode" value="existing" checked><span>Bestehender Kunde</span></label>
+      <label><input type="radio" name="customer_mode" value="new"><span>Neuer Kunde</span></label>
+    </div>
+    <div data-existing-customer>
+      <label class="fa-field"><span>Kunde suchen</span><input class="nx-control" type="search" placeholder="Name, Firma, Telefonnummer …" data-customer-filter autocomplete="off"></label>
+      <label class="fa-field"><span>Kunde auswählen</span><select class="nx-control" name="customer_id" data-customer-select required><option value="">Bitte wählen …</option>{% for customer in customers %}<option value="{{ customer.pk }}" data-search="{{ customer.display_name|lower }} {{ customer.number|lower }} {{ customer.mobile|default:customer.phone|lower }}">{{ customer.display_name }} · {{ customer.number }}{% if customer.mobile or customer.phone %} · {{ customer.mobile|default:customer.phone }}{% endif %}</option>{% endfor %}</select></label>
+    </div>
+    <div class="fa-new-customer" data-new-customer hidden>
+      <div class="fa-grid-2"><label class="fa-field"><span>Firma</span><input class="nx-control" name="company"></label><label class="fa-field"><span>Vorname</span><input class="nx-control" name="first_name"></label><label class="fa-field"><span>Nachname</span><input class="nx-control" name="last_name"></label><label class="fa-field"><span>Mobil</span><input class="nx-control" name="mobile" inputmode="tel"></label><label class="fa-field fa-span-2"><span>E-Mail</span><input class="nx-control" name="email" type="email"></label></div>
+    </div>
+
+    <div class="fa-divider"></div>
+    <div class="fa-section-head"><span>2</span><div><h2>Einsatz</h2><p>Nur das Nötige. Details können gleich per Voice erfasst werden.</p></div></div>
+    <label class="fa-field"><span>Kurzer Titel</span><input class="nx-control" name="title" value="Reparatur / Vor-Ort-Auftrag" required></label>
+    <div class="fa-voice-field"><label class="fa-field"><span>Was ist das Problem?</span><textarea class="nx-control" name="issue" rows="4" placeholder="z. B. Heizkörper bleibt kalt, Ventil vermutlich defekt …" data-voice-target></textarea></label><button type="button" class="fa-mic" data-voice-button aria-label="Diktieren">🎙</button></div>
+    <div class="fa-grid-3"><label class="fa-field"><span>Straße / Einsatzort</span><input class="nx-control" name="street"></label><label class="fa-field"><span>PLZ</span><input class="nx-control" name="postal_code"></label><label class="fa-field"><span>Ort</span><input class="nx-control" name="city"></label></div>
+    <button class="nx-btn nx-btn-primary fa-primary-action" type="submit">Auftrag anlegen & Freigabe öffnen →</button>
+  </form>
+</div>
+<link rel="stylesheet" href="{% static 'css/field-authorization.css' %}?v=20260810-1">
+<script src="{% static 'js/field-authorization.js' %}?v=20260810-1" defer></script>
+{% endblock %}
