@@ -103,4 +103,7 @@ runpy.run_path(str(ROOT / "scripts" / "install_field_authorization.py"), run_nam
 # reintroduce English UI or the obsolete single-FileList photo flow.
 runpy.run_path(str(ROOT / "scripts" / "install_german_ui_quality.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "patch_german_browser_smoke.py"), run_name="__main__")
-print("KAYI Next, specialist flows, German-only UI and German browser audit installed and verified.")
+# Store compliance is last: public privacy/support/deletion and AI consent must
+# survive every product/UI patch that ran above.
+runpy.run_path(str(ROOT / "scripts" / "install_store_readiness.py"), run_name="__main__")
+print("KAYI Next, specialist flows, German-only UI, browser audit and store readiness installed and verified.")
