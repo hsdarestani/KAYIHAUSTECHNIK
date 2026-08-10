@@ -28,9 +28,12 @@ def _enable_android_desugaring(path: Path) -> None:
             pos = android_block.end()
             text = text[:pos] + "\n    compileOptions {\n        coreLibraryDesugaringEnabled true\n        sourceCompatibility JavaVersion.VERSION_1_8\n        targetCompatibility JavaVersion.VERSION_1_8\n    }" + text[pos:]
     if DESUGAR_DEP not in text:
-        dependencies = re.search(r"dependencies\s*\{", text)
+        # Library Gradle files commonly have a buildscript.dependencies block
+        # before the actual module dependencies. coreLibraryDesugaring belongs to
+        # the Android module configuration, so use the final dependencies block.
+        dependencies = list(re.finditer(r"(?m)^\s*dependencies\s*\{", text))
         if dependencies:
-            pos = dependencies.end()
+            pos = dependencies[-1].end()
             text = text[:pos] + f"\n    {DESUGAR_DEP}" + text[pos:]
         else:
             text += f"\n\ndependencies {{\n    {DESUGAR_DEP}\n}}\n"
