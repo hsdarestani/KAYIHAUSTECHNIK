@@ -131,7 +131,13 @@ runpy.run_path(str(ROOT / "scripts" / "project_row_navigation_hardening.py"), ru
 runpy.run_path(str(ROOT / "scripts" / "catalog_interaction_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "catalog_browser_smoke_patch.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "finalize_ui_regression_hardening.py"), run_name="__main__")
+# Final requested UX polish runs after every prior layer: progressive customer
+# creation, readable 3D typography, fresh CSRF state and a real in-planner KI
+# assistant must never be overwritten by an older template/asset.
+runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_polish.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_tests.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "customer_3d_browser_smoke_patch.py"), run_name="__main__")
 # Read-only diagnostic of legacy routes still present behind KAYI Next. This does
 # not reapply old fixes; it reports what survived in the actual assembled source.
 runpy.run_path(str(ROOT / "scripts" / "audit_legacy_regressions.py"), run_name="__main__")
-print("KAYI Next, specialist flows, German-only UI, browser audit, store readiness and UI regression hardening installed and verified.")
+print("KAYI Next, specialist flows, German-only UI, store readiness, UI hardening, customer UX and 3D KI polish installed and verified.")
