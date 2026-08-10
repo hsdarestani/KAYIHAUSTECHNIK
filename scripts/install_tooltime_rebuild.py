@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 import shutil
 from pathlib import Path
 
@@ -55,6 +56,7 @@ def guard() -> None:
         ROOT / "erp" / "rebuild_views.py",
         ROOT / "erp" / "rebuild_urls.py",
         ROOT / "erp" / "rebuild_ops.py",
+        ROOT / "erp" / "rebuild_projects.py",
         ROOT / "erp" / "rebuild_migration.py",
         ROOT / "templates" / "rebuild" / "base.html",
         ROOT / "templates" / "rebuild" / "appointment_detail.html",
@@ -68,6 +70,7 @@ def guard() -> None:
         ROOT / "static" / "css" / "kayi-next-field.css",
         ROOT / "static" / "js" / "kayi-next.js",
         ROOT / "scripts" / "production_browser_smoke.py",
+        ROOT / "scripts" / "next_test_contract.py",
         ROOT / "tests" / "test_tooltime_rebuild.py",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
@@ -79,6 +82,9 @@ def guard() -> None:
     smoke = (ROOT / "scripts" / "production_browser_smoke.py").read_text(encoding="utf-8")
     if "KAYI Next browser smoke" not in smoke:
         raise RuntimeError("Legacy production browser smoke was not replaced")
+    tests = (ROOT / "tests" / "test_tooltime_rebuild.py").read_text(encoding="utf-8")
+    if "legacy_nine_step_wizard_is_not_primary" not in tests:
+        raise RuntimeError("KAYI Next regression contract is missing")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
@@ -87,5 +93,6 @@ copy_tree(OVERLAY / "static", ROOT / "static")
 copy_tree(OVERLAY / "tests", ROOT / "tests")
 copy_tree(OVERLAY / "scripts", ROOT / "scripts")
 patch_urls()
+runpy.run_path(str(ROOT / "scripts" / "next_test_contract.py"), run_name="__main__")
 guard()
 print("KAYI Next ToolTime-parity rebuild installed and verified.")
