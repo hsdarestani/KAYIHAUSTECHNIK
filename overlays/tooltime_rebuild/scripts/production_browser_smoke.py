@@ -73,7 +73,6 @@ def main() -> None:
             if "/login/" in page.url:
                 fail("login did not establish an authenticated session")
 
-            # Dismiss legacy tutorial only when an older profile still triggers it.
             overlay = page.locator("[data-tutorial-overlay]")
             if overlay.count() and overlay.is_visible():
                 skip = page.locator("[data-tutorial-skip]")
@@ -91,6 +90,12 @@ def main() -> None:
                 ("/appointments/new/", ("Neuer Termin", "Baustellendokumentation")),
                 ("/field/", ("Meine Einsätze", "Geplant", "Überfällig", "Dokumentiert")),
                 ("/time/", ("Zeiterfassung", "Letzte Buchungen")),
+                ("/tasks/", ("Aufgaben", "Neue Aufgabe")),
+                ("/tasks/new/", ("Neue Aufgabe", "Speichern")),
+                ("/expenses/", ("Ausgaben", "Ausgabe erfassen")),
+                ("/expenses/new/", ("Ausgabe erfassen", "Speichern")),
+                ("/employees/", ("Mitarbeiter", "Mitarbeiter")),
+                ("/employees/new/", ("Mitarbeiter anlegen", "Speichern")),
                 ("/quotes/", ("Angebote", "Neues Angebot")),
                 ("/invoices/", ("Rechnungen", "Neue Rechnung")),
                 ("/migration/tooltime/", ("Von ToolTime zu KAYI", "Import starten")),
@@ -133,7 +138,7 @@ def main() -> None:
         user.password = old_password_hash
         user.save(update_fields=["password"])
 
-    print("KAYI Next browser smoke passed: office flow, simple project creation, planning, field mode, commercial documents and ToolTime migration.")
+    print("KAYI Next browser smoke passed: office flow, project creation, planning, field mode, tasks, expenses, team, commercial documents and ToolTime migration.")
 
 
 if __name__ == "__main__":
