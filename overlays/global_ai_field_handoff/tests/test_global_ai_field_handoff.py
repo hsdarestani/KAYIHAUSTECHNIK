@@ -109,7 +109,7 @@ class GlobalAIAndFieldHandoffTests(TestCase):
             "Aufnahme mit KI auswerten",
             "data-customer-reviewed",
             "Kundenunterschrift zum Abschluss",
-            "Einsatz abschließen &amp; PDF erstellen",
+            "Einsatz abschließen & PDF erstellen",
             "data-handoff-result",
         ):
             self.assertContains(response, marker)
