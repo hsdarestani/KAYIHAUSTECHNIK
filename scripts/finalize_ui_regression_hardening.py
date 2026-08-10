@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,6 +52,14 @@ def audit_buttons() -> None:
         raise RuntimeError("KAYI Next button data-actions without JavaScript references found:\n" + "\n".join(missing_handlers[:50]))
 
 
+# These final runtime patches deliberately run after all product/store overlays.
+# The page-local +Position fallback survives stale static assets, the asset version
+# prevents production browsers from reusing old JS, and AI coverage protects
+# explicitly requested trades such as Fliesen from minimization.
+runpy.run_path(str(ROOT / "scripts" / "document_position_runtime_fallback.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "static_cache_bust_hardening.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "ai_service_coverage_hardening.py"), run_name="__main__")
+
 normalize_tail("static/css/kayi-next.css")
 normalize_tail("static/js/kayi-next.js")
 
@@ -64,10 +73,17 @@ if GENERIC_CHECKBOX_MARKER not in css:
     css_path.write_text(css, encoding="utf-8")
 
 js = (ROOT / "static/js/kayi-next.js").read_text(encoding="utf-8")
+base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
+editor = (ROOT / "templates/rebuild/document_editor.html").read_text(encoding="utf-8")
+ai = (ROOT / "erp/services/ai.py").read_text(encoding="utf-8")
 if "\\n.nx-checkbox-input" in css or "\\n(() =>" in js:
     raise RuntimeError("UI hardening assets still contain escaped line separators")
 if ".nx-checkbox-input" not in css or 'input[type="checkbox"]' not in css or "dataset.nxAddBound" not in js:
     raise RuntimeError("UI hardening assets are incomplete")
+if "?v=20260810-6" not in base or "KAYI document position runtime fallback 20260810" not in editor:
+    raise RuntimeError("KAYI runtime/cache fallback contract is incomplete")
+if "Fliesen-, Platten- oder Belagsposition" not in ai or "Coverage-Prinzip" not in ai:
+    raise RuntimeError("AI explicit-trade coverage contract is incomplete")
 
 audit_buttons()
-print("KAYI UI hardening assets, global checkbox sizing and button bindings normalized and verified.")
+print("KAYI UI hardening assets, runtime fallbacks, AI coverage, global checkbox sizing and button bindings normalized and verified.")
