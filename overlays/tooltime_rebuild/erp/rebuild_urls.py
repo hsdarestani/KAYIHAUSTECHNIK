@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import rebuild_migration as migration
 from . import rebuild_ops as ops
+from . import rebuild_projects as projects
 from . import rebuild_views as views
 
 
@@ -10,9 +11,9 @@ urlpatterns = [
     path("customers/", views.customer_list, name="next-customers"),
     path("customers/new/", views.customer_create, name="next-customer-create"),
     path("customers/<int:pk>/", views.customer_detail, name="next-customer-detail"),
-    path("projects/", views.project_list, name="next-projects"),
+    path("projects/", projects.project_list, name="next-projects"),
     path("projects/new/", views.project_create, name="next-project-create"),
-    path("projects/<int:pk>/", views.project_detail, name="next-project-detail"),
+    path("projects/<int:pk>/", projects.project_detail, name="next-project-detail"),
     path("appointments/", views.appointment_list, name="next-appointments"),
     path("appointments/new/", views.appointment_create, name="next-appointment-create"),
     path("appointments/<int:pk>/", views.appointment_detail, name="next-appointment-detail"),
