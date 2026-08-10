@@ -1,0 +1,42 @@
+ng') {
+    const wallLen = wallLength(rec.wall);
+    const left = Math.max(0, Number(rec.offset_m || 0));
+    const right = Math.max(0, wallLen - left - Number(rec.width_m || 0));
+    const sill = Number(rec.sill_height_m || 0);
+    const top = Math.max(0, state.room.height_m - sill - Number(rec.height_m || 0));
+    let cx = state.room.width_m / 2, cz = state.room.length_m / 2;
+    const along = left + Number(rec.width_m || 0) / 2;
+    if (rec.wall === 'back') { cx = along; cz = 0; }
+    if (rec.wall === 'front') { cx = along; cz = state.room.length_m; }
+    if (rec.wall === 'left') { cx = 0; cz = along; }
+    if (rec.wall === 'right') { cx = state.room.width_m; cz = along; }
+    const nearest = nearestObjectToPoint(cx, cz);
+    dragHud.innerHTML=`<div><b>${escapeHtml(rec.label || (rec.kind === 'window' ? 'Fenster' : 'Tür'))}</b></div><div class="rp-hud-grid"><span>Wandanfang ${metric(left)}</span><span>Wandende ${metric(right)}</span><span>Unterkante ${metric(sill)}</span><span>Decke ${metric(top)}</span></div><div>Nächstes Objekt: ${nearest.distance===null?'—':`${metric(nearest.distance)} · ${escapeHtml(nearest.label)}`}</div>`;
+    positionDragHud(rec.id);
+    return;
+  }
+  const d=distancesFor(rec);
+  dragHud.innerHTML=`<div><b>${escapeHtml(rec.label||labelForKind(rec.kind))}</b>${collisionIds.has(rec.id)?'<span class="rp-collision"> Kollision</span>':''}</div><div class="rp-hud-grid"><span>← ${metric(d.left)}</span><span>→ ${metric(d.right)}</span><span>↑ ${metric(d.back)}</span><span>↓ ${metric(d.front)}</span></div><div>Nächstes: ${d.nearest===null?'—':`${metric(d.nearest)} · ${escapeHtml(d.nearestLabel)}`}</div>`;
+  positionDragHud(rec.id);
+  renderDimensionGuides(rec,d);
+}
+function hideGuides(){dragHud.hidden=true;if(guidesGroup){world.remove(guidesGroup);guidesGroup=null;}queueRender();}
+function renderDimensionGuides(o,d){ if(guidesGroup)world.remove(guidesGroup);guidesGroup=new THREE.Group(); const y=Math.max(.02,o.elevation_m+.03); const c=0x2d66e5;
+  const addLine=(a,b)=>{const geo=new THREE.BufferGeometry().setFromPoints([a,b]);guidesGroup.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:c,transparent:true,opacity:.82})));};
+  addLine(new THREE.Vector3(0,y,o.z_m),new THREE.Vector3(Math.max(0,o.x_m-o.width_m/2),y,o.z_m));addLine(new THREE.Vector3(Math.min(state.room.width_m,o.x_m+o.width_m/2),y,o.z_m),new THREE.Vector3(state.room.width_m,y,o.z_m));
+  addLine(new THREE.Vector3(o.x_m,y,0),new THREE.Vector3(o.x_m,y,Math.max(0,o.z_m-o.depth_m/2)));addLine(new THREE.Vector3(o.x_m,y,Math.min(state.room.length_m,o.z_m+o.depth_m/2)),new THREE.Vector3(o.x_m,y,state.room.length_m));world.add(guidesGroup);
+}
+
+function select(id,kind,{skipScene=false}={}){selected=id;selectedKind=kind;if(!skipScene)applySelectionVisuals();renderInspector();queueRender();}
+function renderInspector({quiet=false}={}){
+  if(!inspector)return; const rec=selectedRecord();
+  if(!rec){ inspector.hidden = true; if (inspectorEmpty) inspectorEmpty.hidden = false; return;}
+  inspector.hidden = false; if (inspectorEmpty) inspectorEmpty.hidden = true;
+  if(selectedKind==='opening')return renderOpeningInspector(rec);
+  const d=distancesFor(rec); const wallOpts=['back','front','left','right'].map((w)=>`<option value="${w}" ${rec.wall===w?'selected':''}>${wallLabel(w)}</option>`).join('');
+  inspector.innerHTML=`<div class="rp-inspector-head"><div><span>${escapeHtml(labelForKind(rec.kind))}</span><strong>${escapeHtml(rec.label||labelForKind(rec.kind))}</strong></div><div class="rp-inspector-actions">${readonly?'':`<button type="button" data-rp-duplicate title="Duplizieren">⧉</button><button type="button" data-rp-delete title="Löschen">⌫</button>`}</div></div>
+  <label>Name<input data-field="label" value="${escapeAttr(rec.label||'')}" ${readonly?'disabled':''}></label>
+  <div class="rp-form-grid"><label>Breite (m)<input type="number" min="0.02" step="0.01" data-field="width_m" value="${rec.width_m}" ${readonly?'disabled':''}></label><label>Tiefe (m)<input type="number" min="0.02" step="0.01" data-field="depth_m" value="${rec.depth_m}" ${readonly?'disabled':''}></label><label>Höhe (m)<input type="number" min="0.02" step="0.01" data-field="height_m" value="${rec.height_m}" ${readonly?'disabled':''}></label><label>Drehung °<input type="number" step="1" data-field="rotation_deg" value="${rec.rotation_deg||0}" ${readonly?'disabled':''}></label></div>
+  <div class="rp-form-grid"><label>X (m)<input type="number" step="0.01" data-field="x_m" value="${rec.x_m}" ${readonly||rec.anchor==='wall'&&['left','right'].includes(rec.wall)?'disabled':''}></label><label>Z (m)<input type="number" step="0.01" data-field="z_m" value="${rec.z_m}" ${readonly||rec.anchor==='wall'&&['back','front'].includes(rec.wall)?'disabled':''}></label><label>Höhe über Boden<input type="number" step="0.01" min="0" data-field="elevation_m" value="${rec.elevation_m||0}" ${readonly?'disabled':''}></label><label>Farbe<input type="color" data-field="color" value="${safeColor(rec.color)}" ${readonly?'disabled':''}></label></div>
+  <div class="rp-form-grid"><label>Verankerung<select data-field="anchor" ${readonly?'disabled':''}><option value="floor" ${rec.anchor==='floor'?'selected':''}>Boden</option><option value="wall" ${rec.anchor==='wall'?'selected':''}>Wand</option></select></label>${rec.anchor==='wall'?`<label>Wand<select data-field="wall" ${readonly?'disabled':''}>${wallOpts}</select></label>`:''}<label class="rp-check"><input type="checkbox" data-field="locked" ${rec.locked?'checked':''} ${readonly?'disabled':''}> Position sperren</label></div>
+  <div class="rp-distance-card"><strong>Live-Abstände</strong><div><span>Links<b>${metric(d.left)}</b></span><span>Rechts<b>${metric(d.right)}</b></span><span>Hinten<b>${metric(d.back)}</b></span><span>Vorne<b>${m
