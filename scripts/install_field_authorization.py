@@ -1,0 +1,136 @@
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+OVERLAY = ROOT / "overlays" / "field_authorization"
+
+
+def copy_tree(source: Path, target: Path) -> None:
+    if not source.exists():
+        raise RuntimeError(f"Missing Field Authorization overlay: {source}")
+    target.mkdir(parents=True, exist_ok=True)
+    for item in source.rglob("*"):
+        if item.is_dir():
+            continue
+        relative = item.relative_to(source)
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(item, destination)
+
+
+def patch_latest_room_revision() -> None:
+    path = ROOT / "erp" / "services" / "field_authorization.py"
+    text = path.read_text(encoding="utf-8")
+    old = '''def latest_room_revision(project):
+    measurement = project.room_measurements.order_by("-updated_at", "-pk").first()
+    if measurement is None:
+        return None, None
+    revision = measurement.model_revisions.order_by("-revision", "-pk").first()
+    return measurement, revision
+'''
+    new = '''def latest_room_revision(project):
+    measurement = m.RoomMeasurement.objects.filter(organization=project.organization, project=project).order_by("-updated_at", "-pk").first()
+    if measurement is None:
+        return None, None
+    revision = measurement.model_revisions.order_by("-revision", "-pk").first()
+    return measurement, revision
+'''
+    if new in text:
+        return
+    if old not in text:
+        raise RuntimeError("Could not harden latest_room_revision lookup")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def patch_rebuild_urls() -> None:
+    path = ROOT / "erp" / "rebuild_urls.py"
+    text = path.read_text(encoding="utf-8")
+    if "field_authorization_views as field_auth" not in text:
+        anchor = "from . import rebuild_views as views\n"
+        if anchor not in text:
+            raise RuntimeError("Could not locate rebuild view import")
+        text = text.replace(anchor, anchor + "from . import field_authorization_views as field_auth\n", 1)
+    if "include" not in text.splitlines()[0:2][0]:
+        text = text.replace("from django.urls import path", "from django.urls import include, path", 1)
+    if 'include("erp.field_authorization_urls")' not in text:
+        marker = "urlpatterns = ["
+        if marker not in text:
+            raise RuntimeError("Could not locate rebuild urlpatterns")
+        text = text.replace(marker, marker + '\n    # KAYI signed field order/freigabe routes.\n    path("", include("erp.field_authorization_urls")),', 1)
+    text = text.replace('path("appointments/<int:pk>/", views.appointment_detail, name="next-appointment-detail")', 'path("appointments/<int:pk>/", field_auth.field_job_detail, name="next-appointment-detail")')
+    text = text.replace('path("appointments/<int:event_pk>/time/", views.time_toggle, name="next-time-toggle")', 'path("appointments/<int:event_pk>/time/", field_auth.gated_time_toggle, name="next-time-toggle")')
+    path.write_text(text, encoding="utf-8")
+
+
+def patch_production_smoke() -> None:
+    path = ROOT / "scripts" / "production_browser_smoke.py"
+    text = path.read_text(encoding="utf-8")
+    marker = "# KAYI signed field authorization browser smoke"
+    if marker in text:
+        return
+    anchor = '''            if page.locator(".nx-field-bottom a").count() != 3:
+                fail("technician mobile navigation must contain exactly Termine, Zeit and Konto")
+'''
+    if anchor not in text:
+        raise RuntimeError("Could not locate technician browser smoke insertion point")
+    block = anchor + '''
+            # KAYI signed field authorization browser smoke: the spontaneous-job entry
+            # and short intake must remain reachable inside technician mode.
+            if "Schnellauftrag" not in field_html:
+                fail("technician field surface is missing Schnellauftrag")
+            quick = page.locator('a[href="/field/jobs/new/"]').first
+            if quick.count() != 1:
+                fail("technician field surface is missing quick-job link")
+            quick.click()
+            page.wait_for_load_state("domcontentloaded")
+            quick_html = page.content()
+            for marker in ("Schnellauftrag", "Bestehender Kunde", "Neuer Kunde", "Auftrag anlegen & Freigabe öffnen"):
+                if marker not in quick_html:
+                    fail(f"quick-job flow is missing {marker!r}")
+'''
+    path.write_text(text.replace(anchor, block, 1), encoding="utf-8")
+
+
+def guard() -> None:
+    required = [
+        ROOT / "erp" / "field_authorization_urls.py",
+        ROOT / "erp" / "field_authorization_views.py",
+        ROOT / "erp" / "services" / "field_authorization.py",
+        ROOT / "templates" / "rebuild" / "appointment_detail.html",
+        ROOT / "templates" / "rebuild" / "field_quick_job.html",
+        ROOT / "templates" / "rebuild" / "field_home.html",
+        ROOT / "static" / "css" / "field-authorization.css",
+        ROOT / "static" / "js" / "field-authorization.js",
+        ROOT / "tests" / "test_field_authorization.py",
+    ]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
+    if missing:
+        raise RuntimeError(f"Field Authorization installation incomplete: {missing}")
+    urls = (ROOT / "erp" / "rebuild_urls.py").read_text(encoding="utf-8")
+    for marker in ("field_authorization_views as field_auth", "field_auth.field_job_detail", "field_auth.gated_time_toggle", 'include("erp.field_authorization_urls")'):
+        if marker not in urls:
+            raise RuntimeError(f"Field Authorization URL contract missing: {marker}")
+    service = (ROOT / "erp" / "services" / "field_authorization.py").read_text(encoding="utf-8")
+    for marker in ("kayi.field_authorization.v1", "snapshot_sha256", "html_to_pdf_bytes", "RoomMeasurement.objects.filter"):
+        if marker not in service:
+            raise RuntimeError(f"Field Authorization service contract missing: {marker}")
+    template = (ROOT / "templates" / "rebuild" / "appointment_detail.html").read_text(encoding="utf-8")
+    for marker in ("Auftrag aufnehmen & freigeben", "Vorher-Fotos & Raum", "Kundenfreigabe", "Arbeit starten", "Abschluss & Vorher/Nachher"):
+        if marker not in template:
+            raise RuntimeError(f"Field Authorization UX contract missing: {marker}")
+    smoke = (ROOT / "scripts" / "production_browser_smoke.py").read_text(encoding="utf-8")
+    if "KAYI signed field authorization browser smoke" not in smoke:
+        raise RuntimeError("Field Authorization production browser smoke missing")
+
+
+copy_tree(OVERLAY / "erp", ROOT / "erp")
+copy_tree(OVERLAY / "templates", ROOT / "templates")
+copy_tree(OVERLAY / "static", ROOT / "static")
+copy_tree(OVERLAY / "tests", ROOT / "tests")
+patch_latest_room_revision()
+patch_rebuild_urls()
+patch_production_smoke()
+guard()
+print("KAYI signed field authorization, customer approval and before/after documentation installed and verified.")
