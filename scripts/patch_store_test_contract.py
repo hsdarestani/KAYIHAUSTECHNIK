@@ -6,11 +6,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CONSENT = (
-    "        profile = self.user.profile\n"
-    "        prefs = dict(profile.preferences or {})\n"
-    "        prefs.update({\"ai_third_party_consent_at\": \"2026-08-10T00:00:00+00:00\", \"ai_third_party_consent_version\": \"2026-08-10\", \"ai_third_party_consent_revoked_at\": None})\n"
-    "        profile.preferences = prefs\n"
-    "        profile.save(update_fields=[\"preferences\", \"updated_at\"])\n"
+    "profile = self.user.profile\n"
+    "prefs = dict(profile.preferences or {})\n"
+    "prefs.update({\"ai_third_party_consent_at\": \"2026-08-10T00:00:00+00:00\", \"ai_third_party_consent_version\": \"2026-08-10\", \"ai_third_party_consent_revoked_at\": None})\n"
+    "profile.preferences = prefs\n"
+    "profile.save(update_fields=[\"preferences\", \"updated_at\"])\n"
 )
 
 TARGETS = {
