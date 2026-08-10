@@ -7,10 +7,12 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from erp.models import Customer, Organization, Project, RoomMeasurement, RoomModelRevision, UserProfile
 from erp.services.numbering import next_number
 from erp.services.room_planner_state import normalize_room_state
+from erp.store_views import AI_CONSENT_VERSION
 
 
 class CustomerAndRoomPlannerPolishTests(TestCase):
@@ -54,6 +56,16 @@ class CustomerAndRoomPlannerPolishTests(TestCase):
             "view": {"mode": "perspective", "grid": True, "snap": True},
         }, self.measurement)
 
+    def grant_ki_consent(self):
+        preferences = dict(self.user.profile.preferences or {})
+        preferences.update({
+            "ai_third_party_consent_at": timezone.now().isoformat(),
+            "ai_third_party_consent_version": AI_CONSENT_VERSION,
+            "ai_third_party_consent_revoked_at": None,
+        })
+        self.user.profile.preferences = preferences
+        self.user.profile.save(update_fields=["preferences", "updated_at"])
+
     def test_customer_form_uses_progressive_german_fields(self):
         response = self.client.get(reverse("next-customer-create"))
         self.assertEqual(response.status_code, 200)
@@ -75,7 +87,7 @@ class CustomerAndRoomPlannerPolishTests(TestCase):
         self.assertNotContains(response, "AI setzt")
 
     @patch("erp.room_planner_views.adjust_room_scene")
-    def test_ki_command_returns_editable_draft_without_creating_revision(self, adjust):
+    def test_ki_command_requires_consent_then_returns_editable_draft_without_revision(self, adjust):
         draft = self.state()
         draft["objects"] = [{
             "id": "wc-ki", "kind": "toilet", "label": "WC", "category": "sanitary",
@@ -85,12 +97,18 @@ class CustomerAndRoomPlannerPolishTests(TestCase):
             "source": "ki_command", "confidence": "0.900", "evidence": "Anweisung des Nutzers",
         }]
         adjust.return_value = {"state": draft, "summary": "WC an die rechte Wand gesetzt.", "warnings": []}
+        url = reverse("next-room-planner-ai", args=[self.project.pk])
+        payload = json.dumps({"measurement_id": self.measurement.pk, "command": "Stelle das WC an die rechte Wand.", "state": self.state()})
+
+        denied = self.client.post(url, data=payload, content_type="application/json")
+        self.assertEqual(denied.status_code, 428, denied.content)
+        self.assertTrue(denied.json()["consent_required"])
+        self.assertEqual(denied.json()["settings_url"], "/settings/next/")
+        adjust.assert_not_called()
+
+        self.grant_ki_consent()
         before = RoomModelRevision.objects.filter(measurement=self.measurement).count()
-        response = self.client.post(
-            reverse("next-room-planner-ai", args=[self.project.pk]),
-            data=json.dumps({"measurement_id": self.measurement.pk, "command": "Stelle das WC an die rechte Wand.", "state": self.state()}),
-            content_type="application/json",
-        )
+        response = self.client.post(url, data=payload, content_type="application/json")
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["state"]["objects"][0]["kind"], "toilet")
         self.assertEqual(RoomModelRevision.objects.filter(measurement=self.measurement).count(), before)
