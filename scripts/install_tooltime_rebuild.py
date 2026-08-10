@@ -109,6 +109,9 @@ runpy.run_path(str(ROOT / "scripts" / "install_store_readiness.py"), run_name="_
 # Release lint is intentionally fixed in source instead of being baselined or
 # suppressed, so Google Play validation still catches real scanner errors.
 runpy.run_path(str(ROOT / "scripts" / "patch_android_release_lint.py"), run_name="__main__")
+# Pin the current official ARCore SDK before native projects are generated so
+# Play's 16 KB compatibility gate validates the actual release dependency.
+runpy.run_path(str(ROOT / "scripts" / "patch_arcore_release.py"), run_name="__main__")
 # Legacy test cases must opt in exactly as a real user would; production guards
 # remain mandatory and are never bypassed for tests.
 runpy.run_path(str(ROOT / "scripts" / "patch_store_test_contract.py"), run_name="__main__")
