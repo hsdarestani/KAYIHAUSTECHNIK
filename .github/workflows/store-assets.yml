@@ -23,6 +23,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Prepare screenshot database
         run: |
+          sudo mkdir -p /runtime
+          sudo chown "$(id -u):$(id -g)" /runtime
           python manage.py migrate --noinput
           python manage.py seed_demo_data
       - name: Install Chromium
