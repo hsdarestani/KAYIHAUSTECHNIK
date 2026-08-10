@@ -2,13 +2,15 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
-from .rebuild_views import _org
+from .rebuild_views import _is_field_user, _org
 from .services.bo_direct_search import bo_source_ids, search_bo_prices, serialize_bo_price
 
 
 @login_required
 @require_GET
 def bo_price_search(request):
+    if _is_field_user(request):
+        return JsonResponse({"ok": False, "error": "Keine Preisberechtigung."}, status=403)
     org = _org(request)
     query = (request.GET.get("q") or "").strip()
     rows = search_bo_prices(org, query, limit=30)
