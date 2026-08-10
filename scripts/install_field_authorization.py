@@ -44,6 +44,31 @@ def patch_latest_room_revision() -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+def patch_compact_room_labels() -> None:
+    path = ROOT / "erp" / "services" / "field_authorization.py"
+    text = path.read_text(encoding="utf-8")
+    old = '''        pieces.append(f'<rect x="{rx:.1f}" y="{ry:.1f}" width="{rw:.1f}" height="{rh:.1f}" rx="4" fill="#d9e7e8" stroke="#2b666b" stroke-width="2"/>')
+        if rw > 54 and rh > 24:
+            pieces.append(f'<text x="{rx+rw/2:.1f}" y="{ry+rh/2+4:.1f}" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#24474b">{label[:24]}</text>')
+'''
+    new = '''        pieces.append(f'<rect x="{rx:.1f}" y="{ry:.1f}" width="{rw:.1f}" height="{rh:.1f}" rx="4" fill="#d9e7e8" stroke="#2b666b" stroke-width="2"/>')
+        if rw > 54 and rh > 24:
+            pieces.append(f'<text x="{rx+rw/2:.1f}" y="{ry+rh/2+4:.1f}" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="#24474b">{label[:24]}</text>')
+        else:
+            # Shallow technical objects (radiators, sockets, pipes) would otherwise
+            # be geometrically visible but anonymous in the signed evidence PDF.
+            label_x = min(max(rx + rw / 2, ox + 34), ox + width * scale - 34)
+            label_y = max(oy + 13, ry - 6)
+            pieces.append(f'<line x1="{rx+rw/2:.1f}" y1="{ry+rh/2:.1f}" x2="{label_x:.1f}" y2="{label_y+2:.1f}" stroke="#789095" stroke-width="1"/>')
+            pieces.append(f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#24474b">{label[:24]}</text>')
+'''
+    if new in text:
+        return
+    if old not in text:
+        raise RuntimeError("Could not add compact Room Plan evidence labels")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
 def patch_rebuild_urls() -> None:
     path = ROOT / "erp" / "rebuild_urls.py"
     text = path.read_text(encoding="utf-8")
@@ -104,6 +129,7 @@ def guard() -> None:
         ROOT / "static" / "css" / "field-authorization.css",
         ROOT / "static" / "js" / "field-authorization.js",
         ROOT / "tests" / "test_field_authorization.py",
+        ROOT / "tests" / "test_tooltime_rebuild.py",
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -113,7 +139,7 @@ def guard() -> None:
         if marker not in urls:
             raise RuntimeError(f"Field Authorization URL contract missing: {marker}")
     service = (ROOT / "erp" / "services" / "field_authorization.py").read_text(encoding="utf-8")
-    for marker in ("kayi.field_authorization.v1", "sha256_json", "html_to_pdf_bytes", "RoomMeasurement.objects.filter"):
+    for marker in ("kayi.field_authorization.v1", "sha256_json", "html_to_pdf_bytes", "RoomMeasurement.objects.filter", "label_x"):
         if marker not in service:
             raise RuntimeError(f"Field Authorization service contract missing: {marker}")
     views = (ROOT / "erp" / "field_authorization_views.py").read_text(encoding="utf-8")
@@ -134,6 +160,7 @@ copy_tree(OVERLAY / "templates", ROOT / "templates")
 copy_tree(OVERLAY / "static", ROOT / "static")
 copy_tree(OVERLAY / "tests", ROOT / "tests")
 patch_latest_room_revision()
+patch_compact_room_labels()
 patch_rebuild_urls()
 patch_production_smoke()
 guard()
