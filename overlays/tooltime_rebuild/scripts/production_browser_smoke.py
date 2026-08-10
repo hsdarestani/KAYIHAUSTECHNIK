@@ -18,6 +18,7 @@ import django
 django.setup()
 
 from django.contrib.auth import get_user_model
+from erp.models import UserProfile
 
 SCREENSHOT_PATH = Path("/tmp/kayi-next-browser-smoke.png")
 
@@ -44,14 +45,25 @@ def main() -> None:
     base_url = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000").rstrip("/") + "/"
     username = os.environ.get("KAYI_SMOKE_USER", "demo")
     User = get_user_model()
-    user = User.objects.filter(username=username).first()
+    user = User.objects.select_related("profile").filter(username=username).first()
     if user is None:
         fail(f"smoke user {username!r} does not exist")
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        fail(f"smoke user {username!r} has no KAYI profile")
 
     old_password_hash = user.password
+    old_role = profile.role
+    old_mobile_worker = profile.is_mobile_worker
     temporary_password = secrets.token_urlsafe(24)
     user.set_password(temporary_password)
     user.save(update_fields=["password"])
+
+    # The demo account may intentionally be seeded as a mobile worker. Browser
+    # smoke must validate both surfaces explicitly instead of assuming one role.
+    profile.role = UserProfile.Role.OFFICE
+    profile.is_mobile_worker = False
+    profile.save(update_fields=["role", "is_mobile_worker", "updated_at"])
 
     browser = None
     page = None
@@ -80,7 +92,7 @@ def main() -> None:
                     skip.click()
                     overlay.wait_for(state="hidden", timeout=5_000)
 
-            checks = [
+            office_checks = [
                 ("/", ("Was steht an?", "Von ToolTime wechseln", "kayi-next.css")),
                 ("/customers/", ("Kunden", "Neuer Kunde")),
                 ("/customers/new/", ("Neuen Kunden anlegen", "Nur das eintragen")),
@@ -88,7 +100,6 @@ def main() -> None:
                 ("/projects/new/", ("Projekt anlegen", "Kein Wizard", "Aufmaß / 3D")),
                 ("/appointments/", ("Termine", "Neuer Termin")),
                 ("/appointments/new/", ("Neuer Termin", "Baustellendokumentation")),
-                ("/field/", ("Meine Einsätze", "Geplant", "Überfällig", "Dokumentiert")),
                 ("/time/", ("Zeiterfassung", "Letzte Buchungen")),
                 ("/tasks/", ("Aufgaben", "Neue Aufgabe")),
                 ("/tasks/new/", ("Neue Aufgabe", "Speichern")),
@@ -100,7 +111,7 @@ def main() -> None:
                 ("/invoices/", ("Rechnungen", "Neue Rechnung")),
                 ("/migration/tooltime/", ("Von ToolTime zu KAYI", "Import starten")),
             ]
-            for path, markers in checks:
+            for path, markers in office_checks:
                 assert_page(page, base_url, path, markers)
 
             page.goto(urljoin(base_url, "projects/new/"), wait_until="domcontentloaded", timeout=30_000)
@@ -111,9 +122,24 @@ def main() -> None:
             if visible_controls.count() < 4:
                 fail("new project flow has too few controls and appears broken")
 
-            page.goto(urljoin(base_url, "field/"), wait_until="domcontentloaded", timeout=30_000)
+            # Switch the same authenticated account to the field role and verify
+            # the separate ToolTime-style Monteur product surface.
+            profile.role = UserProfile.Role.TECHNICIAN
+            profile.is_mobile_worker = True
+            profile.save(update_fields=["role", "is_mobile_worker", "updated_at"])
+            response = page.goto(base_url, wait_until="domcontentloaded", timeout=30_000)
+            if response is None or response.status >= 500:
+                fail("technician root is unavailable")
+            if not page.url.rstrip("/").endswith("/field"):
+                fail(f"technician root did not redirect to /field/: {page.url}")
+            field_html = page.content()
+            for marker in ("Meine Einsätze", "Geplant", "Überfällig", "Dokumentiert", "nx-field-bottom"):
+                if marker not in field_html:
+                    fail(f"technician field surface is missing {marker!r}")
             if page.locator(".nx-mobile-tabs").count() != 1:
                 fail("field home is missing ToolTime-style status tabs")
+            if "Angebote" in page.locator(".nx-sidebar").inner_text() or "Rechnungen" in page.locator(".nx-sidebar").inner_text():
+                fail("technician navigation exposes office finance modules")
 
             if page_errors:
                 fail("browser page errors: " + " | ".join(page_errors[:8]))
@@ -137,8 +163,11 @@ def main() -> None:
                 pass
         user.password = old_password_hash
         user.save(update_fields=["password"])
+        profile.role = old_role
+        profile.is_mobile_worker = old_mobile_worker
+        profile.save(update_fields=["role", "is_mobile_worker", "updated_at"])
 
-    print("KAYI Next browser smoke passed: office flow, project creation, planning, field mode, tasks, expenses, team, commercial documents and ToolTime migration.")
+    print("KAYI Next browser smoke passed: office flow, project creation, planning, technician role, tasks, expenses, team, commercial documents and ToolTime migration.")
 
 
 if __name__ == "__main__":
