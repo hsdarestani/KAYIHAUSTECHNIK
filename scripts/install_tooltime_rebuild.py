@@ -147,7 +147,10 @@ runpy.run_path(str(ROOT / "scripts" / "normalize_field_handoff_anchor.py"), run_
 # profile controls, KI omnibox, real field recording, signature and generated PDF
 # must survive every previous UI, privacy and room-planner patch.
 runpy.run_path(str(ROOT / "scripts" / "install_global_ai_field_handoff.py"), run_name="__main__")
+# Readability is the final visual contract. It deliberately runs after all product
+# overlays so no earlier compact styles can shrink labels, helpers or catalog text.
+runpy.run_path(str(ROOT / "scripts" / "typography_readability_pass.py"), run_name="__main__")
 # Read-only diagnostic of legacy routes still present behind KAYI Next. This does
 # not reapply old fixes; it reports what survived in the actual assembled source.
 runpy.run_path(str(ROOT / "scripts" / "audit_legacy_regressions.py"), run_name="__main__")
-print("KAYI Next installed and verified with global KI, profile menu, field voice/signature/PDF handoff, specialist flows, German UI and store readiness.")
+print("KAYI Next installed and verified with global KI, readable typography, profile menu, field voice/signature/PDF handoff, specialist flows, German UI and store readiness.")
