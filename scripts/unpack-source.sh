@@ -133,5 +133,7 @@ python3 scripts/global_form_polish_balance_fix.py
 python3 scripts/global_form_smoke_fix.py
 python3 scripts/ashkan_ux_fixes.py
 python3 scripts/integration_overrides.py
+# Final product layer: replaces the legacy entry flow without touching the data model.
+python3 scripts/install_tooltime_rebuild.py
 
-echo "KAYI source tree assembled and verified."
+echo "KAYI source tree assembled and verified with ToolTime-parity rebuild."

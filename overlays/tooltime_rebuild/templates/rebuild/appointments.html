@@ -1,0 +1,14 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Termine · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Einsatzplanung</div><h1>Termine</h1><p>Woche planen, Mitarbeiter zuweisen und direkt in die Baustellendokumentation springen.</p></div><div class="nx-actions"><a class="nx-btn" href="?start={{ prev|date:'Y-m-d' }}">← Vorige Woche</a><a class="nx-btn" href="?start={{ next|date:'Y-m-d' }}">Nächste Woche →</a><a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-create' %}">＋ Neuer Termin</a></div></div>
+<div class="nx-week">
+{% for day in days %}
+  <section class="nx-day"><div class="nx-day-head">{{ day.date|date:'D' }}<small>{{ day.date|date:'d.m.Y' }}</small></div>
+    {% for event in day.events %}
+      <a class="nx-cal-event" href="{% url 'next-appointment-detail' event.pk %}"><time>{{ event.starts_at|date:'H:i' }} – {{ event.ends_at|date:'H:i' }}</time><b>{{ event.title }}</b><small>{% if event.project %}{{ event.project.customer.display_name }}{% else %}Intern{% endif %}</small></a>
+    {% empty %}<div class="nx-muted" style="font-size:10px;padding:8px">Keine Termine</div>{% endfor %}
+  </section>
+{% endfor %}
+</div>
+{% endblock %}

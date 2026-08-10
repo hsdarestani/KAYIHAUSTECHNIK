@@ -1,0 +1,26 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}ToolTime Import · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Wechselassistent</div><h1>Von ToolTime zu KAYI</h1><p>Stammdaten, Projekte, Termine, kaufmännische Historie und Zeiten schrittweise übernehmen, ohne den laufenden Betrieb zu blockieren.</p></div></div>
+<div class="nx-grid nx-grid-2">
+  <section class="nx-card nx-card-pad"><div class="nx-card-head" style="padding:0 0 16px"><div><h2>Datei importieren</h2><p>CSV oder XLSX aus ToolTime. Deutsche und englische Spaltenbezeichnungen werden automatisch erkannt.</p></div></div>
+    <form class="nx-form" method="post" enctype="multipart/form-data">{% csrf_token %}
+      <div class="nx-field"><label>Datenart</label><select class="nx-control" name="kind"><option value="customers">1 · Kunden</option><option value="projects">2 · Projekte / Aufträge</option><option value="appointments">3 · Termine</option><option value="quotes">4 · Angebote / Angebotspositionen</option><option value="invoices">5 · Rechnungen / Rechnungspositionen</option><option value="expenses">6 · Ausgaben</option><option value="time">7 · Zeiterfassung</option></select></div>
+      <div class="nx-field"><label>ToolTime Export</label><input class="nx-control" type="file" name="file" accept=".csv,.xlsx" required></div>
+      <button class="nx-btn nx-btn-accent" type="submit">⇄ Import starten</button>
+    </form>
+    {% if errors %}<div style="margin-top:14px">{% for error in errors %}<div class="nx-message" style="background:#fff0f0;color:#9a3030">{{ error }}</div>{% endfor %}</div>{% endif %}
+    {% if summary %}<div class="nx-grid nx-grid-3" style="margin-top:16px"><div class="nx-card nx-stat"><small>Neu</small><strong>{{ summary.created }}</strong></div><div class="nx-card nx-stat"><small>Aktualisiert</small><strong>{{ summary.updated }}</strong></div><div class="nx-card nx-stat"><small>Übersprungen</small><strong>{{ summary.skipped }}</strong></div></div>{% endif %}
+  </section>
+  <section class="nx-card nx-card-pad"><div class="nx-card-head" style="padding:0 0 16px"><div><h2>Empfohlene Reihenfolge</h2><p>Die Zuordnung nutzt bevorzugt originale Kunden-, Projekt-, Angebots- und Rechnungsnummern.</p></div></div>
+    <div class="nx-timeline">
+      <div class="nx-event"><div class="nx-event-time">01</div><div><b>Kunden</b><small>Kontakte und Rechnungsanschriften zuerst übernehmen.</small></div><span class="nx-badge">Basis</span></div>
+      <div class="nx-event"><div class="nx-event-time">02</div><div><b>Projekte / Aufträge</b><small>KAYI verbindet Kundennummer, Einsatzort, Status und Referenzen.</small></div><span class="nx-badge">Struktur</span></div>
+      <div class="nx-event"><div class="nx-event-time">03</div><div><b>Termine</b><small>Werden anhand der Projektnummer in die Einsatzplanung einsortiert.</small></div><span class="nx-badge">Planung</span></div>
+      <div class="nx-event"><div class="nx-event-time">04</div><div><b>Angebote & Rechnungen</b><small>Nummern und Positionen bleiben erhalten und hängen am richtigen Projekt.</small></div><span class="nx-badge">Historie</span></div>
+      <div class="nx-event"><div class="nx-event-time">05</div><div><b>Ausgaben & Zeiten</b><small>Optional für vollständige historische Auswertungen.</small></div><span class="nx-badge">Optional</span></div>
+    </div>
+    <div class="nx-message" style="margin-top:14px">Importe laufen transaktional. Bereits vorhandene Nummern werden aktualisiert statt blind dupliziert; nicht eindeutig zuordenbare Zeilen werden als übersprungen gezählt.</div>
+  </section>
+</div>
+{% endblock %}

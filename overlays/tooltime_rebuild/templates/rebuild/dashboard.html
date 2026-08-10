@@ -1,0 +1,51 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Start · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead">
+  <div><div class="nx-kicker">Heute · {{ today|date:'d.m.Y' }}</div><h1>Was steht an?</h1><p>Termine, offene Vorgänge und die nächsten Arbeitsschritte auf einen Blick.</p></div>
+  <div class="nx-actions"><a class="nx-btn" href="{% url 'next-customer-create' %}">＋ Kunde</a><a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-create' %}">＋ Neuer Termin</a></div>
+</div>
+<div class="nx-grid nx-grid-4">
+  <div class="nx-card nx-stat"><small>Aktive Projekte</small><strong>{{ active_projects }}</strong><em>in Bearbeitung</em></div>
+  <div class="nx-card nx-stat"><small>Offene Angebote</small><strong>{{ open_quotes }}</strong><em>Entwurf / versendet</em></div>
+  <div class="nx-card nx-stat"><small>Überfällige Rechnungen</small><strong>{{ overdue }}</strong><em>benötigen Aufmerksamkeit</em></div>
+  <div class="nx-card nx-stat"><small>Termine heute</small><strong>{{ appointments|length }}</strong><em>geplant</em></div>
+</div>
+<div class="nx-grid nx-grid-2" style="margin-top:16px">
+  <section class="nx-card">
+    <div class="nx-card-head"><div><h2>Heute</h2><p>Die nächsten Einsätze im Tagesverlauf.</p></div><a class="nx-btn nx-btn-ghost" href="{% url 'next-appointments' %}">Kalender →</a></div>
+    <div class="nx-divider"></div>
+    <div class="nx-timeline">
+      {% for event in appointments %}
+      <a class="nx-event" href="{% url 'next-appointment-detail' event.pk %}">
+        <div class="nx-event-time">{{ event.starts_at|date:'H:i' }}</div>
+        <div><b>{{ event.title }}</b><small>{% if event.project %}{{ event.project.customer.display_name }} · {{ event.project.number }}{% else %}Interner Termin{% endif %}</small></div>
+        <span class="nx-badge nx-badge-info">{{ event.get_type_display }}</span>
+      </a>
+      {% empty %}<div class="nx-empty"><b>Heute ist noch frei.</b>Plane einen neuen Termin oder nutze die Zeit für offene Angebote.</div>{% endfor %}
+    </div>
+  </section>
+  <section class="nx-card">
+    <div class="nx-card-head"><div><h2>Zuletzt bearbeitet</h2><p>Schnell zurück in laufende Projekte.</p></div><a class="nx-btn nx-btn-ghost" href="{% url 'next-projects' %}">Alle Projekte →</a></div>
+    <div class="nx-divider"></div>
+    <div class="nx-timeline">
+      {% for project in recent_projects %}
+      <a class="nx-event" href="{% url 'next-project-detail' project.pk %}">
+        <div class="nx-event-time">{{ project.number|slice:'-4:' }}</div>
+        <div><b>{{ project.title }}</b><small>{{ project.customer.display_name }} · zuletzt {{ project.updated_at|date:'d.m. H:i' }}</small></div>
+        <span class="nx-badge {% if project.status == 'in_progress' %}nx-badge-success{% endif %}">{{ project.get_status_display }}</span>
+      </a>
+      {% empty %}<div class="nx-empty"><b>Noch keine Projekte.</b>Lege den ersten Auftrag an.</div>{% endfor %}
+    </div>
+  </section>
+</div>
+<section class="nx-card nx-card-pad" style="margin-top:16px">
+  <div class="nx-card-head" style="padding:0 0 14px"><div><h2>Schnellaktionen</h2><p>So wenig Klicks wie möglich bis zur eigentlichen Arbeit.</p></div></div>
+  <div class="nx-quick-grid">
+    <a class="nx-quick" href="{% url 'next-project-create' %}"><span class="nx-quick-icon">▣</span><span><b>Projekt anlegen</b><small>Kunde, Auftrag und Ort. Mehr ist zum Start nicht nötig.</small></span></a>
+    <a class="nx-quick" href="{% url 'next-appointment-create' %}"><span class="nx-quick-icon">◫</span><span><b>Termin planen</b><small>Einsatz zuweisen und direkt an den Monteur geben.</small></span></a>
+    <a class="nx-quick" href="{% url 'next-quote-create' %}"><span class="nx-quick-icon">◇</span><span><b>Angebot schreiben</b><small>Positionen aus Katalog oder frei hinzufügen.</small></span></a>
+    <a class="nx-quick" href="{% url 'next-tooltime-migration' %}"><span class="nx-quick-icon">⇄</span><span><b>Von ToolTime wechseln</b><small>Bestandsdaten aus CSV/XLSX übernehmen.</small></span></a>
+  </div>
+</section>
+{% endblock %}

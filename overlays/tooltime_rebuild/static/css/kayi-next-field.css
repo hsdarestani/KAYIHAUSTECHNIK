@@ -1,0 +1,31 @@
+.nx-field-bottom{display:none}
+.nx-field-role .nx-search:before{display:none}
+@media(max-width:900px){
+  .nx-field-role .nx-sidebar{display:none!important}
+  .nx-field-role .nx-shell{display:block}
+  .nx-field-role .nx-menu-btn{display:none!important}
+  .nx-field-role .nx-topbar{height:60px;padding:0 14px;background:rgba(243,241,236,.96)}
+  .nx-field-role .nx-top-actions .nx-avatar{display:none}
+  .nx-field-role .nx-content{padding:16px 12px calc(94px + env(safe-area-inset-bottom))}
+  .nx-field-role .nx-pagehead{margin-bottom:16px}
+  .nx-field-role .nx-pagehead h1{font-size:28px}
+  .nx-field-role .nx-pagehead .nx-actions{display:none}
+  .nx-field-role .nx-field-shell{max-width:none}
+  .nx-field-bottom{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));height:66px;border:1px solid rgba(217,213,204,.95);border-radius:22px;background:rgba(255,253,250,.95);box-shadow:0 18px 50px rgba(17,20,24,.16);backdrop-filter:blur(18px);display:grid;grid-template-columns:repeat(3,1fr);z-index:80;padding:6px}
+  .nx-field-bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:16px;color:#727981;font-weight:800;font-size:9px}
+  .nx-field-bottom a span{font-size:18px;line-height:1}
+  .nx-field-bottom a.is-active{background:#111418;color:#fff}
+  .nx-job-card{grid-template-columns:58px minmax(0,1fr) 20px;padding:14px;border-radius:18px}
+  .nx-job-address{border-radius:20px;margin:0 -1px}
+  .nx-job-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .nx-doc-section{padding:15px 14px}
+  .nx-mobile-tabs{position:sticky;top:68px;z-index:12;background:rgba(233,230,223,.94);backdrop-filter:blur(12px)}
+  .nx-grid-2,.nx-grid-3,.nx-grid-4,.nx-form-grid,.nx-quick-grid{grid-template-columns:1fr!important}
+  .nx-signature{height:150px}
+}
+@media(max-width:520px){
+  .nx-field-role .nx-top-actions .nx-btn{min-height:38px;padding:7px 10px}
+  .nx-job-actions a,.nx-job-actions button{min-height:43px}
+  .nx-mobile-tabs button{padding:8px 4px;font-size:10px}
+  .nx-doc-title{align-items:flex-start;flex-wrap:wrap}
+}

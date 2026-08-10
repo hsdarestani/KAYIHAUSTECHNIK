@@ -1,0 +1,22 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Neues Projekt · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Auftrag starten</div><h1>Projekt anlegen</h1><p>Kein Wizard. Kunde, Auftrag und Team reichen für den Start – Aufmaß, Material, Angebot und Rechnung kommen danach im Projekt.</p></div></div>
+<form class="nx-form" method="post">{% csrf_token %}
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 16px"><div><h2>Grunddaten</h2><p>Der minimale Projektstart wie in ToolTime.</p></div><a class="nx-btn nx-btn-ghost" href="{% url 'next-customer-create' %}">＋ Kunde anlegen</a></div>
+    <div class="nx-form-grid">
+      {% for field in form %}
+      <div class="nx-field {% if field.name == 'description' or field.name == 'members' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}{% if field.help_text %}<small class="nx-muted">{{ field.help_text }}</small>{% endif %}</div>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="nx-card nx-card-pad"><div class="nx-card-head" style="padding:0 0 14px"><div><h2>Danach</h2><p>Diese Schritte sind bewusst nicht mehr Teil der Projekterstellung.</p></div></div><div class="nx-quick-grid">
+    <div class="nx-quick"><span class="nx-quick-icon">◫</span><span><b>Termin planen</b><small>Einsatzzeit und Mitarbeiter zuweisen.</small></span></div>
+    <div class="nx-quick"><span class="nx-quick-icon">⌑</span><span><b>Aufmaß / 3D</b><small>Nur öffnen, wenn es für den Auftrag gebraucht wird.</small></span></div>
+    <div class="nx-quick"><span class="nx-quick-icon">◇</span><span><b>Angebot</b><small>Leistungen und Material aus Katalog übernehmen.</small></span></div>
+    <div class="nx-quick"><span class="nx-quick-icon">€</span><span><b>Rechnung</b><small>Nach Durchführung aus Projekt oder Angebot erstellen.</small></span></div>
+  </div></section>
+  <div class="nx-form-actions"><a class="nx-btn" href="{% url 'next-projects' %}">Abbrechen</a><button class="nx-btn nx-btn-accent" type="submit">Projekt anlegen →</button></div>
+</form>
+{% endblock %}
