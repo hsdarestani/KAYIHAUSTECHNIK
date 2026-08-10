@@ -54,13 +54,18 @@ def patch_user_ai_guards() -> None:
     text = path.read_text(encoding="utf-8")
     photo_needle = "            result = analyze_room_photos(organization_for(request.user), images, calibration)"
     if photo_needle in text and "KAYI_STORE_AI_PHOTO_CONSENT" not in text:
-        photo_replacement = '''            # KAYI_STORE_AI_PHOTO_CONSENT\n            from erp.store_views import has_ai_consent\n            if not has_ai_consent(request.user):\n                return Response({"detail": "Vor der KI-Fotoanalyse ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n            result = analyze_room_photos(organization_for(request.user), images, calibration)'''
-        text = text.replace(photo_needle, photo_replacement, 1)
+        text = text.replace(
+            photo_needle,
+            '''            # KAYI_STORE_AI_PHOTO_CONSENT\n            from erp.store_views import has_ai_consent\n            if not has_ai_consent(request.user):\n                return Response({"detail": "Vor der KI-Fotoanalyse ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n            result = analyze_room_photos(organization_for(request.user), images, calibration)''',
+            1,
+        )
     chat_needle = "            output, usage = chat(org, history, context)"
     if chat_needle in text and "KAYI_STORE_AI_CHAT_CONSENT" not in text:
-        chat_replacement = '''            # KAYI_STORE_AI_CHAT_CONSENT\n            from erp.store_views import has_ai_consent\n            if not has_ai_consent(request.user):\n                return Response({"detail": "Vor der KI-Verarbeitung ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n            output, usage = chat(org, history, context)'''
-        text = text.replace(chat_needle, chat_replacement, 1)
-
+        text = text.replace(
+            chat_needle,
+            '''            # KAYI_STORE_AI_CHAT_CONSENT\n            from erp.store_views import has_ai_consent\n            if not has_ai_consent(request.user):\n                return Response({"detail": "Vor der KI-Verarbeitung ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n            output, usage = chat(org, history, context)''',
+            1,
+        )
     privacy_line = '            "privacy_url": request.build_absolute_uri("/privacy/"),'
     if privacy_line in text and '"account_deletion_url"' not in text:
         text = text.replace(
@@ -94,7 +99,10 @@ def patch_privacy_ui() -> None:
     path = ROOT / "erp" / "views.py"
     if path.exists():
         text = path.read_text(encoding="utf-8")
-        text = text.replace('return render(request, "erp/privacy.html")', 'return render(request, "store/privacy.html", {"ai_consent_version": "2026-08-10"})')
+        text = text.replace(
+            'return render(request, "erp/privacy.html")',
+            'return render(request, "store/privacy.html", {"ai_consent_version": "2026-08-10"})',
+        )
         path.write_text(text, encoding="utf-8")
 
     room_template = ROOT / "templates" / "rebuild" / "room_planner.html"
@@ -113,57 +121,43 @@ def patch_android_scanner_compatibility() -> None:
         return
     text = path.read_text(encoding="utf-8")
 
-    # java.time.Instant and java.nio.file APIs are API 26. KAYI keeps
-    # Android 7/API 24 support, so use only java.io APIs available on minSdk 24.
+    # Keep Android 7 / API 24 compatibility: avoid java.time.Instant and
+    # java.nio.file Path/Files APIs, which require API 26 without desugaring.
     text = text.replace(
         "Instant.now().toString()",
         'new java.text.SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ss.SSSZ", java.util.Locale.US).format(new java.util.Date())',
     )
-    for old_import in (
-        "import java.time.Instant;\n",
-        "import java.time.Instant;\r\n",
-        "import java.nio.file.Files;\n",
-        "import java.nio.file.Files;\r\n",
-        "import java.nio.file.Path;\n",
-        "import java.nio.file.Path;\r\n",
-        "import java.nio.file.StandardOpenOption;\n",
-        "import java.nio.file.StandardOpenOption;\r\n",
-    ):
-        text = text.replace(old_import, "")
+    text = re.sub(r"(?m)^[ \t]*import\s+java\.time\.Instant;[ \t]*\r?\n?", "", text)
     text = re.sub(r"(?m)^[ \t]*import\s+java\.nio\.file\.[^;]+;[ \t]*\r?\n?", "", text)
 
-    if "import java.io.FileOutputStream;" not in text:
+    if "import java.io.FileOutputStream;" not in text and "import java.io.*;" not in text:
         text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
 
+    # Convert direct NIO writes first. Calls that passed file.toPath() are also
+    # changed back to File so the generated plugin remains minSdk-24 safe.
     text = text.replace("java.nio.file.Files.write(", "writeBytes(")
     text = text.replace("Files.write(", "writeBytes(")
     text = text.replace(".toPath(),", ",")
+    text = text.replace(".toPath())", ")")
 
-    # Generated scanner helpers still use Path/readAllBytes on some source
-    # payloads. Convert those helper contracts to File as well.
-    text = text.replace(
-        "static void writeString(java.nio.file.Path path, String value) throws java.io.IOException {",
-        "static void writeString(File file, String value) throws java.io.IOException {",
-    )
-    text = text.replace("writeBytes(path,", "writeBytes(file,")
-    text = text.replace(
-        "static String readString(java.nio.file.Path path) throws java.io.IOException {",
-        "static String readString(File file) throws java.io.IOException {",
-    )
-    text = text.replace("java.nio.file.Files.readAllBytes(path)", "readBytes(file)")
-
-    helper = '''\n    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n\n    private static byte[] readBytes(File file) throws java.io.IOException {\n        try (java.io.FileInputStream input = new java.io.FileInputStream(file);\n             java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {\n            byte[] buffer = new byte[8192];\n            int count;\n            while ((count = input.read(buffer)) != -1) {\n                output.write(buffer, 0, count);\n            }\n            return output.toByteArray();\n        }\n    }\n'''
-    if "private static void writeBytes(" not in text:
+    activity_helper = '''\n    private static void writeBytes(File file, byte[] value) throws java.io.IOException {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n'''
+    if "private static void writeBytes(File file" not in text:
         class_match = re.search(r"public\s+class\s+ArCoreRoomScanActivity[^\{]*\{", text)
         if not class_match:
-            raise RuntimeError("Could not locate Android scanner class declaration for API24 compatibility patch")
-        text = text[: class_match.end()] + helper + text[class_match.end() :]
-    elif "private static byte[] readBytes(" not in text:
-        class_match = re.search(r"public\s+class\s+ArCoreRoomScanActivity[^\{]*\{", text)
-        if not class_match:
-            raise RuntimeError("Could not locate Android scanner class declaration for API24 compatibility read helper")
-        read_helper = '''\n    private static byte[] readBytes(File file) throws java.io.IOException {\n        try (java.io.FileInputStream input = new java.io.FileInputStream(file);\n             java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {\n            byte[] buffer = new byte[8192];\n            int count;\n            while ((count = input.read(buffer)) != -1) {\n                output.write(buffer, 0, count);\n            }\n            return output.toByteArray();\n        }\n    }\n'''
-        text = text[: class_match.end()] + read_helper + text[class_match.end() :]
+            raise RuntimeError("Could not locate Android scanner class declaration")
+        text = text[: class_match.end()] + activity_helper + text[class_match.end() :]
+
+    # Some generated scanner sources include a package-private KayiUtf8Files
+    # helper after the Activity. Make it self-contained rather than calling the
+    # Activity's private helper methods, which would fail javac visibility.
+    if "final class KayiUtf8Files" in text:
+        self_contained = '''final class KayiUtf8Files {\n    private KayiUtf8Files() {}\n\n    static void writeString(File file, String value) throws java.io.IOException {\n        try (OutputStreamWriter writer = new OutputStreamWriter(\n                new FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {\n            writer.write(value);\n        }\n    }\n\n    static String readString(File file) throws java.io.IOException {\n        try (FileInputStream input = new FileInputStream(file);\n             ByteArrayOutputStream output = new ByteArrayOutputStream()) {\n            byte[] buffer = new byte[8192];\n            int count;\n            while ((count = input.read(buffer)) != -1) {\n                output.write(buffer, 0, count);\n            }\n            return new String(output.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);\n        }\n    }\n}\n'''
+        text = re.sub(r"final class KayiUtf8Files\s*\{.*?\n\}", self_contained.rstrip(), text, flags=re.S)
+
+    # If old helper signatures were inlined without the complete helper class,
+    # normalize them as a fallback.
+    text = text.replace("java.nio.file.Path path", "File file")
+    text = text.replace("java.nio.file.Files.readAllBytes(path)", "KayiUtf8Files.readString(file).getBytes(java.nio.charset.StandardCharsets.UTF_8)")
 
     path.write_text(text, encoding="utf-8")
 
@@ -189,8 +183,11 @@ def guard() -> None:
         if marker not in api:
             raise RuntimeError(f"Store mobile/API contract missing: {marker}")
     room_path = ROOT / "erp" / "room_planner_views.py"
-    if room_path.exists() and "analyze_room_photos" in room_path.read_text(encoding="utf-8") and "KAYI_STORE_ROOM_AI_CONSENT" not in room_path.read_text(encoding="utf-8"):
-        raise RuntimeError("Room Planner photo AI is not protected by explicit consent")
+    if room_path.exists():
+        room_text = room_path.read_text(encoding="utf-8")
+        if "analyze_room_photos" in room_text and "KAYI_STORE_ROOM_AI_CONSENT" not in room_text:
+            raise RuntimeError("Room Planner photo AI is not protected by explicit consent")
+
     scanner = ROOT / "native" / "plugins" / "kayi-room-scanner" / "android" / "src" / "main" / "java" / "de" / "kayihaustechnik" / "scanner" / "ArCoreRoomScanActivity.java"
     if scanner.exists():
         scanner_text = scanner.read_text(encoding="utf-8")
@@ -205,8 +202,9 @@ def guard() -> None:
             raise RuntimeError(
                 f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}; lines={offenders}"
             )
-        if "private static void writeBytes(" not in scanner_text or "private static byte[] readBytes(" not in scanner_text:
-            raise RuntimeError("Android scanner API24-compatible byte readers/writers were not installed")
+        if "final class KayiUtf8Files" in scanner_text:
+            if "new FileOutputStream(file)" not in scanner_text or "new FileInputStream(file)" not in scanner_text:
+                raise RuntimeError("KayiUtf8Files is not self-contained on API 24")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
