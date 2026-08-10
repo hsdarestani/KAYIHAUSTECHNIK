@@ -52,7 +52,7 @@ def patch_rebuild_urls() -> None:
         if anchor not in text:
             raise RuntimeError("Could not locate rebuild view import")
         text = text.replace(anchor, anchor + "from . import field_authorization_views as field_auth\n", 1)
-    if "include" not in text.splitlines()[0:2][0]:
+    if "from django.urls import include, path" not in text:
         text = text.replace("from django.urls import path", "from django.urls import include, path", 1)
     if 'include("erp.field_authorization_urls")' not in text:
         marker = "urlpatterns = ["
@@ -113,9 +113,13 @@ def guard() -> None:
         if marker not in urls:
             raise RuntimeError(f"Field Authorization URL contract missing: {marker}")
     service = (ROOT / "erp" / "services" / "field_authorization.py").read_text(encoding="utf-8")
-    for marker in ("kayi.field_authorization.v1", "snapshot_sha256", "html_to_pdf_bytes", "RoomMeasurement.objects.filter"):
+    for marker in ("kayi.field_authorization.v1", "sha256_json", "html_to_pdf_bytes", "RoomMeasurement.objects.filter"):
         if marker not in service:
             raise RuntimeError(f"Field Authorization service contract missing: {marker}")
+    views = (ROOT / "erp" / "field_authorization_views.py").read_text(encoding="utf-8")
+    for marker in ("snapshot_sha256", "requires_authorization", "field_completion"):
+        if marker not in views:
+            raise RuntimeError(f"Field Authorization persistence contract missing: {marker}")
     template = (ROOT / "templates" / "rebuild" / "appointment_detail.html").read_text(encoding="utf-8")
     for marker in ("Auftrag aufnehmen & freigeben", "Vorher-Fotos & Raum", "Kundenfreigabe", "Arbeit starten", "Abschluss & Vorher/Nachher"):
         if marker not in template:
