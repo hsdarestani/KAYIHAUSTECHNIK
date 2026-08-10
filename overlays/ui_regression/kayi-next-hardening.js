@@ -52,9 +52,7 @@
       row.remove();
       recalcDocument(table);
     });
-    $$('input', row).forEach((input) => {
-      input.addEventListener("input", () => recalcDocument(table));
-    });
+    $$('input', row).forEach((input) => input.addEventListener("input", () => recalcDocument(table)));
   };
 
   const addDocumentRow = (table, values = {}) => {
@@ -106,11 +104,7 @@
           sole = option;
         }
       });
-      if (status) {
-        status.textContent = query
-          ? `${matches} Kunde${matches === 1 ? "" : "n"} gefunden.`
-          : "Tippen, um die Kundenliste zu filtern.";
-      }
+      if (status) status.textContent = query ? `${matches} Kunde${matches === 1 ? "" : "n"} gefunden.` : "Tippen, um die Kundenliste zu filtern.";
       return { matches, sole };
     };
     input.addEventListener("input", apply);
@@ -151,8 +145,19 @@
   $$('[data-row-href]').forEach((row) => {
     row.addEventListener("click", (event) => {
       if (event.target.closest("a,button,input,select,textarea,label")) return;
-      const href = row.dataset.rowHref;
-      if (href) window.location.href = href;
+      if (row.dataset.rowHref) window.location.href = row.dataset.rowHref;
+    });
+  });
+
+  $$('[data-settings-help]').forEach((button) => {
+    button.addEventListener("click", () => {
+      const context = button.closest("section,article,.card,.panel,.integration-card,li,div");
+      const heading = context?.querySelector("h1,h2,h3,h4,strong,b")?.textContent?.trim();
+      const subject = heading || button.textContent.trim() || "Diese Einstellung";
+      toast(
+        `${subject}: keine direkte Aktion`,
+        "Für diese Einstellung ist an dieser Stelle keine direkte Aktion hinterlegt. Nutze die zugehörige Integrations- oder Konfigurationsmaske. Falls sie dort nicht verfügbar ist, wende dich an den Support.",
+      );
     });
   });
 
@@ -174,16 +179,10 @@
         button.hidden = !show;
         if (show) visible += 1;
       });
-      if (catalogStatus) {
-        catalogStatus.textContent = query
-          ? `${visible} Treffer für „${catalogSearch.value.trim()}“.`
-          : "Alle Katalogpositionen werden angezeigt.";
-      }
+      if (catalogStatus) catalogStatus.textContent = query ? `${visible} Treffer für „${catalogSearch.value.trim()}“.` : "Alle Katalogpositionen werden angezeigt.";
     };
     const syncCatalogSelection = () => {
-      const descriptions = $$("[name='item_description']", documentTable)
-        .map((input) => normalize(input.value))
-        .filter(Boolean);
+      const descriptions = $$("[name='item_description']", documentTable).map((input) => normalize(input.value)).filter(Boolean);
       const chosen = [];
       catalogItems().forEach((button) => {
         const name = normalize(button.dataset.name);
@@ -217,23 +216,16 @@
     documentTable.addEventListener("click", (event) => {
       if (event.target.closest(".nx-item-remove")) window.setTimeout(syncCatalogSelection, 0);
     });
-    new MutationObserver(syncCatalogSelection).observe(documentTable.querySelector("tbody") || documentTable, {
-      childList: true,
-      subtree: true,
-    });
+    new MutationObserver(syncCatalogSelection).observe(documentTable.querySelector("tbody") || documentTable, { childList: true, subtree: true });
     syncCatalogSelection();
   }
 
-  // Visible pure-UI buttons must never fail silently. Feature buttons carrying
-  // data-* actions are owned by their feature modules and audited at build time.
   $$(".nx-content button[type='button']:not([disabled])").forEach((button) => {
     if (button.classList.contains("nx-item-remove") || button.onclick) return;
     if (Array.from(button.attributes).some((attribute) => attribute.name.startsWith("data-"))) return;
-    button.addEventListener("click", () => {
-      toast(
-        "Aktion noch nicht verfügbar",
-        "Für diese Aktion ist hier noch keine Funktion hinterlegt. Nutze die verknüpfte Projektfunktion oder melde den konkreten Schritt an den Support.",
-      );
-    });
+    button.addEventListener("click", () => toast(
+      "Aktion noch nicht verfügbar",
+      "Für diese Aktion ist hier noch keine Funktion hinterlegt. Nutze die verknüpfte Projektfunktion oder melde den konkreten Schritt an den Support.",
+    ));
   });
 })();
