@@ -153,6 +153,7 @@ def normalize_room_state(state: Any, measurement: RoomMeasurement | None = None,
         wall = wall if wall in ALLOWED_WALLS else "back"
         wall_length = length if wall in {"left", "right"} else width
         opening_width = _decimal(raw.get("width_m", 0.9), f"openings[{index}].width_m", minimum=Decimal("0.05"), maximum=Decimal("10"))
+        opening_width = min(opening_width, wall_length)
         opening_height = _decimal(raw.get("height_m", 2 if kind == "door" else 1), f"openings[{index}].height_m", minimum=Decimal("0.05"), maximum=Decimal("10"))
         sill = _decimal(raw.get("sill_height_m", raw.get("sill_m", 0 if kind == "door" else 0.9)), f"openings[{index}].sill_height_m", maximum=height)
         if sill + opening_height > height:
