@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "KAYI UI regression hardening 20260810"
+GENERIC_CHECKBOX_MARKER = "KAYI global checkbox size contract"
 
 
 def normalize_tail(rel: str) -> None:
@@ -53,12 +54,20 @@ def audit_buttons() -> None:
 normalize_tail("static/css/kayi-next.css")
 normalize_tail("static/js/kayi-next.js")
 
-css = (ROOT / "static/css/kayi-next.css").read_text(encoding="utf-8")
+css_path = ROOT / "static/css/kayi-next.css"
+css = css_path.read_text(encoding="utf-8")
+if GENERIC_CHECKBOX_MARKER not in css:
+    css += '''
+/* KAYI global checkbox size contract */
+.nx-content input[type="checkbox"]{width:20px!important;height:20px!important;min-width:20px!important;min-height:20px!important;max-width:20px!important;max-height:20px!important;padding:0!important;margin:0!important;box-shadow:none!important;accent-color:var(--nx-accent);cursor:pointer}
+'''
+    css_path.write_text(css, encoding="utf-8")
+
 js = (ROOT / "static/js/kayi-next.js").read_text(encoding="utf-8")
 if "\\n.nx-checkbox-input" in css or "\\n(() =>" in js:
     raise RuntimeError("UI hardening assets still contain escaped line separators")
-if ".nx-checkbox-input" not in css or "dataset.nxAddBound" not in js:
+if ".nx-checkbox-input" not in css or 'input[type="checkbox"]' not in css or "dataset.nxAddBound" not in js:
     raise RuntimeError("UI hardening assets are incomplete")
 
 audit_buttons()
-print("KAYI UI hardening assets and button bindings normalized and verified.")
+print("KAYI UI hardening assets, global checkbox sizing and button bindings normalized and verified.")
