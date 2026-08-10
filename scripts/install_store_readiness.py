@@ -42,8 +42,6 @@ def patch_urls() -> None:
 
 
 def patch_user_ai_guards() -> None:
-    # KAYI Next report structuring sends user-entered text to OpenAI. The server
-    # refuses the transfer until the user has explicitly opted in.
     path = ROOT / "erp" / "rebuild_views.py"
     text = path.read_text(encoding="utf-8")
     needle = '''    get_object_or_404(m.CalendarEvent, pk=pk, organization=org)\n    raw = (request.POST.get("text") or "").strip()\n'''
@@ -52,7 +50,6 @@ def patch_user_ai_guards() -> None:
         text = text.replace(needle, replacement, 1)
     path.write_text(text, encoding="utf-8")
 
-    # Legacy/mobile API chat and photo analysis can also transmit user content.
     path = ROOT / "erp" / "api.py"
     text = path.read_text(encoding="utf-8")
     photo_needle = "            result = analyze_room_photos(organization_for(request.user), images, calibration)"
@@ -64,8 +61,6 @@ def patch_user_ai_guards() -> None:
         chat_replacement = '''            # KAYI_STORE_AI_CHAT_CONSENT\n            from erp.store_views import has_ai_consent\n            if not has_ai_consent(request.user):\n                return Response({"detail": "Vor der KI-Verarbeitung ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n            output, usage = chat(org, history, context)'''
         text = text.replace(chat_needle, chat_replacement, 1)
 
-    # Store URLs are advertised to native clients so privacy/account controls stay
-    # available even if the web navigation changes.
     privacy_line = '            "privacy_url": request.build_absolute_uri("/privacy/"),'
     if privacy_line in text and '"account_deletion_url"' not in text:
         text = text.replace(
@@ -75,8 +70,6 @@ def patch_user_ai_guards() -> None:
         )
     path.write_text(text, encoding="utf-8")
 
-    # Room Planner Pro is installed after KAYI Next and has its own photo-analysis
-    # view. Patch every direct user-triggered analyze_room_photos call there.
     room_path = ROOT / "erp" / "room_planner_views.py"
     if room_path.exists():
         text = room_path.read_text(encoding="utf-8")
@@ -98,7 +91,6 @@ def patch_user_ai_guards() -> None:
 
 
 def patch_privacy_ui() -> None:
-    # Make the legacy privacy URL show the same complete policy.
     path = ROOT / "erp" / "views.py"
     if path.exists():
         text = path.read_text(encoding="utf-8")
@@ -113,6 +105,25 @@ def patch_privacy_ui() -> None:
             disclosure = '''<div class="nx-card nx-card-pad" style="margin-top:12px"><b>KI-Datenschutzhinweis</b><small>Für die Fotoanalyse werden nur die von dir ausgewählten Bilder an OpenAI übertragen. Vor der ersten Übertragung ist eine ausdrückliche Einwilligung in den <a href="/settings/next/">Einstellungen</a> erforderlich; sie kann dort jederzeit widerrufen werden.</small></div>'''
             text = text.replace(marker, disclosure + marker, 1)
             room_template.write_text(text, encoding="utf-8")
+
+
+def patch_legacy_test_contract() -> None:
+    # Existing AI resilience/measurement tests predate store consent. They should
+    # continue testing provider failures and human confirmation after consenting,
+    # rather than bypassing the new production gate.
+    snippet = '''        profile = self.user.profile\n        prefs = dict(profile.preferences or {})\n        prefs.update({"ai_third_party_consent_at": "2026-08-10T00:00:00+00:00", "ai_third_party_consent_version": "2026-08-10", "ai_third_party_consent_revoked_at": None})\n        profile.preferences = prefs\n        profile.save(update_fields=["preferences", "updated_at"])\n'''
+    for relative in ("tests/test_ai_resilience.py", "tests/test_v2.py"):
+        path = ROOT / relative
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        marker = "# KAYI_STORE_TEST_AI_CONSENT"
+        if marker in text:
+            continue
+        needle = "        self.client.force_login(self.user)\n"
+        if needle in text:
+            text = text.replace(needle, needle + "        # KAYI_STORE_TEST_AI_CONSENT\n" + snippet)
+            path.write_text(text, encoding="utf-8")
 
 
 def guard() -> None:
@@ -132,8 +143,12 @@ def guard() -> None:
     if 'include("erp.store_urls")' not in urls:
         raise RuntimeError("Store public routes are not installed")
     api = (ROOT / "erp" / "api.py").read_text(encoding="utf-8")
-    if '"account_deletion_url"' not in api:
-        raise RuntimeError("Native mobile configuration does not expose account deletion URL")
+    for marker in ("KAYI_STORE_AI_PHOTO_CONSENT", "KAYI_STORE_AI_CHAT_CONSENT", '"account_deletion_url"'):
+        if marker not in api:
+            raise RuntimeError(f"Store mobile/API contract missing: {marker}")
+    room_path = ROOT / "erp" / "room_planner_views.py"
+    if room_path.exists() and "analyze_room_photos" in room_path.read_text(encoding="utf-8") and "KAYI_STORE_ROOM_AI_CONSENT" not in room_path.read_text(encoding="utf-8"):
+        raise RuntimeError("Room Planner photo AI is not protected by explicit consent")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
@@ -142,5 +157,6 @@ copy_tree(OVERLAY / "tests", ROOT / "tests")
 patch_urls()
 patch_user_ai_guards()
 patch_privacy_ui()
+patch_legacy_test_contract()
 guard()
 print("KAYI store readiness layer installed: public privacy/support/deletion, explicit AI consent and native store URLs.")
