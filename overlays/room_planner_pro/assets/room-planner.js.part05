@@ -1,0 +1,121 @@
+idth_m, l = state.room.length_m;
+  if (o.anchor === 'wall') {
+    const wall = o.wall || 'back';
+    if (wall === 'back') { g.position.set(o.x_m, o.elevation_m + o.height_m / 2, Math.max(o.depth_m / 2, 0.001)); g.rotation.y = THREE.MathUtils.degToRad(o.rotation_deg || 0); }
+    if (wall === 'front') { g.position.set(o.x_m, o.elevation_m + o.height_m / 2, l - Math.max(o.depth_m / 2, .001)); g.rotation.y = Math.PI + THREE.MathUtils.degToRad(o.rotation_deg || 0); }
+    if (wall === 'left') { g.position.set(Math.max(o.depth_m / 2, .001), o.elevation_m + o.height_m / 2, o.z_m); g.rotation.y = Math.PI / 2 + THREE.MathUtils.degToRad(o.rotation_deg || 0); }
+    if (wall === 'right') { g.position.set(w - Math.max(o.depth_m / 2, .001), o.elevation_m + o.height_m / 2, o.z_m); g.rotation.y = -Math.PI / 2 + THREE.MathUtils.degToRad(o.rotation_deg || 0); }
+  } else {
+    g.position.set(o.x_m, o.elevation_m + o.height_m / 2, o.z_m);
+    g.rotation.y = THREE.MathUtils.degToRad(o.rotation_deg || 0);
+  }
+}
+
+function applySelectionVisuals() {
+  sceneObjectMap.forEach((group, id) => {
+    group.traverse((m) => {
+      if (!m.isMesh || !m.material) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      mats.forEach((mat) => {
+        if (!mat.emissive) return;
+        if (collisionIds.has(id)) { mat.emissive.set(0x7d1818); mat.emissiveIntensity = 0.45; }
+        else if (selected === id) { mat.emissive.set(0x1e5eff); mat.emissiveIntensity = 0.16; }
+        else if (hover === id) { mat.emissive.set(0x4e6d9d); mat.emissiveIntensity = 0.08; }
+        else { mat.emissive.set(0x000000); mat.emissiveIntensity = 0; }
+      });
+    });
+  });
+}
+
+function rebuildScene({ keepCamera = true } = {}) {
+  clearWorld();
+  buildRoom(); buildObjects();
+  updateWallTransparency();
+  applySelectionVisuals();
+  updateStats();
+  if (!keepCamera) fitCamera();
+  queueRender();
+}
+
+function updateWallTransparency() {
+  const transparent = Boolean(state.view.transparent_near_walls);
+  wallMeshes.forEach((wall) => {
+    const name = wall.userData.wall;
+    let opacity = 1;
+    if (transparent && state.view.mode === '3d') {
+      if (name === 'front') opacity = 0.18;
+      else if (name === 'right') opacity = 0.62;
+    }
+    wall.material.transparent = opacity < 1;
+    wall.material.opacity = opacity;
+    wall.material.depthWrite = opacity > 0.6;
+  });
+}
+
+function objectRecord(id) { return state.objects.find((o) => o.id === id); }
+function openingRecord(id) { return state.openings.find((o) => o.id === id); }
+function selectedRecord() { return selectedKind === 'opening' ? openingRecord(selected) : objectRecord(selected); }
+
+function roomBoundsForObject(o) {
+  const angle = THREE.MathUtils.degToRad(effectiveRotationDeg(o));
+  const c = Math.abs(Math.cos(angle)), s = Math.abs(Math.sin(angle));
+  const halfX = (o.width_m * c + o.depth_m * s) / 2;
+  const halfZ = (o.width_m * s + o.depth_m * c) / 2;
+  return { minX: o.x_m-halfX, maxX:o.x_m+halfX, minZ:o.z_m-halfZ, maxZ:o.z_m+halfZ, halfX, halfZ };
+}
+function effectiveRotationDeg(o) {
+  const base = Number(o.rotation_deg || 0);
+  if (o.anchor !== 'wall') return base;
+  if (o.wall === 'left') return base + 90;
+  if (o.wall === 'right') return base - 90;
+  if (o.wall === 'front') return base + 180;
+  return base;
+}
+function distancesFor(o) {
+  const b = roomBoundsForObject(o); const w=state.room.width_m,l=state.room.length_m;
+  let nearest = Infinity, nearestLabel = '—';
+  for (const other of state.objects) {
+    if (other.id === o.id || other.enabled === false) continue;
+    const ob=roomBoundsForObject(other);
+    const dx=Math.max(0,Math.max(ob.minX-b.maxX,b.minX-ob.maxX));
+    const dz=Math.max(0,Math.max(ob.minZ-b.maxZ,b.minZ-ob.maxZ));
+    const dist=Math.hypot(dx,dz);
+    if(dist<nearest){nearest=dist;nearestLabel=other.label||labelForKind(other.kind);}
+  }
+  return { left: Math.max(0,b.minX), right: Math.max(0,w-b.maxX), back: Math.max(0,b.minZ), front: Math.max(0,l-b.maxZ), nearest: Number.isFinite(nearest)?nearest:null, nearestLabel };
+}
+function collisionSet() {
+  const ids = new Set(); const active=state.objects.filter((o)=>o.enabled!==false);
+  for(let i=0;i<active.length;i++) for(let j=i+1;j<active.length;j++){
+    const a=roomBoundsForObject(active[i]), b=roomBoundsForObject(active[j]);
+    const overlapX=Math.min(a.maxX,b.maxX)-Math.max(a.minX,b.minX);
+    const overlapZ=Math.min(a.maxZ,b.maxZ)-Math.max(a.minZ,b.minZ);
+    const y1a=active[i].elevation_m||0,y2a=y1a+active[i].height_m,y1b=active[j].elevation_m||0,y2b=y1b+active[j].height_m;
+    if(overlapX>0.015&&overlapZ>0.015&&Math.min(y2a,y2b)-Math.max(y1a,y1b)>0.02){ ids.add(active[i].id); ids.add(active[j].id); }
+  }
+  return ids;
+}
+
+function constrainObject(o) {
+  const w=state.room.width_m,l=state.room.length_m;
+  if(o.anchor==='wall'){
+    const wall=o.wall||'back';
+    if(wall==='back'||wall==='front') o.x_m=clamp(o.x_m,o.width_m/2,w-o.width_m/2);
+    else o.z_m=clamp(o.z_m,o.width_m/2,l-o.width_m/2);
+    if (wall === 'back') o.z_m = o.depth_m / 2;
+    if (wall === 'front') o.z_m = l - o.depth_m / 2;
+    if (wall === 'left') o.x_m = o.depth_m / 2;
+    if (wall === 'right') o.x_m = w - o.depth_m / 2;
+    o.elevation_m=clamp(o.elevation_m,0,Math.max(0,state.room.height_m-o.height_m));
+    return;
+  }
+  const b=roomBoundsForObject(o);
+  if(b.minX<0)o.x_m-=b.minX;if(b.maxX>w)o.x_m-=b.maxX-w;if(b.minZ<0)o.z_m-=b.minZ;if(b.maxZ>l)o.z_m-=b.maxZ-l;
+  o.elevation_m=clamp(o.elevation_m,0,Math.max(0,state.room.height_m-o.height_m));
+}
+function snapObject(o) {
+  if(!state.view.snap)return;
+  const grid=.05; const threshold=.065;
+  o.x_m=Math.round(o.x_m/grid)*grid;o.z_m=Math.round(o.z_m/grid)*grid;
+  const b=roomBoundsForObject(o), w=state.room.width_m,l=state.room.length_m;
+  if(Math.abs(b.minX)<.09)o.x_
