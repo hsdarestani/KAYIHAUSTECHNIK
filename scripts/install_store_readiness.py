@@ -139,12 +139,31 @@ def patch_android_scanner_compatibility() -> None:
     text = text.replace("Files.write(", "writeBytes(")
     text = text.replace(".toPath(),", ",")
 
-    helper = '''\n    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n'''
+    # Generated scanner helpers still use Path/readAllBytes on some source
+    # payloads. Convert those helper contracts to File as well.
+    text = text.replace(
+        "static void writeString(java.nio.file.Path path, String value) throws java.io.IOException {",
+        "static void writeString(File file, String value) throws java.io.IOException {",
+    )
+    text = text.replace("writeBytes(path,", "writeBytes(file,")
+    text = text.replace(
+        "static String readString(java.nio.file.Path path) throws java.io.IOException {",
+        "static String readString(File file) throws java.io.IOException {",
+    )
+    text = text.replace("java.nio.file.Files.readAllBytes(path)", "readBytes(file)")
+
+    helper = '''\n    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n\n    private static byte[] readBytes(File file) throws java.io.IOException {\n        try (java.io.FileInputStream input = new java.io.FileInputStream(file);\n             java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {\n            byte[] buffer = new byte[8192];\n            int count;\n            while ((count = input.read(buffer)) != -1) {\n                output.write(buffer, 0, count);\n            }\n            return output.toByteArray();\n        }\n    }\n'''
     if "private static void writeBytes(" not in text:
         class_match = re.search(r"public\s+class\s+ArCoreRoomScanActivity[^\{]*\{", text)
         if not class_match:
             raise RuntimeError("Could not locate Android scanner class declaration for API24 compatibility patch")
         text = text[: class_match.end()] + helper + text[class_match.end() :]
+    elif "private static byte[] readBytes(" not in text:
+        class_match = re.search(r"public\s+class\s+ArCoreRoomScanActivity[^\{]*\{", text)
+        if not class_match:
+            raise RuntimeError("Could not locate Android scanner class declaration for API24 compatibility read helper")
+        read_helper = '''\n    private static byte[] readBytes(File file) throws java.io.IOException {\n        try (java.io.FileInputStream input = new java.io.FileInputStream(file);\n             java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream()) {\n            byte[] buffer = new byte[8192];\n            int count;\n            while ((count = input.read(buffer)) != -1) {\n                output.write(buffer, 0, count);\n            }\n            return output.toByteArray();\n        }\n    }\n'''
+        text = text[: class_match.end()] + read_helper + text[class_match.end() :]
 
     path.write_text(text, encoding="utf-8")
 
@@ -186,8 +205,8 @@ def guard() -> None:
             raise RuntimeError(
                 f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}; lines={offenders}"
             )
-        if "private static void writeBytes(" not in scanner_text:
-            raise RuntimeError("Android scanner API24-compatible byte writer was not installed")
+        if "private static void writeBytes(" not in scanner_text or "private static byte[] readBytes(" not in scanner_text:
+            raise RuntimeError("Android scanner API24-compatible byte readers/writers were not installed")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
