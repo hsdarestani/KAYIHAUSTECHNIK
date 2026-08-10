@@ -60,3 +60,29 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             OPENAI_API_KEY="$OPENAI_API_KEY" sh deploy/server-deploy.sh
+
+      - name: Audit effective B&O pricing coverage
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.DEPLOY_USER || 'root' }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.PASS }}
+          command_timeout: 10m
+          script: |
+            set -eu
+            cd /opt/kayi
+            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+            $DC run --rm web python manage.py shell -c "
+            from erp.models import CatalogItem, Organization
+            from erp.services.effective_pricing import apply_effective_prices
+            org = Organization.objects.filter(name='KAYI Haustechnik').first()
+            assert org is not None, 'KAYI organization missing'
+            items = list(CatalogItem.objects.filter(organization=org, active=True).order_by('code'))
+            apply_effective_prices(org, items)
+            missing = [item for item in items if getattr(item, 'effective_price_source_kind', '') == 'Fehlt']
+            priced = len(items) - len(missing)
+            print(f'B&O EFFECTIVE PRICE COVERAGE: {priced}/{len(items)} priced; {len(missing)} unresolved')
+            for item in missing[:100]:
+                print(f'B&O UNRESOLVED: {item.code} | {item.name}')
+            "
