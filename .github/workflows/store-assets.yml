@@ -1,0 +1,85 @@
+name: Store assets
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install application and asset dependencies
+        run: pip install -r requirements.txt
+      - name: Prepare screenshot database
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_demo_data
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Start KAYI for screenshots
+        run: |
+          python manage.py runserver 127.0.0.1:8000 >/tmp/kayi-store-assets-server.log 2>&1 &
+          echo $! > /tmp/kayi-store-assets-server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/login/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/kayi-store-assets-server.log
+          exit 1
+      - name: Generate brand assets
+        run: python scripts/generate_store_brand_assets.py
+      - name: Generate real UI screenshots
+        run: python scripts/generate_store_screenshots.py http://127.0.0.1:8000/
+      - name: Validate mandatory image dimensions and alpha rules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root=Path('store/generated')
+          expected={
+            'google-play-icon-512.png': (512,512),
+            'app-store-icon-1024.png': (1024,1024),
+            'google-play-feature-graphic-1024x500.png': (1024,500),
+          }
+          for rel,size in expected.items():
+            p=root/rel
+            assert p.exists(), p
+            with Image.open(p) as im: assert im.size==size, (p,im.size)
+          apple=list((root/'screenshots/apple-6.9').glob('*.png'))
+          google=list((root/'screenshots/google-phone').glob('*.png'))
+          assert len(apple)>=4 and len(google)>=4
+          for p in apple:
+            with Image.open(p) as im:
+              assert im.size==(1290,2796), (p,im.size)
+              assert im.mode=='RGB', (p,im.mode)
+          for p in google:
+            with Image.open(p) as im:
+              assert im.size==(1080,1920), (p,im.size)
+              assert im.mode=='RGB', (p,im.mode)
+          print('Store assets valid:', len(apple), 'Apple screenshots,', len(google), 'Google screenshots')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KAYI-store-assets-${{ github.run_id }}
+          path: store/generated/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAYI-store-assets-diagnostics-${{ github.run_id }}
+          path: /tmp/kayi-store-assets-server.log
+          if-no-files-found: ignore
+          retention-days: 7
