@@ -61,8 +61,6 @@ def _add_privacy_manifest_to_xcode(project: Path) -> None:
         f"/* Begin PBXFileReference section */\n\t\t{ref_id} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = \"<group>\"; }};",
         1,
     )
-
-    # Capacitor's App group contains Info.plist; place the privacy manifest next to it.
     info_ref = re.search(r"(?m)^\s*([A-F0-9]{24}) /\* Info\.plist \*/ = \{isa = PBXFileReference;", text)
     if info_ref:
         child_marker = f"\t\t\t\t{info_ref.group(1)} /* Info.plist */,{chr(10)}"
@@ -75,6 +73,15 @@ def _add_privacy_manifest_to_xcode(project: Path) -> None:
     insertion = f"\t\t\t\t{build_id} /* PrivacyInfo.xcprivacy in Resources */,\n"
     text = text[:resources.start(2)] + insertion + text[resources.start(2):]
     project.write_text(text, encoding="utf-8")
+
+
+def _privacy_type(name: str) -> dict[str, object]:
+    return {
+        "NSPrivacyCollectedDataType": name,
+        "NSPrivacyCollectedDataTypeLinked": True,
+        "NSPrivacyCollectedDataTypeTracking": False,
+        "NSPrivacyCollectedDataTypePurposes": ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+    }
 
 
 def ios(version: str, build: str) -> None:
@@ -95,10 +102,27 @@ def ios(version: str, build: str) -> None:
     with plist.open("wb") as fh:
         plistlib.dump(info, fh, sort_keys=False)
 
+    # These are the data categories KAYI itself may persist when the corresponding
+    # business feature is used. Third-party SDKs keep their own privacy manifests.
+    collected = [
+        "NSPrivacyCollectedDataTypeName",
+        "NSPrivacyCollectedDataTypeEmailAddress",
+        "NSPrivacyCollectedDataTypePhoneNumber",
+        "NSPrivacyCollectedDataTypePhysicalAddress",
+        "NSPrivacyCollectedDataTypePaymentInfo",
+        "NSPrivacyCollectedDataTypeOtherFinancialInfo",
+        "NSPrivacyCollectedDataTypeEmailsOrTextMessages",
+        "NSPrivacyCollectedDataTypePhotosorVideos",
+        "NSPrivacyCollectedDataTypeAudioData",
+        "NSPrivacyCollectedDataTypeOtherUserContent",
+        "NSPrivacyCollectedDataTypeUserID",
+        "NSPrivacyCollectedDataTypeProductInteraction",
+        "NSPrivacyCollectedDataTypeEnvironmentScanning",
+    ]
     privacy = {
         "NSPrivacyTracking": False,
         "NSPrivacyTrackingDomains": [],
-        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyCollectedDataTypes": [_privacy_type(item) for item in collected],
         "NSPrivacyAccessedAPITypes": [],
     }
     privacy_path = app_dir / "PrivacyInfo.xcprivacy"
