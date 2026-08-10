@@ -10,11 +10,26 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - name: Assemble application source
         run: bash scripts/unpack-source.sh
+      - name: Audit account deletion, AI and mobile contracts
+        run: |
+          echo '=== Account deletion references ==='
+          grep -RInE 'deletion|delete.account|account.delete|Konto.*löschen|Lösch|delete_request' erp config templates mobile tests 2>/dev/null | head -n 180 || true
+          echo '=== AI / photo / voice endpoints and consent candidates ==='
+          grep -RInE 'OpenAI|analyze_room_photos|AIPhoto|ai/chat|ai-report|voice|transcri|audio|measurements/analyze' erp config templates mobile tests 2>/dev/null | head -n 220 || true
+          echo '=== Existing legal/privacy/support references ==='
+          grep -RInE 'Datenschutz|Privacy|privacy|Impressum|Support|support' erp config templates mobile 2>/dev/null | head -n 160 || true
+          echo '=== Android scanner source / API24 audit ==='
+          SCANNER='native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java'
+          nl -ba "$SCANNER" | sed -n '1,190p'
+          echo '=== Scanner API26 candidates ==='
+          grep -nE 'java\.nio\.file|Files\.|Path\b|Paths\.|java\.time|Instant\.' "$SCANNER" || true
+          echo '=== Native web/store assets ==='
+          find native -maxdepth 4 -type f \( -iname '*.png' -o -iname '*.svg' -o -iname '*.webp' -o -iname '*.json' -o -iname '*.html' -o -iname '*.ts' \) | sort | head -n 220
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -26,11 +41,25 @@ jobs:
       - name: Install native dependencies
         working-directory: native
         run: npm install --no-audit --no-fund
+      - name: Audit Capacitor release configuration
+        working-directory: native
+        run: |
+          echo '=== package.json ==='
+          cat package.json
+          echo '=== capacitor config ==='
+          for f in capacitor.config.*; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done
       - name: Generate and synchronize Android project
         working-directory: native
         run: |
           npx cap add android
           npx cap sync android
+      - name: Audit generated Android configuration
+        working-directory: native
+        run: |
+          echo '=== Android Gradle identifiers / SDK levels ==='
+          grep -RInE 'namespace|applicationId|compileSdk|targetSdk|minSdk|versionCode|versionName' android/app/build.gradle* android/variables.gradle android/build.gradle* || true
+          echo '=== Android permissions ==='
+          grep -RInE 'uses-permission|uses-feature' android/app/src/main/AndroidManifest.xml || true
       - name: Build Android debug APK
         working-directory: native/android
         run: ./gradlew assembleDebug --stacktrace
@@ -43,7 +72,7 @@ jobs:
 
   ios:
     runs-on: macos-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Assemble application source
@@ -54,6 +83,14 @@ jobs:
       - name: Install native dependencies
         working-directory: native
         run: npm install --no-audit --no-fund
+      - name: Audit Xcode version and Capacitor release configuration
+        working-directory: native
+        run: |
+          xcodebuild -version
+          echo '=== package.json ==='
+          cat package.json
+          echo '=== capacitor config ==='
+          for f in capacitor.config.*; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done
       - name: Generate and synchronize iOS project
         working-directory: native
         run: |
@@ -62,6 +99,15 @@ jobs:
           sed -i '' 's/\.iOS(.v15)/.iOS(.v16)/g' ios/App/CapApp-SPM/Package.swift
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
             /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
+      - name: Audit generated iOS configuration
+        working-directory: native
+        run: |
+          echo '=== Bundle / deployment configuration ==='
+          grep -nE 'PRODUCT_BUNDLE_IDENTIFIER|MARKETING_VERSION|CURRENT_PROJECT_VERSION|IPHONEOS_DEPLOYMENT_TARGET' ios/App/App.xcodeproj/project.pbxproj || true
+          echo '=== Info.plist ==='
+          plutil -p ios/App/App/Info.plist || true
+          echo '=== Privacy manifests ==='
+          find ios -name 'PrivacyInfo.xcprivacy' -print || true
       - name: Compile iOS simulator application
         working-directory: native
         run: |

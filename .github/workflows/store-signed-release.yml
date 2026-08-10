@@ -1,0 +1,210 @@
+name: Signed store release
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: App version, for example 2.2.0
+        required: true
+        default: '2.2.0'
+      build_number:
+        description: New monotonically increasing store build number
+        required: true
+        default: '22001'
+
+permissions:
+  contents: read
+
+env:
+  KAYI_APP_VERSION: ${{ inputs.app_version }}
+  KAYI_BUILD_NUMBER: ${{ inputs.build_number }}
+
+jobs:
+  google-play-aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require Google Play signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install native and branding dependencies
+        run: |
+          cd native && npm install --no-audit --no-fund
+          python -m pip install Pillow
+      - name: Generate Android project
+        working-directory: native
+        run: npx cap add android && npx cap sync android
+      - name: Install upload key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kayi-upload.jks"
+          chmod 600 "$RUNNER_TEMP/kayi-upload.jks"
+          echo "KAYI_ANDROID_KEYSTORE=$RUNNER_TEMP/kayi-upload.jks" >> "$GITHUB_ENV"
+      - name: Configure signed release and KAYI launcher assets
+        env:
+          KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python scripts/configure_native_release.py android
+          python scripts/generate_store_brand_assets.py --native
+      - name: Lint and build signed AAB
+        working-directory: native/android
+        env:
+          KAYI_ANDROID_KEYSTORE: ${{ env.KAYI_ANDROID_KEYSTORE }}
+          KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew lintRelease bundleRelease assembleRelease --stacktrace
+      - name: Verify signature and 16 KB APK alignment
+        working-directory: native
+        run: |
+          AAB="$(find android/app/build/outputs/bundle/release -name '*.aab' | head -n 1)"
+          APK="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          test -f "$AAB" && test -f "$APK"
+          JARSIGNER="${JAVA_HOME}/bin/jarsigner"
+          "$JARSIGNER" -verify -verbose -certs "$AAB" >/dev/null
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)"
+          "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KAYI-Google-Play-${{ inputs.app_version }}-${{ inputs.build_number }}
+          path: native/android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+  app-store-ipa:
+    runs-on: macos-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v5
+      - name: Require Apple signing secrets
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          test -n "$APPLE_CERTIFICATE_P12_BASE64"
+          test -n "$APPLE_CERTIFICATE_PASSWORD"
+          test -n "$APPLE_PROVISIONING_PROFILE_BASE64"
+          test -n "$APPLE_TEAM_ID"
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Require current App Store toolchain
+        run: |
+          xcodebuild -version
+          MAJOR="$(xcodebuild -version | awk '/Xcode/{split($2,v,"."); print v[1]}')"
+          test "$MAJOR" -ge 26
+          xcrun --sdk iphoneos --show-sdk-version | grep -E '^26(\.|$)'
+      - name: Install native and branding dependencies
+        run: |
+          cd native && npm install --no-audit --no-fund
+          python -m pip install Pillow
+      - name: Generate iOS project
+        working-directory: native
+        run: npx cap add ios && npx cap sync ios
+      - name: Configure release and KAYI AppIcon
+        run: |
+          python scripts/configure_native_release.py ios
+          python scripts/generate_store_brand_assets.py --native
+      - name: Install Apple distribution certificate and profile
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          CERT="$RUNNER_TEMP/kayi-distribution.p12"
+          PROFILE="$RUNNER_TEMP/kayi.mobileprovision"
+          KEYCHAIN="$RUNNER_TEMP/kayi-signing.keychain-db"
+          printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT"
+          printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          security import "$CERT" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k actions "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          security cms -D -i "$PROFILE" > "$RUNNER_TEMP/profile.plist"
+          UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "$RUNNER_TEMP/profile.plist")"
+          NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "$RUNNER_TEMP/profile.plist")"
+          APP_ID="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")"
+          case "$APP_ID" in *de.kayihaustechnik.app) ;; *) echo "Provisioning profile does not match de.kayihaustechnik.app"; exit 1;; esac
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "KAYI_PROFILE_NAME=$NAME" >> "$GITHUB_ENV"
+      - name: Archive signed App Store build
+        working-directory: native
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/KAYI.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            PROVISIONING_PROFILE_SPECIFIER="$KAYI_PROFILE_NAME" \
+            archive
+      - name: Export App Store Connect IPA
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+            <key>provisioningProfiles</key><dict>
+              <key>de.kayihaustechnik.app</key><string>${KAYI_PROFILE_NAME}</string>
+            </dict>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/KAYI.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          test -f "$RUNNER_TEMP/export/App.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KAYI-App-Store-${{ inputs.app_version }}-${{ inputs.build_number }}
+          path: ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: error
+          retention-days: 30

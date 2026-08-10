@@ -103,4 +103,21 @@ runpy.run_path(str(ROOT / "scripts" / "install_field_authorization.py"), run_nam
 # reintroduce English UI or the obsolete single-FileList photo flow.
 runpy.run_path(str(ROOT / "scripts" / "install_german_ui_quality.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "patch_german_browser_smoke.py"), run_name="__main__")
-print("KAYI Next, specialist flows, German-only UI and German browser audit installed and verified.")
+# Store compliance is last: public privacy/support/deletion and AI consent must
+# survive every product/UI patch that ran above.
+runpy.run_path(str(ROOT / "scripts" / "install_store_readiness.py"), run_name="__main__")
+# Release lint is intentionally fixed in source instead of being baselined or
+# suppressed, so Google Play validation still catches real scanner errors.
+runpy.run_path(str(ROOT / "scripts" / "patch_android_release_lint.py"), run_name="__main__")
+# Pin current ARCore and make it an optional enhancement: KAYI itself remains
+# installable on devices without native AR support, while the scanner performs
+# the required runtime availability/install handling when launched.
+runpy.run_path(str(ROOT / "scripts" / "patch_arcore_release.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "patch_arcore_optional.py"), run_name="__main__")
+# Legacy test cases must opt in exactly as a real user would; production guards
+# remain mandatory and are never bypassed for tests.
+runpy.run_path(str(ROOT / "scripts" / "patch_store_test_contract.py"), run_name="__main__")
+# The deployment smoke itself must verify the same public pages Store reviewers
+# and Google account-deletion crawlers will use after rollout.
+runpy.run_path(str(ROOT / "scripts" / "patch_store_browser_smoke.py"), run_name="__main__")
+print("KAYI Next, specialist flows, German-only UI, browser audit and store readiness installed and verified.")

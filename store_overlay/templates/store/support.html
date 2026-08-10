@@ -1,0 +1,11 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Support · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">HILFE</div><h1>KAYI Support</h1><p>Hilfe zu Anmeldung, Projekten, mobiler Dokumentation, Raumscan, Datenschutz und Kontolöschung.</p></div></div>
+<div class="nx-grid nx-grid-2">
+<section class="nx-card nx-card-pad"><h2>In der App</h2><p>Bei technischen Problemen bitte zuerst App und Internetverbindung prüfen und die App anschließend neu öffnen. Für betriebliche Fragen wende dich an die Organisation, die deinen KAYI-Zugang bereitgestellt hat.</p>{% if request.user.is_authenticated %}<a class="nx-btn nx-btn-primary" href="{% url 'next-settings' %}">Einstellungen öffnen</a>{% else %}<a class="nx-btn nx-btn-primary" href="/login/">Im Web anmelden</a>{% endif %}</section>
+<section class="nx-card nx-card-pad"><h2>Datenschutz & Konto</h2><p>Datenschutzinformationen und Löschanfragen sind öffentlich erreichbar und benötigen keine installierte App.</p><div class="nx-actions"><a class="nx-btn" href="{% url 'store-privacy' %}">Datenschutz</a><a class="nx-btn" href="{% url 'store-account-deletion' %}">Konto löschen</a></div></section>
+<section class="nx-card nx-card-pad"><h2>Raumscan</h2><p>Auf unterstützten Geräten kann KAYI Räume mit Kamera- und AR-Funktionen erfassen. Ergebnisse werden vor der Übernahme in das Projekt geprüft. Wenn ein Gerät die native Raumvermessung nicht unterstützt, bleibt die Fotoanalyse bzw. manuelle Bearbeitung verfügbar.</p></section>
+<section class="nx-card nx-card-pad"><h2>KI-Funktionen</h2><p>KI-Funktionen sind optional. Inhalte werden erst nach gesonderter Einwilligung verarbeitet. Die Einwilligung kann jederzeit in den Einstellungen widerrufen werden.</p></section>
+</div>
+{% endblock %}
