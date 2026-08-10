@@ -131,12 +131,12 @@ def patch_android_scanner_compatibility() -> None:
     text = text.replace("java.nio.file.Files.write(", "writeBytes(")
     text = text.replace(".toPath(),", ",")
 
-    helper = '''    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n\n'''
+    helper = '''\n    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n'''
     if "private static void writeBytes(" not in text:
-        marker = "    private void writePayload() throws Exception {\n"
-        if marker not in text:
-            raise RuntimeError("Could not locate Android scanner writePayload method for API24 compatibility patch")
-        text = text.replace(marker, helper + marker, 1)
+        class_match = re.search(r"public\s+class\s+ArCoreRoomScanActivity[^\{]*\{", text)
+        if not class_match:
+            raise RuntimeError("Could not locate Android scanner class declaration for API24 compatibility patch")
+        text = text[: class_match.end()] + helper + text[class_match.end() :]
 
     path.write_text(text, encoding="utf-8")
 
