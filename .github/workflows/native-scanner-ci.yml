@@ -23,6 +23,11 @@ jobs:
           grep -RInE 'OpenAI|analyze_room_photos|AIPhoto|ai/chat|ai-report|voice|transcri|audio|measurements/analyze' erp config templates mobile tests 2>/dev/null | head -n 220 || true
           echo '=== Existing legal/privacy/support references ==='
           grep -RInE 'Datenschutz|Privacy|privacy|Impressum|Support|support' erp config templates mobile 2>/dev/null | head -n 160 || true
+          echo '=== Android scanner source / API24 audit ==='
+          SCANNER='native/plugins/kayi-room-scanner/android/src/main/java/de/kayihaustechnik/scanner/ArCoreRoomScanActivity.java'
+          nl -ba "$SCANNER" | sed -n '1,190p'
+          echo '=== Scanner API26 candidates ==='
+          grep -nE 'java\.nio\.file|Files\.|Path\b|Paths\.|java\.time|Instant\.' "$SCANNER" || true
           echo '=== Native web/store assets ==='
           find native -maxdepth 4 -type f \( -iname '*.png' -o -iname '*.svg' -o -iname '*.webp' -o -iname '*.json' -o -iname '*.html' -o -iname '*.ts' \) | sort | head -n 220
       - uses: actions/setup-java@v5
