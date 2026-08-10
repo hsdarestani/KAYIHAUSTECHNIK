@@ -96,11 +96,20 @@ class CustomerAndRoomPlannerPolishTests(TestCase):
         self.assertEqual(RoomModelRevision.objects.filter(measurement=self.measurement).count(), before)
         adjust.assert_called_once()
 
-    def test_save_endpoint_still_accepts_authenticated_json(self):
-        response = self.client.post(
+    def test_save_endpoint_passes_real_csrf_enforcement_after_planner_get(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        self.assertTrue(csrf_client.login(username="polish-admin", password="very-secure-password"))
+        planner = csrf_client.get(reverse("next-room-planner", args=[self.project.pk]))
+        self.assertEqual(planner.status_code, 200)
+        self.assertIn("csrftoken", planner.cookies)
+        token = planner.cookies["csrftoken"].value
+        response = csrf_client.post(
             reverse("next-room-planner-save", args=[self.project.pk]),
-            data=json.dumps({"measurement_id": self.measurement.pk, "label": "Polish Save", "state": self.state()}),
+            data=json.dumps({"measurement_id": self.measurement.pk, "label": "CSRF Save", "state": self.state()}),
             content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+            HTTP_ACCEPT="application/json",
         )
         self.assertEqual(response.status_code, 201, response.content)
         self.assertEqual(RoomModelRevision.objects.filter(measurement=self.measurement).count(), 1)
