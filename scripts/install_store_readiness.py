@@ -130,17 +130,11 @@ def patch_android_scanner_compatibility() -> None:
         "import java.nio.file.StandardOpenOption;\r\n",
     ):
         text = text.replace(old_import, "")
-    # Cover any additional java.nio.file import that may be introduced by the
-    # generated scanner source. This remains safe because scanner storage uses
-    # java.io.File/FileOutputStream exclusively after the rewrite below.
     text = re.sub(r"(?m)^[ \t]*import\s+java\.nio\.file\.[^;]+;[ \t]*\r?\n?", "", text)
 
     if "import java.io.FileOutputStream;" not in text:
         text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
 
-    # Rewrite both fully-qualified and imported NIO write calls, independent of
-    # variable names or formatting. Files.write(file.toPath(), bytes) becomes
-    # writeBytes(file, bytes), avoiding API 26 Files/Path calls entirely.
     text = text.replace("java.nio.file.Files.write(", "writeBytes(")
     text = text.replace("Files.write(", "writeBytes(")
     text = text.replace(".toPath(),", ",")
@@ -184,7 +178,14 @@ def guard() -> None:
         forbidden = ("Instant.now()", "java.time.Instant", "java.nio.file.", "Files.write(", ".toPath()")
         remaining = [item for item in forbidden if item in scanner_text]
         if remaining:
-            raise RuntimeError(f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}")
+            offenders = [
+                f"{number}: {line.strip()}"
+                for number, line in enumerate(scanner_text.splitlines(), start=1)
+                if any(item in line for item in remaining)
+            ]
+            raise RuntimeError(
+                f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}; lines={offenders}"
+            )
         if "private static void writeBytes(" not in scanner_text:
             raise RuntimeError("Android scanner API24-compatible byte writer was not installed")
 
