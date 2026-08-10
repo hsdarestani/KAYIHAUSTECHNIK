@@ -49,26 +49,18 @@ def install_backend() -> None:
         if anchor not in urls:
             raise RuntimeError("KAYI Next URL import anchor changed")
         urls = urls.replace(anchor, anchor + "from . import assistant_views as assistant\n", 1)
+    anchor = '    path("settings/next/", views.settings_page, name="next-settings"),\n'
+    if anchor not in urls:
+        raise RuntimeError("KAYI Next settings route anchor changed")
     routes = [
         '    path("assistant/command/", assistant.assistant_command, name="next-assistant-command"),',
         '    path("appointments/<int:pk>/voice/", assistant.appointment_voice, name="next-appointment-voice"),',
         '    path("konto/abmelden/", assistant.account_logout, name="next-logout"),',
     ]
-    anchor = '    path("settings/next/", views.settings_page, name="next-settings"),\n'
-    if anchor not in urls:
-        raise RuntimeError("KAYI Next settings route anchor changed")
     for route in routes:
         if route not in urls:
             urls = urls.replace(anchor, anchor + route + "\n", 1)
     write(urls_path, urls)
-
-
-def patch_dependency() -> None:
-    path = "requirements.txt"
-    text = read(path)
-    if "reportlab" not in text.lower():
-        text = text.rstrip() + "\nreportlab>=4.4,<5\n"
-    write(path, text)
 
 
 def patch_base() -> None:
@@ -100,7 +92,7 @@ def patch_base() -> None:
     drawer = '''
 <button class="nx-assistant-fab" type="button" data-assistant-open aria-label="KAYI KI öffnen">✦</button>
 <aside class="nx-assistant-drawer" data-assistant-drawer data-assistant-url="{% url 'next-assistant-command' %}" aria-hidden="true">
-  <div class="nx-assistant-head"><div><div class="nx-kicker">KAYI KI</div><h3>Assistent für diese Seite</h3><p>Suchen, Felder ausfüllen, Selects wählen und Katalogpositionen vorbereiten.</p></div><button type="button" class="nx-assistant-close" data-assistant-close>×</button></div>
+  <div class="nx-assistant-head"><div><div class="nx-kicker">KAYI KI</div><h3>Assistent für diese Seite</h3><p>Suchen, Felder ausfüllen, Auswahlen treffen und Katalogpositionen vorbereiten.</p></div><button type="button" class="nx-assistant-close" data-assistant-close>×</button></div>
   <div class="nx-assistant-chat" data-assistant-chat><div class="nx-assistant-msg is-ai">Sag einfach, was du erledigen willst. Ich ändere nur den Entwurf – gespeichert oder versendet wird erst durch dich.</div></div>
   <div class="nx-assistant-suggestions"><button type="button" data-assistant-suggestion="Fülle die sichtbaren Felder anhand meiner Beschreibung aus.">Formular ausfüllen</button><button type="button" data-assistant-suggestion="Hilf mir, den richtigen Kunden oder das richtige Projekt zu finden.">Kunde / Projekt finden</button><button type="button" data-assistant-suggestion="Wähle passende Positionen aus dem sichtbaren Katalog aus.">Katalog wählen</button></div>
   <form class="nx-assistant-compose" data-assistant-form><textarea class="nx-control" data-assistant-input placeholder="z. B. Wähle Kunde Müller, Projekt Bad und Meier als Verantwortlichen …"></textarea><button class="nx-btn nx-btn-primary" type="submit">✦</button></form>
@@ -116,80 +108,152 @@ def patch_base() -> None:
     write(path, text)
 
 
-def patch_field_ui() -> None:
+def patch_field_home() -> None:
     path = "templates/rebuild/field_home.html"
     text = read(path)
+    text = text.replace(
+        "Kunden auswählen oder neu anlegen → Spracheingabe → Preis → Unterschrift → Arbeit starten.",
+        "Kunde → Auftrag & Preis → Unterschrift → Arbeit → Sprachnotiz → Kundenunterschrift → PDF.",
+    ).replace(
+        "Kunden auswählen oder neu anlegen → Voice → Preis → Unterschrift → Arbeit starten.",
+        "Kunde → Auftrag & Preis → Unterschrift → Arbeit → Sprachnotiz → Kundenunterschrift → PDF.",
+    )
     if "Vor Ort in einem Ablauf" not in text:
-        anchor = '  <div data-tabs>\n'
-        card = '''  <section class="nx-field-flow-card"><b>Vor Ort in einem Ablauf</b><p>Termin öffnen, Sprachnotiz aufnehmen, von KAYI KI in Bericht/Leistungen/Material strukturieren lassen, gemeinsam prüfen, unterschreiben und den Arbeitsnachweis direkt als PDF übergeben.</p><div class="nx-field-flow-steps"><span>1 · Aufnahme</span><span>2 · KI-Bericht</span><span>3 · Prüfen</span><span>4 · Unterschrift</span><span>5 · PDF</span></div></section>\n'''
-        if anchor not in text:
+        anchor = '<div data-tabs>'
+        index = text.find(anchor)
+        if index < 0:
             raise RuntimeError("Field home tabs anchor changed")
-        text = text.replace(anchor, card + anchor, 1)
+        card = '''<section class="nx-field-flow-card"><b>Vor Ort in einem Ablauf</b><p>Auftrag und Preis mit dem Kunden freigeben, arbeiten, danach eine echte Sprachnotiz aufnehmen, von KAYI KI in Bericht/Leistungen/Material umwandeln lassen, gemeinsam prüfen, unterschreiben und das Abschluss-PDF direkt übergeben.</p><div class="nx-field-flow-steps"><span>1 · Freigabe</span><span>2 · Arbeit</span><span>3 · Aufnahme</span><span>4 · KI-Bericht</span><span>5 · Unterschrift</span><span>6 · PDF</span></div></section>\n\n  '''
+        text = text[:index] + card + text[index:]
     write(path, text)
 
+
+def patch_field_template() -> None:
     path = "templates/rebuild/appointment_detail.html"
     text = read(path)
-    text = text.replace("AI strukturieren", "KI strukturieren").replace("AI Fehler", "KI Fehler")
-    if "data-field-voice" not in text:
-        anchor = '        <textarea class="nx-control" name="report_text" data-voice-target'
-        recording = '''        <div class="nx-voice-capture" data-field-voice data-transcribe-url="{% url 'next-appointment-voice' event.pk %}">
-          <label class="nx-voice-consent"><input type="checkbox" data-field-voice-consent><span>Der Ansprechpartner stimmt der Vor-Ort-Sprachaufnahme und der KI-Auswertung zu.</span></label>
-          <div class="nx-voice-controls"><button class="nx-btn nx-btn-primary" type="button" data-field-record>🎙 Vor-Ort-Sprachnotiz aufnehmen</button><button class="nx-btn" type="button" data-field-transcribe hidden>✦ Aufnahme mit KI auswerten</button><span class="nx-record-status" data-field-record-status>Noch keine Aufnahme.</span></div>
-          <audio class="nx-voice-preview" data-field-voice-preview controls hidden></audio>
-          <input type="file" name="voice_note" accept="audio/*" data-field-voice-file hidden><input type="hidden" name="voice_transcript">
-        </div>
-'''
-        if anchor not in text:
-            raise RuntimeError("Appointment report textarea anchor changed")
-        text = text.replace(anchor, recording + anchor, 1)
-    if "data-customer-reviewed" not in text:
-        anchor = '      <div class="nx-doc-section">\n        <div class="nx-doc-title"><div><b>Kundenunterschrift</b>'
-        review = '''      <div class="nx-doc-section"><div class="nx-handoff-review"><label><input type="checkbox" name="customer_reviewed" value="1" data-customer-reviewed required><span><b>Gemeinsam geprüft</b><br>Arbeitsbericht, ausgeführte Leistungen und Material wurden mit dem Ansprechpartner vor Ort durchgegangen.</span></label></div></div>\n'''
-        if anchor not in text:
-            raise RuntimeError("Appointment signature anchor changed")
-        text = text.replace(anchor, review + anchor, 1)
-    text = text.replace("✓ Einsatz dokumentieren", "✓ Einsatz abschließen & PDF erstellen")
-    if "data-handoff-result" not in text:
-        result = '''      <div class="nx-handoff-result" data-handoff-result hidden><b>✓ Einsatz abgeschlossen</b><p>Der unterschriebene Arbeitsnachweis wurde im Projekt gespeichert und steht als PDF zur Übergabe bereit.</p><div class="nx-actions"><a class="nx-btn nx-btn-primary" data-handoff-pdf target="_blank" download>PDF öffnen / herunterladen</a><button class="nx-btn" type="button" data-handoff-share>PDF teilen</button></div></div>\n'''
-        anchor = '    </form>\n'
-        if anchor not in text:
-            raise RuntimeError("Appointment documentation form close changed")
-        text = text.replace(anchor, result + anchor, 1)
+    text = text.replace("AI strukturieren", "KI strukturieren").replace("mit AI strukturieren", "mit KI strukturieren").replace("mit AI", "mit KI")
+
+    completion_form_marker = 'data-completion-form'
+    form_marker_at = text.find(completion_form_marker)
+    if form_marker_at >= 0:
+        form_start = text.rfind('<form', 0, form_marker_at)
+        form_end = text.find('</form>', form_marker_at)
+        if form_start < 0 or form_end < 0:
+            raise RuntimeError("Completion form boundaries changed")
+
+        if "data-field-voice" not in text[form_start:form_end]:
+            voice_anchor = text.find('<div class="fa-voice-field">', form_marker_at, form_end)
+            if voice_anchor < 0:
+                raise RuntimeError("Completion report block changed")
+            recording = '''<div class="nx-voice-capture" data-field-voice data-mode="completion" data-transcribe-url="{% url 'next-appointment-voice' event.pk %}">
+        <label class="nx-voice-consent"><input type="checkbox" data-field-voice-consent><span>Der Ansprechpartner stimmt der Vor-Ort-Sprachaufnahme und der KI-Auswertung zu.</span></label>
+        <div class="nx-voice-controls"><button class="nx-btn nx-btn-primary" type="button" data-field-record>🎙 Vor-Ort-Sprachnotiz aufnehmen</button><button class="nx-btn" type="button" data-field-transcribe hidden>✦ Aufnahme mit KI auswerten</button><span class="nx-record-status" data-field-record-status>Noch keine Aufnahme.</span></div>
+        <audio class="nx-voice-preview" data-field-voice-preview controls hidden></audio>
+        <input type="file" name="voice_note" accept="audio/*" data-field-voice-file hidden><input type="hidden" name="voice_transcript">
+      </div>
+      '''
+            text = text[:voice_anchor] + recording + text[voice_anchor:]
+            form_end += len(recording)
+
+        final_sign_pattern = re.compile(r'<details class="fa-final-sign">.*?</details>', re.S)
+        segment = text[form_start:form_end]
+        if "data-customer-reviewed" not in segment:
+            final_sign = '''<div class="fa-final-sign fa-final-sign-required">
+        <div class="fa-block-head"><div><b>Kundenunterschrift zum Abschluss</b><small>Bericht, Leistungen und Material gemeinsam prüfen. Die Unterschrift wird Bestandteil des Abschluss-PDF.</small></div></div>
+        <label class="fa-consent"><input type="checkbox" name="customer_reviewed" value="1" data-customer-reviewed required><span>Arbeitsbericht, ausgeführte Leistungen, Material und Ergebnis wurden gemeinsam geprüft.</span></label>
+        <canvas class="fa-signature" data-completion-signature-canvas></canvas><input type="hidden" name="completion_signature_data" data-completion-signature-data><button type="button" class="nx-btn nx-btn-ghost" data-completion-signature-clear>Unterschrift löschen</button>
+      </div>'''
+            new_segment, count = final_sign_pattern.subn(final_sign, segment, count=1)
+            if count != 1:
+                raise RuntimeError("Completion customer signature block changed")
+            text = text[:form_start] + new_segment + text[form_end:]
+            form_end = form_start + len(new_segment)
+
+        text = text.replace("✓ Einsatz abschließen & PDF erzeugen", "✓ Einsatz abschließen & PDF erstellen")
+        if "data-handoff-result" not in text[form_start:form_end]:
+            form_end_close = text.find('</form>', form_start)
+            result = '''<div class="nx-handoff-result" data-handoff-result hidden><b>✓ Einsatz abgeschlossen</b><p>Der unterschriebene Abschluss wurde archiviert. Das PDF kann jetzt direkt beim Kunden geöffnet oder geteilt werden.</p><div class="nx-actions"><a class="nx-btn nx-btn-primary" data-handoff-pdf target="_blank" download>PDF öffnen / herunterladen</a><button class="nx-btn" type="button" data-handoff-share>PDF teilen</button></div></div>\n      '''
+            text = text[:form_end_close] + result + text[form_end_close:]
+
+    text = re.sub(r"(field-authorization\.(?:css|js)' %\}\?v=)[^\"']+", rf"\g<1>{VERSION}", text)
     write(path, text)
 
 
 def patch_field_backend() -> None:
-    path = "erp/rebuild_views.py"
+    path = "erp/field_authorization_views.py"
     text = read(path)
-    marker = "KAYI_FIELD_HANDOFF_VALIDATION"
-    if marker not in text:
-        anchor = '    customer_name = (request.POST.get("customer_name") or "").strip()\n'
-        addition = '''    # KAYI_FIELD_HANDOFF_VALIDATION\n    voice_transcript = (request.POST.get("voice_transcript") or "").strip()\n    customer_reviewed = request.POST.get("customer_reviewed") == "1"\n    signature_data = request.POST.get("signature_data") or ""\n    if not customer_reviewed:\n        return JsonResponse({"ok": False, "error": "Bitte Bericht, Leistungen und Material gemeinsam mit dem Kunden prüfen."}, status=400)\n    if not signature_data.startswith("data:image/png;base64,"):\n        return JsonResponse({"ok": False, "error": "Bitte den Ansprechpartner vor Ort unterschreiben lassen."}, status=400)\n    try:\n        base64.b64decode(signature_data.split(",", 1)[1], validate=True)\n    except Exception:\n        return JsonResponse({"ok": False, "error": "Die Unterschrift ist ungültig. Bitte erneut unterschreiben."}, status=400)\n'''
-        if anchor not in text:
-            raise RuntimeError("Appointment customer name anchor changed")
-        text = text.replace(anchor, anchor + addition, 1)
-        payload_anchor = '        "customer_name": customer_name,\n        "source": "kayi-next-field",\n'
-        payload_new = '        "customer_name": customer_name,\n        "voice_transcript": voice_transcript,\n        "customer_reviewed": customer_reviewed,\n        "source": "kayi-next-field",\n'
-        if payload_anchor not in text:
-            raise RuntimeError("Appointment report payload anchor changed")
-        text = text.replace(payload_anchor, payload_new, 1)
 
-        photo_anchor = '''        photo.file.save(upload.name, upload, save=False)\n        photo.save()\n\n    signature_data = request.POST.get("signature_data") or ""\n'''
-        voice_block = '''        photo.file.save(upload.name, upload, save=False)\n        photo.save()\n\n    voice_upload = request.FILES.get("voice_note")\n    if voice_upload is not None:\n        voice_document = m.Document(\n            organization=org, customer=event.project.customer, project=event.project,\n            title=f"Vor-Ort-Sprachnotiz · {event.title}", category="other",\n            mime_type=getattr(voice_upload, "content_type", "") or "audio/webm",\n            size=getattr(voice_upload, "size", 0) or 0,\n            metadata={"event_id": event.pk, "kind": "field_voice_note", "transcript": voice_transcript, "source": "kayi-next-field"},\n            uploaded_by=request.user,\n        )\n        voice_document.file.save(getattr(voice_upload, "name", "einsatz.webm") or "einsatz.webm", voice_upload, save=False)\n        voice_document.save()\n\n    signature_data = request.POST.get("signature_data") or ""\n'''
-        if photo_anchor not in text:
-            raise RuntimeError("Appointment photo/signature anchor changed")
-        text = text.replace(photo_anchor, voice_block, 1)
+    auth_ai_anchor = '''def authorization_ai(request, pk):\n    org, event = _event_for(request, pk)\n'''
+    auth_ai_new = '''def authorization_ai(request, pk):\n    org, event = _event_for(request, pk)\n    from .store_views import has_ai_consent\n    if not has_ai_consent(request.user):\n        return JsonResponse({"ok": False, "error": "Vor der KI-Verarbeitung ist deine ausdrückliche Einwilligung in den Einstellungen erforderlich.", "consent_required": True, "settings_url": "/settings/next/"}, status=428)\n'''
+    if "authorization_ai(request, pk)" in text and "authorization_ai(request, pk):\n    org, event = _event_for(request, pk)\n    from .store_views import has_ai_consent" not in text:
+        if auth_ai_anchor not in text:
+            raise RuntimeError("Authorization KI consent anchor changed")
+        text = text.replace(auth_ai_anchor, auth_ai_new, 1)
 
-        status_anchor = '''    if event.project.status in {"inquiry", "planning", "quoted", "confirmed"}:\n'''
-        pdf_block = '''    from .assistant_views import build_field_report_pdf\n    pdf_document = build_field_report_pdf(\n        organization=org, event=event, user=request.user, report_text=report_text, services=services, material=material,\n        customer_name=customer_name, voice_transcript=voice_transcript, signature_data=signature_data,\n        photo_names=[upload.name for upload in request.FILES.getlist("photos")],\n    )\n\n'''
-        if status_anchor not in text:
-            raise RuntimeError("Appointment project status anchor changed")
-        text = text.replace(status_anchor, pdf_block + status_anchor, 1)
-        old_return = '    return JsonResponse({"ok": True, "redirect": f"/appointments/{event.pk}/"})\n'
-        new_return = '    return JsonResponse({"ok": True, "redirect": f"/appointments/{event.pk}/", "pdf_url": pdf_document.file.url, "pdf_document_id": pdf_document.pk})\n'
-        if old_return not in text:
-            raise RuntimeError("Appointment document response anchor changed")
-        text = text.replace(old_return, new_return, 1)
+    if "KAYI_FINAL_CUSTOMER_HANDOFF" not in text:
+        material_anchor = '''    material = (request.POST.get("material") or "").strip()\n'''
+        material_new = material_anchor + '''    # KAYI_FINAL_CUSTOMER_HANDOFF\n    voice_transcript = (request.POST.get("voice_transcript") or "").strip()\n    customer_reviewed = request.POST.get("customer_reviewed") == "1"\n    if not customer_reviewed:\n        return JsonResponse({"ok": False, "error": "Bitte Bericht, Leistungen und Material gemeinsam mit dem Kunden prüfen."}, status=400)\n'''
+        complete_at = text.find("def complete_job(request, pk):")
+        material_at = text.find(material_anchor, complete_at)
+        if complete_at < 0 or material_at < 0:
+            raise RuntimeError("Completion material anchor changed")
+        text = text[:material_at] + text[material_at:].replace(material_anchor, material_new, 1)
+
+        signature_anchor = '''    completion_signature = decode_signature(request.POST.get("completion_signature_data") or "")\n'''
+        signature_new = signature_anchor + '''    if not completion_signature:\n        return JsonResponse({"ok": False, "error": "Bitte den Kunden den Einsatzabschluss unterschreiben lassen."}, status=400)\n    voice_upload = request.FILES.get("voice_note")\n    voice_raw = b""\n    voice_mime = ""\n    voice_name = ""\n    if voice_upload is not None:\n        if getattr(voice_upload, "size", 0) > 20 * 1024 * 1024:\n            return JsonResponse({"ok": False, "error": "Die Sprachaufnahme ist größer als 20 MB."}, status=400)\n        voice_mime = (getattr(voice_upload, "content_type", "") or "audio/webm")[:120]\n        if not voice_mime.startswith("audio/"):\n            return JsonResponse({"ok": False, "error": "Die Sprachaufnahme hat ein ungültiges Dateiformat."}, status=400)\n        voice_name = Path(getattr(voice_upload, "name", "einsatz.webm") or "einsatz.webm").name\n        voice_raw = voice_upload.read()\n'''
+        complete_at = text.find("def complete_job(request, pk):")
+        sig_at = text.find(signature_anchor, complete_at)
+        if sig_at < 0:
+            raise RuntimeError("Completion signature anchor changed")
+        text = text[:sig_at] + text[sig_at:].replace(signature_anchor, signature_new, 1)
+
+        snapshot_anchor = '''        "material": material,\n'''
+        snapshot_new = snapshot_anchor + '''        "voice_transcript": voice_transcript,\n        "customer_reviewed": customer_reviewed,\n'''
+        complete_at = text.find("def complete_job(request, pk):")
+        snap_at = text.find(snapshot_anchor, complete_at)
+        if snap_at < 0:
+            raise RuntimeError("Completion snapshot anchor changed")
+        text = text[:snap_at] + text[snap_at:].replace(snapshot_anchor, snapshot_new, 1)
+
+        transaction_anchor = '''    with transaction.atomic():\n        for photo in after_photos:\n'''
+        transaction_new = '''    with transaction.atomic():\n        if voice_raw:\n            save_binary_document(\n                org=org, project=event.project, customer=event.project.customer, user=request.user,\n                title=f"Vor-Ort-Sprachnotiz · {event.title}", category="other",\n                filename=f"voice-{event.pk}-{timezone.now():%Y%m%d%H%M%S}-{voice_name}", mime=voice_mime, raw=voice_raw,\n                metadata={"event_id": event.pk, "kind": "field_voice_note", "phase": "after", "transcript": voice_transcript, "completion_snapshot_sha256": completion_hash},\n            )\n        for photo in after_photos:\n'''
+        complete_at = text.find("def complete_job(request, pk):")
+        transaction_at = text.find(transaction_anchor, complete_at)
+        if transaction_at < 0:
+            raise RuntimeError("Completion transaction anchor changed")
+        text = text[:transaction_at] + text[transaction_at:].replace(transaction_anchor, transaction_new, 1)
+
+        old_signature_save = '''        signature_doc = None\n        if completion_signature:\n            signature_doc = save_binary_document(\n                org=org, project=event.project, customer=event.project.customer, user=request.user,\n                title="Kundenunterschrift Einsatzabschluss", category="other", filename=f"completion-signature-{event.pk}-{timezone.now():%Y%m%d%H%M%S}.png", mime="image/png", raw=completion_signature,\n                metadata={"event_id": event.pk, "kind": "field_completion_signature", "phase": "after", "completion_snapshot_sha256": completion_hash},\n            )\n'''
+        new_signature_save = '''        signature_doc = save_binary_document(\n            org=org, project=event.project, customer=event.project.customer, user=request.user,\n            title="Kundenunterschrift Einsatzabschluss", category="other", filename=f"completion-signature-{event.pk}-{timezone.now():%Y%m%d%H%M%S}.png", mime="image/png", raw=completion_signature,\n            metadata={"event_id": event.pk, "kind": "field_completion_signature", "phase": "after", "completion_snapshot_sha256": completion_hash},\n        )\n'''
+        if old_signature_save not in text:
+            raise RuntimeError("Completion signature persistence contract changed")
+        text = text.replace(old_signature_save, new_signature_save, 1)
+        text = text.replace('"signature_document_id": signature_doc.pk if signature_doc else None', '"signature_document_id": signature_doc.pk', 1)
+    write(path, text)
+
+
+def patch_field_js() -> None:
+    path = "static/js/field-authorization.js"
+    text = read(path)
+    text = text.replace("AI analysiert", "KI analysiert").replace("AI nicht erreichbar", "KI nicht erreichbar")
+    old_fetch = "const res = await fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrf(form) }, body: new FormData(form) }); const data = await res.json();"
+    new_fetch = "const res = await fetch(form.action, { method: 'POST', credentials: 'same-origin', headers: { 'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRFToken': csrf(form) }, body: new FormData(form) }); const data = await res.json();"
+    if new_fetch not in text:
+        if old_fetch not in text:
+            raise RuntimeError("Field form fetch contract changed")
+        text = text.replace(old_fetch, new_fetch, 1)
+    old_redirect = "if (data.redirect) window.location.href = data.redirect; else if (data.reload) window.location.reload();\n      return data;"
+    new_redirect = "if (form.matches('[data-completion-form]') && data.pdf_url && window.KAYIFieldHandoff?.showResult(data)) { if (button) button.hidden = true; return data; }\n      if (data.redirect) window.location.href = data.redirect; else if (data.reload) window.location.reload();\n      return data;"
+    if new_redirect not in text:
+        if old_redirect not in text:
+            raise RuntimeError("Field completion response contract changed")
+        text = text.replace(old_redirect, new_redirect, 1)
+    old_submit = "form.addEventListener('submit', (e) => { e.preventDefault(); postForm(form, $('[data-completion-status]', form)); });"
+    new_submit = "form.addEventListener('submit', (e) => { e.preventDefault(); const reviewed = $('[data-customer-reviewed]', form); const signature = $('[data-completion-signature-data]', form); if (!reviewed?.checked) { toast('Bitte den Abschluss gemeinsam mit dem Kunden prüfen.', 'error'); return; } if (!signature?.value) { toast('Bitte Kundenunterschrift zum Abschluss erfassen.', 'error'); return; } postForm(form, $('[data-completion-status]', form)); });"
+    if new_submit not in text:
+        if old_submit not in text:
+            raise RuntimeError("Field completion submit contract changed")
+        text = text.replace(old_submit, new_submit, 1)
     write(path, text)
 
 
@@ -197,12 +261,6 @@ def patch_assets() -> None:
     append_once("static/css/kayi-next.css", "static/css/global-assistant.css")
     js_path = "static/js/kayi-next.js"
     js = read(js_path)
-    redirect_old = '        window.location.href = result.redirect || window.location.href;\n'
-    redirect_new = '        if (result.pdf_url && window.KAYIFieldHandoff?.showResult(result)) return;\n        window.location.href = result.redirect || window.location.href;\n'
-    if redirect_new not in js:
-        if redirect_old not in js:
-            raise RuntimeError("Documentation result redirect anchor changed")
-        js = js.replace(redirect_old, redirect_new, 1)
     addition = (OVERLAY / "static" / "js" / "global-assistant.js").read_text(encoding="utf-8")
     if MARKER not in js:
         js = js.rstrip() + "\n\n" + addition.strip() + "\n"
@@ -210,10 +268,7 @@ def patch_assets() -> None:
 
 
 def install_tests() -> None:
-    source = OVERLAY / "tests" / "test_global_ai_field_handoff.py"
-    target = ROOT / "tests" / "test_global_ai_field_handoff.py"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
+    copy("tests/test_global_ai_field_handoff.py")
 
 
 def patch_browser_smoke() -> None:
@@ -239,37 +294,41 @@ def guard() -> None:
     appointment = read("templates/rebuild/appointment_detail.html")
     field = read("templates/rebuild/field_home.html")
     urls = read("erp/rebuild_urls.py")
-    views = read("erp/rebuild_views.py")
-    js = read("static/js/kayi-next.js")
+    field_views = read("erp/field_authorization_views.py")
+    next_js = read("static/js/kayi-next.js")
+    field_js = read("static/js/field-authorization.js")
     css = read("static/css/kayi-next.css")
-    requirements = read("requirements.txt")
     for needle in ["data-profile-toggle", "data-profile-menu", "data-global-assistant-form", "data-assistant-drawer", "next-logout"]:
         if needle not in base:
             raise RuntimeError(f"Global KI/profile UI missing: {needle}")
     for needle in ["next-assistant-command", "next-appointment-voice", "next-logout"]:
         if needle not in urls:
             raise RuntimeError(f"Global KI route missing: {needle}")
-    for needle in ["data-field-voice", "data-customer-reviewed", "Einsatz abschließen & PDF erstellen", "data-handoff-result"]:
+    for needle in ["data-field-voice", "data-customer-reviewed", "Kundenunterschrift zum Abschluss", "Einsatz abschließen & PDF erstellen", "data-handoff-result"]:
         if needle not in appointment:
             raise RuntimeError(f"Field handoff UI missing: {needle}")
     if "Vor Ort in einem Ablauf" not in field:
         raise RuntimeError("Field workflow is not discoverable on Monteur-App home")
-    for needle in ["KAYI_FIELD_HANDOFF_VALIDATION", "field_voice_note", "build_field_report_pdf", '"pdf_url"']:
-        if needle not in views:
-            raise RuntimeError(f"Field handoff backend missing: {needle}")
-    if MARKER not in js or MARKER not in css:
-        raise RuntimeError("Global KI assets were not installed")
-    if "reportlab" not in requirements.lower():
-        raise RuntimeError("Signed PDF dependency missing")
+    for needle in ["KAYI_FINAL_CUSTOMER_HANDOFF", "field_voice_note", "customer_reviewed", "signature_doc.pk"]:
+        if needle not in field_views:
+            raise RuntimeError(f"Real field handoff backend missing: {needle}")
+    for needle in ["KAYIFieldHandoff", "data-field-voice", "MediaRecorder"]:
+        if needle not in next_js:
+            raise RuntimeError(f"Global/voice runtime missing: {needle}")
+    if "KAYIFieldHandoff?.showResult" not in field_js or "Kundenunterschrift zum Abschluss erfassen" not in field_js:
+        raise RuntimeError("Field completion JS does not enforce/show signed PDF handoff")
+    if MARKER not in css:
+        raise RuntimeError("Global KI styles were not installed")
 
 
 install_backend()
-patch_dependency()
 patch_base()
-patch_field_ui()
+patch_field_home()
+patch_field_template()
 patch_field_backend()
+patch_field_js()
 patch_assets()
 install_tests()
 patch_browser_smoke()
 guard()
-print("KAYI global KI assistant, working profile menu, real field voice capture, signed handoff PDF and browser guards installed.")
+print("KAYI global KI, working profile menu and the real signed field voice-to-PDF handoff are installed and verified.")
