@@ -93,7 +93,7 @@
     controller?.abort(); controller = new AbortController();
     status.textContent = 'B&O-Preisliste wird durchsucht …';
     try {
-      const url = new URL(root.dataset.boDirectSearch, window.location.origin);
+      const url = new URL(root.dataset.boSearchUrl, window.location.origin);
       url.searchParams.set('q', query);
       const response = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}, signal:controller.signal});
       const data = await response.json();
