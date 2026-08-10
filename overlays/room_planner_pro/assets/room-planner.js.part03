@@ -1,0 +1,106 @@
+ldWallWithOpenings(def, h, baseWallMat));
+
+  if (state.view.show_ceiling) {
+    ceilingMesh = box(w, 0.045, l, material(0xf7f7f5, { roughness: 0.95, transparent: true, opacity: 0.42, side: THREE.DoubleSide }));
+    ceilingMesh.position.set(w / 2, h + 0.022, l / 2);
+    ceilingMesh.receiveShadow = true;
+    world.add(ceilingMesh);
+  }
+
+  gridHelper = new THREE.GridHelper(Math.max(w, l) * 2.2, Math.max(8, Math.round(Math.max(w, l) * 20)), 0x8b94a3, 0xd9dde4);
+  gridHelper.position.set(w / 2, 0.004, l / 2);
+  gridHelper.visible = Boolean(state.view.grid);
+  gridHelper.material.opacity = 0.24;
+  gridHelper.material.transparent = true;
+  world.add(gridHelper);
+}
+
+function wallOpenings(name) {
+  return state.openings.filter((o) => o.enabled !== false && o.wall === name).sort((a, b) => a.offset_m - b.offset_m);
+}
+function buildWallWithOpenings(def, roomHeight, makeMaterial) {
+  const t = state.room.wall_thickness_m;
+  const spans = [{ a: 0, b: def.length, y0: 0, y1: roomHeight }];
+  const openings = wallOpenings(def.name).map((o) => ({
+    ...o,
+    a: clamp(Number(o.offset_m || 0), 0, def.length),
+    b: clamp(Number(o.offset_m || 0) + Number(o.width_m || 0.8), 0, def.length),
+    y0: clamp(Number(o.sill_height_m || 0), 0, roomHeight),
+    y1: clamp(Number(o.sill_height_m || 0) + Number(o.height_m || 2), 0, roomHeight)
+  })).filter((o) => o.b > o.a && o.y1 > o.y0);
+
+  // Segment the wall into vertical strips at every opening edge, then fill non-opening vertical intervals.
+  const xs = [...new Set([0, def.length, ...openings.flatMap((o) => [o.a, o.b])])].sort((a, b) => a - b);
+  for (let i = 0; i < xs.length - 1; i++) {
+    const a = xs[i], b = xs[i + 1];
+    if (b - a < 0.005) continue;
+    const mid = (a + b) / 2;
+    const cuts = openings.filter((o) => mid >= o.a - 1e-5 && mid <= o.b + 1e-5).map((o) => [o.y0, o.y1]).sort((x, y) => x[0] - y[0]);
+    const ys = [0];
+    cuts.forEach(([c0, c1]) => { ys.push(c0, c1); });
+    ys.push(roomHeight);
+    const sortedY = [...new Set(ys.map((v) => clamp(v, 0, roomHeight)))].sort((x, y) => x - y);
+    for (let j = 0; j < sortedY.length - 1; j++) {
+      const y0 = sortedY[j], y1 = sortedY[j + 1];
+      const ym = (y0 + y1) / 2;
+      if (cuts.some(([c0, c1]) => ym > c0 + 1e-5 && ym < c1 - 1e-5)) continue;
+      if (y1 - y0 < 0.005) continue;
+      const seg = def.axis === 'x' ? box(b - a, y1 - y0, t, makeMaterial()) : box(t, y1 - y0, b - a, makeMaterial());
+      if (def.name === 'back') seg.position.set((a + b) / 2, (y0 + y1) / 2, -t / 2);
+      if (def.name === 'front') seg.position.set((a + b) / 2, (y0 + y1) / 2, state.room.length_m + t / 2);
+      if (def.name === 'left') seg.position.set(-t / 2, (y0 + y1) / 2, (a + b) / 2);
+      if (def.name === 'right') seg.position.set(state.room.width_m + t / 2, (y0 + y1) / 2, (a + b) / 2);
+      seg.userData = { role: 'wall', wall: def.name };
+      wallMeshes.push(seg); world.add(seg);
+    }
+  }
+  openings.forEach((opening) => buildOpeningVisual(opening, def));
+}
+
+function buildOpeningVisual(o, def) {
+  const group = new THREE.Group();
+  group.userData = { role: 'opening', id: o.id, source: o };
+  const frameMat = material(o.kind === 'window' ? 0xbfc7ce : 0x9b7d61, { roughness: 0.58 });
+  const glassMat = material(0x92c3db, { roughness: 0.12, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+  const ww = Math.max(0.2, o.width_m); const hh = Math.max(0.2, o.height_m); const sill = o.sill_height_m || 0;
+  const frame = 0.035; const depth = Math.max(0.05, state.room.wall_thickness_m * 1.35);
+  const along = o.offset_m + ww / 2;
+  const y = sill + hh / 2;
+  if (def.axis === 'x') {
+    addPart(group, box(frame, hh, depth, frameMat), -ww / 2, 0, 0);
+    addPart(group, box(frame, hh, depth, frameMat), ww / 2, 0, 0);
+    addPart(group, box(ww + frame, frame, depth, frameMat), 0, hh / 2, 0);
+    if (sill > 0.02 || o.kind === 'window') addPart(group, box(ww + frame, frame, depth, frameMat), 0, -hh / 2, 0);
+    if (o.kind === 'window') addPart(group, box(ww - frame * 1.8, hh - frame * 1.8, 0.012, glassMat), 0, 0, 0);
+    group.position.set(along, y, def.name === 'back' ? -state.room.wall_thickness_m * 0.12 : state.room.length_m + state.room.wall_thickness_m * 0.12);
+  } else {
+    addPart(group, box(depth, hh, frame, frameMat), 0, 0, -ww / 2);
+    addPart(group, box(depth, hh, frame, frameMat), 0, 0, ww / 2);
+    addPart(group, box(depth, frame, ww + frame, frameMat), 0, hh / 2, 0);
+    if (sill > 0.02 || o.kind === 'window') addPart(group, box(depth, frame, ww + frame, frameMat), 0, -hh / 2, 0);
+    if (o.kind === 'window') addPart(group, box(0.012, hh - frame * 1.8, ww - frame * 1.8, glassMat), 0, 0, 0);
+    group.position.set(def.name === 'left' ? -state.room.wall_thickness_m * 0.12 : state.room.width_m + state.room.wall_thickness_m * 0.12, y, along);
+  }
+  group.traverse((m) => { if (m.isMesh) m.userData = group.userData; });
+  openingMeshes.push(group); sceneObjectMap.set(o.id, group); world.add(group);
+}
+
+function buildObjects() {
+  state.objects.filter((o) => o.enabled !== false).forEach((o) => {
+    const group = createObjectMesh(o);
+    placeObjectGroup(group, o);
+    group.userData = { role: 'object', id: o.id, source: o };
+    group.traverse((m) => { if (m.isMesh) m.userData = group.userData; });
+    sceneObjectMap.set(o.id, group);
+    world.add(group);
+  });
+}
+
+function createObjectMesh(o) {
+  const g = new THREE.Group();
+  const w = o.width_m, d = o.depth_m, h = o.height_m;
+  const base = material(o.color || defaultColor(o.kind));
+  const dark = material(0x4b5058, { roughness: 0.48, metalness: 0.2 });
+  const white = material(0xf1f3f5, { roughness: 0.55 });
+  const chrome = material(0xaab1b7, { roughness: 0.25, metalness: 0.65 });
+  const glass = material(0xa8d5e6, { roughness: 0.12, transparent: tr
