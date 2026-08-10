@@ -106,6 +106,9 @@ runpy.run_path(str(ROOT / "scripts" / "patch_german_browser_smoke.py"), run_name
 # Store compliance is last: public privacy/support/deletion and AI consent must
 # survive every product/UI patch that ran above.
 runpy.run_path(str(ROOT / "scripts" / "install_store_readiness.py"), run_name="__main__")
+# Release lint is intentionally fixed in source instead of being baselined or
+# suppressed, so Google Play validation still catches real scanner errors.
+runpy.run_path(str(ROOT / "scripts" / "patch_android_release_lint.py"), run_name="__main__")
 # Legacy test cases must opt in exactly as a real user would; production guards
 # remain mandatory and are never bypassed for tests.
 runpy.run_path(str(ROOT / "scripts" / "patch_store_test_contract.py"), run_name="__main__")
