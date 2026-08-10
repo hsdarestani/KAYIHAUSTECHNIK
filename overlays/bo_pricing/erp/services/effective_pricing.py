@@ -143,8 +143,8 @@ def _semantic_bo_matches(org, items):
     """Match KAYI's short internal service names to the imported B&O catalogue.
 
     KAYI intentionally keeps stable internal codes such as S1002 while B&O uses
-    VA04 codes.  A semantic fallback is therefore required when an explicit
-    external code has not yet been stored.  It is deliberately conservative:
+    VA04 codes. A semantic fallback is therefore required when an explicit
+    external code has not yet been stored. It is deliberately conservative:
     at least two meaningful service tokens must match, all tokens of a two-word
     KAYI service must be present, and the shortest/closest B&O description wins.
     Price rows are streamed so the 13k+ reference library is not loaded twice.
@@ -153,8 +153,6 @@ def _semantic_bo_matches(org, items):
     inverted = defaultdict(set)
     for item in items:
         tokens = _tokens(" ".join(part for part in (getattr(item, "name", ""), getattr(item, "description", "")) if part))
-        # The short display name is the authoritative matching surface. Long
-        # descriptions may contain unrelated room/project prose.
         name_tokens = _tokens(getattr(item, "name", ""))
         if len(name_tokens) >= 2:
             tokens = name_tokens
@@ -193,10 +191,6 @@ def _semantic_bo_matches(org, items):
                 continue
             if len(qset) >= 3 and coverage < 0.75:
                 continue
-            # Fewer unrelated B&O words means the row is the generic/base
-            # position rather than a more specific variant. This makes e.g.
-            # "Waschtisch montieren" resolve to the concise Montage-Waschtisch
-            # position instead of an arbitrary specialised variant.
             precision = overlap / max(len(row_tokens), 1)
             extra_words = max(len(row_tokens) - overlap, 0)
             price_score = _candidate_score(row) or (0, 0, 0, 0)
@@ -232,18 +226,26 @@ def apply_effective_prices(org, catalog_items):
 
     unresolved = []
     matched = {}
+    fallback_rows = {}
     for item in items:
         candidates = [best.get(code) for code in codes_by_item.get(item.pk, ()) if best.get(code) is not None]
         bo_candidates = [row for row in candidates if _is_bo(row) and _price_value(row)[0] is not None]
-        row = bo_candidates[0] if bo_candidates else (candidates[0] if candidates else None)
-        if row is not None:
+        if bo_candidates:
+            row = bo_candidates[0]
             matched[item.pk] = (row, "code" if (row.code or "").strip() == (item.code or "").strip() else "external_code")
-        elif not _positive(item.sales_price):
+            continue
+        if candidates:
+            row = candidates[0]
+            fallback_rows[item.pk] = (row, "code" if (row.code or "").strip() == (item.code or "").strip() else "external_code")
+        if not _positive(item.sales_price):
             unresolved.append(item)
 
     semantic = _semantic_bo_matches(org, unresolved)
     for item_id, row in semantic.items():
         matched[item_id] = (row, "semantic")
+    for item_id, pair in fallback_rows.items():
+        if item_id not in matched:
+            matched[item_id] = pair
 
     for item in items:
         pair = matched.get(item.pk)
