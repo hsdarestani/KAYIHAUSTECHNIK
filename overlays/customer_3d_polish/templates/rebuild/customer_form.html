@@ -1,0 +1,95 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Neuer Kunde · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Kundenstamm</div><h1>Neuen Kunden anlegen</h1><p>Nur die wichtigsten Angaben zuerst. Weitere Daten und ein abweichender Einsatzort können bei Bedarf ergänzt werden.</p></div></div>
+
+<form class="nx-form nx-customer-form" method="post" data-customer-form>{% csrf_token %}
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 16px"><div><h2>Kundendaten</h2><p>Kontakt und Rechnungsadresse.</p></div></div>
+
+    <div class="nx-form-grid">
+      {% for field in form %}
+        {% if field.name == 'type' or field.name == 'company' or field.name == 'first_name' or field.name == 'last_name' or field.name == 'email' or field.name == 'phone' or field.name == 'mobile' or field.name == 'street' or field.name == 'postal_code' or field.name == 'city' %}
+        <div class="nx-field {% if field.name == 'company' %}nx-company-field{% endif %}" {% if field.name == 'company' %}data-company-field{% endif %}>
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.name == 'company' %} <span class="nx-muted" data-company-optional>optional</span>{% endif %}</label>
+          {{ field }}{{ field.errors }}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <details class="nx-progressive" data-more-details {% if form.salutation.errors or form.country.errors or form.vat_id.errors or form.notes.errors %}open{% endif %}>
+      <summary><span>＋ Weitere Angaben</span><small>Anrede, Land, USt-IdNr. und Notizen</small></summary>
+      <div class="nx-form-grid nx-progressive-body">
+        {% for field in form %}
+          {% if field.name == 'salutation' or field.name == 'country' or field.name == 'vat_id' or field.name == 'notes' %}
+          <div class="nx-field {% if field.name == 'notes' %}nx-field-full{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+  </section>
+
+  <details class="nx-card nx-card-pad nx-progressive nx-location-progressive" data-location-details {% if location_form.errors %}open{% endif %}>
+    <summary>
+      <span>＋ Abweichenden Einsatzort hinzufügen</span>
+      <small>Nur wenn der Einsatzort von der Rechnungsadresse abweicht.</small>
+    </summary>
+    <div class="nx-form-grid nx-progressive-body">
+      {% for field in location_form %}
+        <div class="nx-field {% if field.name == 'access_notes' %}nx-field-full{% endif %}">
+          <label for="{{ field.id_for_label }}">
+            {% if field.name == 'name' %}Bezeichnung
+            {% elif field.name == 'street' %}Straße
+            {% elif field.name == 'postal_code' %}PLZ
+            {% elif field.name == 'city' %}Ort
+            {% elif field.name == 'floor' %}Etage
+            {% elif field.name == 'access_notes' %}Hinweise zum Zugang
+            {% else %}{{ field.label }}{% endif %}
+          </label>
+          {{ field }}{{ field.errors }}
+        </div>
+      {% endfor %}
+    </div>
+  </details>
+
+  <div class="nx-form-actions"><a class="nx-btn" href="{% url 'next-customers' %}">Abbrechen</a><button class="nx-btn nx-btn-primary" type="submit">Kunde anlegen</button></div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const form = document.querySelector('[data-customer-form]');
+  if (!form) return;
+  const type = form.querySelector('[name="type"]');
+  const companyWrap = form.querySelector('[data-company-field]');
+  const company = form.querySelector('[name="company"]');
+  const locationName = form.querySelector('[name="name"]');
+
+  const syncCustomerType = () => {
+    if (!type || !companyWrap) return;
+    const option = type.options[type.selectedIndex];
+    const privateCustomer = String(type.value || '').toLowerCase().includes('private') || /privat/i.test(option?.textContent || '');
+    companyWrap.classList.toggle('is-secondary', privateCustomer);
+    const optional = companyWrap.querySelector('[data-company-optional]');
+    if (optional) optional.textContent = privateCustomer ? 'optional' : '';
+    if (company) company.placeholder = privateCustomer ? 'optional bei Privatkunden' : 'Firmenname';
+  };
+
+  if (locationName) {
+    if (locationName.value.trim() === 'Objekt') locationName.value = '';
+    locationName.placeholder = 'z. B. Wohnung EG oder Filiale Innenstadt';
+  }
+  const floor = form.querySelector('[name="floor"]');
+  if (floor) floor.placeholder = 'z. B. EG, 2. OG';
+  const access = form.querySelector('[name="access_notes"]');
+  if (access) access.placeholder = 'z. B. Klingel links, Schlüssel beim Hausmeister';
+
+  type?.addEventListener('change', syncCustomerType);
+  syncCustomerType();
+})();
+</script>
+{% endblock %}
