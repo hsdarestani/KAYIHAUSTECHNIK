@@ -9,13 +9,46 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / "native"
+DESUGAR_DEP = "coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'"
+
+
+def _enable_android_desugaring(path: Path) -> None:
+    if not path.exists():
+        raise RuntimeError(f"Android Gradle file missing: {path}")
+    text = path.read_text(encoding="utf-8")
+    if "coreLibraryDesugaringEnabled true" not in text:
+        compile_options = re.search(r"compileOptions\s*\{", text)
+        if compile_options:
+            pos = compile_options.end()
+            text = text[:pos] + "\n        coreLibraryDesugaringEnabled true" + text[pos:]
+        else:
+            android_block = re.search(r"android\s*\{", text)
+            if not android_block:
+                raise RuntimeError(f"Could not find android block in {path}")
+            pos = android_block.end()
+            text = text[:pos] + "\n    compileOptions {\n        coreLibraryDesugaringEnabled true\n        sourceCompatibility JavaVersion.VERSION_1_8\n        targetCompatibility JavaVersion.VERSION_1_8\n    }" + text[pos:]
+    if DESUGAR_DEP not in text:
+        dependencies = re.search(r"dependencies\s*\{", text)
+        if dependencies:
+            pos = dependencies.end()
+            text = text[:pos] + f"\n    {DESUGAR_DEP}" + text[pos:]
+        else:
+            text += f"\n\ndependencies {{\n    {DESUGAR_DEP}\n}}\n"
+    path.write_text(text, encoding="utf-8")
 
 
 def android(version: str, build: str) -> None:
     app_gradle = NATIVE / "android" / "app" / "build.gradle"
+    scanner_gradle = NATIVE / "plugins" / "kayi-room-scanner" / "android" / "build.gradle"
     manifest = NATIVE / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
     if not app_gradle.exists() or not manifest.exists():
         raise SystemExit("Android project is not generated. Run `npx cap add android && npx cap sync android` first.")
+
+    # java.time is used by the ARCore scanner while KAYI intentionally keeps
+    # Android 7+ support (minSdk 24). Enable official core-library desugaring in
+    # both the app and the library module so isolated library lint also sees it.
+    _enable_android_desugaring(app_gradle)
+    _enable_android_desugaring(scanner_gradle)
 
     text = app_gradle.read_text(encoding="utf-8")
     text = re.sub(r"versionCode\s+\d+", f"versionCode {int(build)}", text, count=1)
@@ -41,7 +74,7 @@ def android(version: str, build: str) -> None:
     if "android:usesCleartextTraffic" not in mtext:
         mtext = mtext.replace("<application", '<application android:usesCleartextTraffic="false"', 1)
     manifest.write_text(mtext, encoding="utf-8")
-    print(f"Android release configured: {version} ({build})")
+    print(f"Android release configured: {version} ({build}); Java API desugaring enabled for app and room scanner")
 
 
 def _add_privacy_manifest_to_xcode(project: Path) -> None:
@@ -102,8 +135,6 @@ def ios(version: str, build: str) -> None:
     with plist.open("wb") as fh:
         plistlib.dump(info, fh, sort_keys=False)
 
-    # These are the data categories KAYI itself may persist when the corresponding
-    # business feature is used. Third-party SDKs keep their own privacy manifests.
     collected = [
         "NSPrivacyCollectedDataTypeName",
         "NSPrivacyCollectedDataTypeEmailAddress",
