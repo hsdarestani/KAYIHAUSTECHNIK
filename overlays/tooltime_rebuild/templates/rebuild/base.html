@@ -6,16 +6,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111418">
   <title>{% block title %}KAYI{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260810-1">
+  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260810-2">
 </head>
-<body class="nx-body">
+<body class="nx-body {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}nx-field-role{% endif %}">
 <div class="nx-shell">
   <aside class="nx-sidebar">
-    <a class="nx-brand" href="{% url 'next-dashboard' %}">
-      <span class="nx-brandmark">K</span>
-      <span><strong>KAYI</strong><small>Work OS</small></span>
+    <a class="nx-brand" href="{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}{% url 'next-field' %}{% else %}{% url 'next-dashboard' %}{% endif %}">
+      <span class="nx-brandmark">K</span><span><strong>KAYI</strong><small>{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}Monteur{% else %}Work OS{% endif %}</small></span>
     </a>
     <nav class="nx-nav">
+      {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}
+      <div class="nx-nav-label">Baustelle</div>
+      <a class="{% if request.resolver_match.url_name == 'next-field' %}is-active{% endif %}" href="{% url 'next-field' %}"><span class="nx-ico">◫</span>Termine</a>
+      <a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span class="nx-ico">◷</span>Zeiterfassung</a>
+      <a href="{% url 'next-settings' %}"><span class="nx-ico">◎</span>Konto</a>
+      {% else %}
       <div class="nx-nav-label">Übersicht</div>
       <a class="{% if request.resolver_match.url_name == 'next-dashboard' %}is-active{% endif %}" href="{% url 'next-dashboard' %}"><span class="nx-ico">⌂</span>Start</a>
       <a class="{% if 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-appointments' %}"><span class="nx-ico">◫</span>Termine</a>
@@ -29,26 +34,24 @@
       <a href="{% url 'next-field' %}"><span class="nx-ico">⌁</span>Monteur-App</a>
       <a class="{% if request.resolver_match.url_name == 'next-tooltime-migration' %}is-active{% endif %}" href="{% url 'next-tooltime-migration' %}"><span class="nx-ico">⇄</span>ToolTime Import</a>
       <a class="{% if request.resolver_match.url_name == 'next-settings' %}is-active{% endif %}" href="{% url 'next-settings' %}"><span class="nx-ico">⚙</span>Einstellungen</a>
+      {% endif %}
     </nav>
-    <div class="nx-sidebar-foot">KAYI Next · neue Oberfläche<br>Bestehende Daten bleiben erhalten.</div>
+    <div class="nx-sidebar-foot">KAYI Next<br>{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}Für den Einsatz vor Ort.{% else %}Bestehende Daten bleiben erhalten.{% endif %}</div>
   </aside>
   <main class="nx-main">
     <header class="nx-topbar">
       <button class="nx-menu-btn" type="button" data-nx-menu aria-label="Menü">☰</button>
-      <form class="nx-search" action="{% url 'next-projects' %}" method="get"><input name="q" placeholder="Projekt, Kunde, Nummer suchen …" autocomplete="off"></form>
+      {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<div class="nx-search" style="font-weight:850">Meine Arbeit</div>{% else %}<form class="nx-search" action="{% url 'next-projects' %}" method="get"><input name="q" placeholder="Projekt, Kunde, Nummer suchen …" autocomplete="off"></form>{% endif %}
       <div class="nx-top-actions">
-        <a class="nx-btn nx-btn-ghost" href="{% url 'next-appointment-create' %}">＋ Termin</a>
-        <a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}">＋ Projekt</a>
+        {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<a class="nx-btn nx-btn-ghost" href="{% url 'next-time' %}">◷ Zeit</a>{% else %}<a class="nx-btn nx-btn-ghost" href="{% url 'next-appointment-create' %}">＋ Termin</a><a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}">＋ Projekt</a>{% endif %}
         <div class="nx-avatar">{{ request.user.username|slice:':2'|upper }}</div>
       </div>
     </header>
-    <div class="nx-content">
-      {% if messages %}<div class="nx-messages">{% for message in messages %}<div class="nx-message">{{ message }}</div>{% endfor %}</div>{% endif %}
-      {% block content %}{% endblock %}
-    </div>
+    <div class="nx-content">{% if messages %}<div class="nx-messages">{% for message in messages %}<div class="nx-message">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</div>
   </main>
 </div>
-<script src="{% static 'js/kayi-next.js' %}?v=20260810-1" defer></script>
+{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<nav class="nx-field-bottom"><a class="{% if request.resolver_match.url_name == 'next-field' or 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-field' %}"><span>◫</span>Termine</a><a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span>◷</span>Zeit</a><a class="{% if request.resolver_match.url_name == 'next-settings' %}is-active{% endif %}" href="{% url 'next-settings' %}"><span>◎</span>Konto</a></nav>{% endif %}
+<script src="{% static 'js/kayi-next.js' %}?v=20260810-2" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
