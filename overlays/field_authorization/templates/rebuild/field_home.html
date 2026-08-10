@@ -1,0 +1,24 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}Monteur-App · KAYI{% endblock %}
+{% block content %}
+<div class="nx-field-shell fa-mobile-shell">
+  <div class="nx-pagehead"><div><div class="nx-kicker">Monteur-App</div><h1>Meine Einsätze</h1><p>{% if employee %}{{ employee.first_name }} {{ employee.last_name }} · {% endif %}Auftrag aufnehmen, freigeben, arbeiten und dokumentieren – direkt vor Ort.</p></div><div class="nx-actions"><a class="nx-btn" href="{% url 'next-time' %}">◷ Zeiterfassung</a><a class="nx-btn nx-btn-primary" href="{% url 'field-quick-job' %}">＋ Schnellauftrag</a></div></div>
+
+  <a class="fa-quick-hero" href="{% url 'field-quick-job' %}"><span>＋</span><div><b>Ungeplanter Vor-Ort-Auftrag?</b><small>Kunden auswählen oder neu anlegen → Voice → Preis → Unterschrift → Arbeit starten.</small></div><i>→</i></a>
+
+  <div data-tabs>
+    <div class="nx-mobile-tabs"><button class="is-active" type="button" data-tab="planned">Geplant <span class="nx-badge">{{ planned|length }}</span></button><button type="button" data-tab="overdue">Überfällig <span class="nx-badge nx-badge-warn">{{ overdue|length }}</span></button><button type="button" data-tab="documented">Dokumentiert <span class="nx-badge nx-badge-success">{{ documented|length }}</span></button></div>
+    <div class="nx-tab-panel is-active" data-tab-panel="planned">
+      {% for event in planned %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }} · {{ event.location|default:event.project.title }}{% else %}Interner Termin{% endif %}</p></div><span>›</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty"><b>Keine geplanten Einsätze.</b><br>Für spontane Arbeiten oben „Schnellauftrag“ nutzen.</div>{% endfor %}
+    </div>
+    <div class="nx-tab-panel" data-tab-panel="overdue">
+      {% for event in overdue %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</p></div><span class="nx-badge nx-badge-warn">offen</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty"><b>Alles erledigt.</b><br>Keine überfällige Dokumentation.</div>{% endfor %}
+    </div>
+    <div class="nx-tab-panel" data-tab-panel="documented">
+      {% for event in documented %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</p></div><span class="nx-badge nx-badge-success">✓</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty">Noch keine dokumentierten Einsätze.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+<link rel="stylesheet" href="{% static 'css/field-authorization.css' %}?v=20260810-1">
+{% endblock %}
