@@ -1,0 +1,174 @@
+name: Store release readiness
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      app_version:
+        description: App version, for example 2.2.0
+        required: false
+        default: '2.2.0'
+      build_number:
+        description: Monotonically increasing store build number
+        required: false
+        default: '22001'
+
+permissions:
+  contents: read
+
+env:
+  KAYI_APP_VERSION: ${{ inputs.app_version || '2.2.0' }}
+  KAYI_BUILD_NUMBER: ${{ inputs.build_number || '22001' }}
+
+jobs:
+  android-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install native dependencies
+        working-directory: native
+        run: npm install --no-audit --no-fund
+      - name: Generate Android project
+        working-directory: native
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Prepare optional Play signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kayi-upload.jks"
+            echo "KAYI_ANDROID_KEYSTORE=$RUNNER_TEMP/kayi-upload.jks" >> "$GITHUB_ENV"
+          fi
+      - name: Configure release
+        env:
+          KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 scripts/configure_native_release.py android
+      - name: Verify Android 16 target and sensitive permissions
+        working-directory: native
+        run: |
+          grep -q 'compileSdkVersion = 36' android/variables.gradle
+          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q "versionName \"${KAYI_APP_VERSION}\"" android/app/build.gradle
+          grep -q "versionCode ${KAYI_BUILD_NUMBER}" android/app/build.gradle
+          ! grep -Rqs 'READ_MEDIA_IMAGES\|READ_EXTERNAL_STORAGE\|MANAGE_EXTERNAL_STORAGE' android/app/src/main/AndroidManifest.xml
+          grep -q 'usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
+      - name: Android release lint
+        working-directory: native/android
+        run: ./gradlew lintRelease --stacktrace
+      - name: Build Play AAB and release APK
+        working-directory: native/android
+        env:
+          KAYI_ANDROID_KEYSTORE: ${{ env.KAYI_ANDROID_KEYSTORE }}
+          KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease assembleRelease --stacktrace
+      - name: Verify merged manifest and 16 KB native-library alignment
+        working-directory: native
+        run: |
+          MERGED="android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml"
+          if [ ! -f "$MERGED" ]; then MERGED="$(find android/app/build/intermediates -path '*release*' -name AndroidManifest.xml | head -n 1)"; fi
+          test -n "$MERGED" && test -f "$MERGED"
+          echo "Merged manifest: $MERGED"
+          grep -n 'android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.INTERNET' "$MERGED" || true
+          ! grep -q 'READ_MEDIA_IMAGES\|READ_EXTERNAL_STORAGE\|MANAGE_EXTERNAL_STORAGE' "$MERGED"
+          APK="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          test -f "$APK"
+          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)"
+          test -x "$ZIPALIGN"
+          "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+      - name: Upload Google Play artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayi-google-play-${{ github.run_id }}
+          path: |
+            native/android/app/build/outputs/bundle/release/*.aab
+            native/android/app/build/outputs/apk/release/*.apk
+            native/android/app/build/reports/lint-results-release.html
+          if-no-files-found: error
+          retention-days: 14
+
+  ios-release:
+    runs-on: macos-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assemble application source
+        run: bash scripts/unpack-source.sh
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Require current App Store toolchain
+        run: |
+          xcodebuild -version
+          MAJOR="$(xcodebuild -version | awk '/Xcode/{split($2,v,"."); print v[1]}')"
+          test "$MAJOR" -ge 26
+          xcrun --sdk iphoneos --show-sdk-version | grep -E '^26(\.|$)'
+      - name: Install native dependencies
+        working-directory: native
+        run: npm install --no-audit --no-fund
+      - name: Generate iOS project
+        working-directory: native
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Configure release
+        run: python3 scripts/configure_native_release.py ios
+      - name: Validate privacy and purpose strings
+        working-directory: native
+        run: |
+          plutil -lint ios/App/App/Info.plist
+          plutil -lint ios/App/App/PrivacyInfo.xcprivacy
+          /usr/libexec/PlistBuddy -c 'Print :NSCameraUsageDescription' ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' ios/App/App/Info.plist
+          test "$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' ios/App/App/Info.plist)" = false
+          grep -q "PRODUCT_BUNDLE_IDENTIFIER = de.kayihaustechnik.app" ios/App/App.xcodeproj/project.pbxproj
+          grep -q "MARKETING_VERSION = ${KAYI_APP_VERSION}" ios/App/App.xcodeproj/project.pbxproj
+          grep -q "CURRENT_PROJECT_VERSION = ${KAYI_BUILD_NUMBER}" ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 16.0' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'PrivacyInfo.xcprivacy in Resources' ios/App/App.xcodeproj/project.pbxproj
+      - name: Archive unsigned App Store release for validation
+        working-directory: native
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/KAYI.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+      - name: Verify archived app payload
+        run: |
+          APP="$RUNNER_TEMP/KAYI.xcarchive/Products/Applications/App.app"
+          test -d "$APP"
+          test -f "$APP/PrivacyInfo.xcprivacy"
+          plutil -lint "$APP/PrivacyInfo.xcprivacy"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = 'de.kayihaustechnik.app'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")" = "$KAYI_APP_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Info.plist")" = "$KAYI_BUILD_NUMBER"
+      - name: Package unsigned archive diagnostics
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/KAYI.xcarchive" "$RUNNER_TEMP/KAYI-unsigned-xcarchive.zip"
+      - name: Upload App Store validation archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: kayi-app-store-validation-${{ github.run_id }}
+          path: ${{ runner.temp }}/KAYI-unsigned-xcarchive.zip
+          if-no-files-found: error
+          retention-days: 14
