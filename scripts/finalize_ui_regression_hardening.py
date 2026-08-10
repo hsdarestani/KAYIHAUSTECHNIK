@@ -28,6 +28,13 @@ def install_clean_js_tail() -> None:
     if JS_MARKER not in text:
         raise RuntimeError("Malformed KAYI Next hardening tail marker is missing")
     prefix = text.split(JS_MARKER, 1)[0].rstrip()
+    # The old raw-string patch leaves literal backslash-n separators and the
+    # leading // fragment immediately before the marker. Strip only that legacy
+    # boundary, never JavaScript escapes inside the real source prefix.
+    if prefix.endswith("//"):
+        prefix = prefix[:-2].rstrip()
+    while prefix.endswith("\\n") or prefix.endswith("\\r"):
+        prefix = prefix[:-2].rstrip()
     clean = (ROOT / "overlays/ui_regression/kayi-next-hardening.js").read_text(encoding="utf-8").strip()
     path.write_text(prefix + "\n\n" + clean + "\n", encoding="utf-8")
 
@@ -89,14 +96,10 @@ def check_js_syntax() -> None:
         raise RuntimeError("kayi-next.js syntax check failed:\n" + result.stdout + result.stderr)
 
 
-# These final runtime patches deliberately run after all product/store overlays.
 runpy.run_path(str(ROOT / "scripts" / "document_position_runtime_fallback.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "static_cache_bust_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "ai_service_coverage_hardening.py"), run_name="__main__")
 
-# CSS from the early overlay used escaped line separators. Normalize only CSS.
-# JavaScript is replaced wholesale with a clean, standalone bundle so string and
-# regex escapes can never be corrupted by a global backslash replacement.
 normalize_css_tail("static/css/kayi-next.css")
 install_clean_js_tail()
 
