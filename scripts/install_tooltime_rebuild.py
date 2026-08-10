@@ -106,4 +106,7 @@ runpy.run_path(str(ROOT / "scripts" / "patch_german_browser_smoke.py"), run_name
 # Store compliance is last: public privacy/support/deletion and AI consent must
 # survive every product/UI patch that ran above.
 runpy.run_path(str(ROOT / "scripts" / "install_store_readiness.py"), run_name="__main__")
+# Legacy test cases must opt in exactly as a real user would; production guards
+# remain mandatory and are never bypassed for tests.
+runpy.run_path(str(ROOT / "scripts" / "patch_store_test_contract.py"), run_name="__main__")
 print("KAYI Next, specialist flows, German-only UI, browser audit and store readiness installed and verified.")
