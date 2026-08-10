@@ -124,5 +124,6 @@ runpy.run_path(str(ROOT / "scripts" / "patch_store_browser_smoke.py"), run_name=
 # giant checkboxes, English form labels, dead quote-position controls or missing
 # project document download/navigation affordances.
 runpy.run_path(str(ROOT / "scripts" / "ui_regression_hardening.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "catalog_interaction_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "finalize_ui_regression_hardening.py"), run_name="__main__")
 print("KAYI Next, specialist flows, German-only UI, browser audit, store readiness and UI regression hardening installed and verified.")
