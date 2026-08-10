@@ -135,6 +135,9 @@ runpy.run_path(str(ROOT / "scripts" / "finalize_ui_regression_hardening.py"), ru
 # creation, readable 3D typography, fresh CSRF state and a real in-planner KI
 # assistant must never be overwritten by an older template/asset.
 runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_polish.py"), run_name="__main__")
+# Because the final 3D layer adds a new OpenAI-backed endpoint after the general
+# store-readiness patch, enforce the same explicit third-party KI consent here.
+runpy.run_path(str(ROOT / "scripts" / "patch_customer_3d_ai_consent.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_tests.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "customer_3d_browser_smoke_patch.py"), run_name="__main__")
 # Read-only diagnostic of legacy routes still present behind KAYI Next. This does
