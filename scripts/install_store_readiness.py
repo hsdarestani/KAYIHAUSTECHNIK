@@ -113,22 +113,32 @@ def patch_android_scanner_compatibility() -> None:
         return
     text = path.read_text(encoding="utf-8")
 
-    # java.time.Instant and java.nio.file Files/toPath are API 26. KAYI keeps
+    # java.time.Instant and java.nio.file APIs are API 26. KAYI keeps
     # Android 7/API 24 support, so use only java.io APIs available on minSdk 24.
     text = text.replace(
         "Instant.now().toString()",
         'new java.text.SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ss.SSSZ", java.util.Locale.US).format(new java.util.Date())',
     )
-    text = text.replace("import java.time.Instant;\n", "")
-    text = text.replace("import java.time.Instant;\r\n", "")
+    for old_import in (
+        "import java.time.Instant;\n",
+        "import java.time.Instant;\r\n",
+        "import java.nio.file.Files;\n",
+        "import java.nio.file.Files;\r\n",
+        "import java.nio.file.Path;\n",
+        "import java.nio.file.Path;\r\n",
+        "import java.nio.file.StandardOpenOption;\n",
+        "import java.nio.file.StandardOpenOption;\r\n",
+    ):
+        text = text.replace(old_import, "")
 
     if "import java.io.FileOutputStream;" not in text:
         text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
 
-    # Rewrite every fully-qualified NIO write, independent of variable names or
-    # formatting. Turning Files.write(file.toPath(), bytes) into writeBytes(file,
-    # bytes) avoids all API 26 Files/Path calls while preserving exact payloads.
+    # Rewrite both fully-qualified and imported NIO write calls, independent of
+    # variable names or formatting. Files.write(file.toPath(), bytes) becomes
+    # writeBytes(file, bytes), avoiding API 26 Files/Path calls entirely.
     text = text.replace("java.nio.file.Files.write(", "writeBytes(")
+    text = text.replace("Files.write(", "writeBytes(")
     text = text.replace(".toPath(),", ",")
 
     helper = '''\n    private static void writeBytes(File file, byte[] value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value);\n            stream.flush();\n        }\n    }\n'''
@@ -167,7 +177,7 @@ def guard() -> None:
     scanner = ROOT / "native" / "plugins" / "kayi-room-scanner" / "android" / "src" / "main" / "java" / "de" / "kayihaustechnik" / "scanner" / "ArCoreRoomScanActivity.java"
     if scanner.exists():
         scanner_text = scanner.read_text(encoding="utf-8")
-        forbidden = ("Instant.now()", "java.time.Instant", "java.nio.file.Files", ".toPath()")
+        forbidden = ("Instant.now()", "java.time.Instant", "java.nio.file.", "Files.write(", ".toPath()")
         remaining = [item for item in forbidden if item in scanner_text]
         if remaining:
             raise RuntimeError(f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}")
