@@ -105,9 +105,9 @@ def patch_production_smoke() -> None:
             # and short intake must remain reachable inside technician mode.
             if "Schnellauftrag" not in field_html:
                 fail("technician field surface is missing Schnellauftrag")
-            quick = page.locator('a[href="/field/jobs/new/"]').first
+            quick = page.locator('a[href="/field/jobs/new/"]:visible').first
             if quick.count() != 1:
-                fail("technician field surface is missing quick-job link")
+                fail("technician field surface is missing a visible quick-job link")
             quick.click()
             page.wait_for_load_state("domcontentloaded")
             quick_html = page.content()
