@@ -34,7 +34,12 @@
     }
     let data = {};
     try { data = raw ? JSON.parse(raw) : {}; } catch (_) { throw new Error(fallback); }
-    if (!response.ok) throw new Error(data.error || fallback);
+    if (!response.ok) {
+      const error = new Error(data.error || fallback);
+      error.consentRequired = response.status === 428 && Boolean(data.consent_required);
+      error.settingsUrl = data.settings_url || '/settings/next/';
+      throw error;
+    }
     return data;
   };
 
@@ -95,7 +100,12 @@
       toast('KI-Vorschlag im 3D-Raum angewendet.','success');
     } catch (error) {
       const message = safeMessage(error, 'Der KI-Raumassistent konnte die Änderung nicht ausführen.');
-      setFeedback(`<strong>KI konnte die Änderung nicht anwenden.</strong>${escapeHtml(message)}`, 'error');
+      if (error?.consentRequired) {
+        const settingsUrl = String(error.settingsUrl || '/settings/next/').replace(/"/g, '&quot;');
+        setFeedback(`<strong>Einwilligung erforderlich.</strong>${escapeHtml(message)}<br><a class="nx-btn" style="margin-top:8px" href="${settingsUrl}">KI-Einwilligung in den Einstellungen öffnen →</a>`, 'error');
+      } else {
+        setFeedback(`<strong>KI konnte die Änderung nicht anwenden.</strong>${escapeHtml(message)}`, 'error');
+      }
       toast(message, 'error');
     } finally {
       runButton.disabled = false;
