@@ -46,10 +46,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
       - name: Install native and branding dependencies
         run: |
           cd native && npm install --no-audit --no-fund
-          python3 -m pip install --user Pillow
+          python -m pip install Pillow
       - name: Generate Android project
         working-directory: native
         run: npx cap add android && npx cap sync android
@@ -66,8 +69,8 @@ jobs:
           KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          python3 scripts/configure_native_release.py android
-          python3 scripts/generate_store_brand_assets.py --native
+          python scripts/configure_native_release.py android
+          python scripts/generate_store_brand_assets.py --native
       - name: Lint and build signed AAB
         working-directory: native/android
         env:
@@ -114,6 +117,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
       - name: Require current App Store toolchain
         run: |
           xcodebuild -version
@@ -123,14 +129,14 @@ jobs:
       - name: Install native and branding dependencies
         run: |
           cd native && npm install --no-audit --no-fund
-          python3 -m pip install --user Pillow
+          python -m pip install Pillow
       - name: Generate iOS project
         working-directory: native
         run: npx cap add ios && npx cap sync ios
       - name: Configure release and KAYI AppIcon
         run: |
-          python3 scripts/configure_native_release.py ios
-          python3 scripts/generate_store_brand_assets.py --native
+          python scripts/configure_native_release.py ios
+          python scripts/generate_store_brand_assets.py --native
       - name: Install Apple distribution certificate and profile
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
