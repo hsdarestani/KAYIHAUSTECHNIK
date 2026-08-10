@@ -75,9 +75,6 @@ def audit_buttons() -> None:
     failures: list[str] = []
     static_js = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "static" / "js").rglob("*.js"))
     template_paths = sorted((ROOT / "templates").rglob("*.html"))
-    # Inline scripts are real handlers too. Include all template source in the
-    # reference corpus, while excluding button-like HTML strings *inside* script
-    # tags from the server-rendered button inventory.
     template_corpus = "\n".join(path.read_text(encoding="utf-8") for path in template_paths)
     handler_corpus = static_js + "\n" + template_corpus
     for path in template_paths:
@@ -113,6 +110,7 @@ def check_js_syntax() -> None:
 runpy.run_path(str(ROOT / "scripts" / "document_position_runtime_fallback.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "static_cache_bust_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "ai_service_coverage_hardening.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "settings_button_guidance.py"), run_name="__main__")
 normalize_css_tail("static/css/kayi-next.css")
 install_clean_js_tail()
 
@@ -130,6 +128,7 @@ js = (ROOT / "static/js/kayi-next.js").read_text(encoding="utf-8")
 base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
 editor = (ROOT / "templates/rebuild/document_editor.html").read_text(encoding="utf-8")
 ai = (ROOT / "erp/services/ai.py").read_text(encoding="utf-8")
+settings = (ROOT / "templates/erp/settings.html").read_text(encoding="utf-8")
 if "\\n.nx-checkbox-input" in css:
     raise RuntimeError("UI hardening CSS still contains escaped line separators")
 if ".nx-checkbox-input" not in css or 'input[type="checkbox"]' not in css or "dataset.nxAddBound" not in js:
@@ -138,7 +137,9 @@ if "?v=20260810-6" not in base or "KAYI document position runtime fallback 20260
     raise RuntimeError("KAYI runtime/cache fallback contract is incomplete")
 if "Fliesen-, Platten- oder Belagsposition" not in ai or "Coverage-Prinzip" not in ai:
     raise RuntimeError("AI explicit-trade coverage contract is incomplete")
+if "data-settings-help" not in settings or "data-settings-help" not in js:
+    raise RuntimeError("Settings no-silent-dead-button guidance contract is incomplete")
 
 check_js_syntax()
 audit_buttons()
-print("KAYI UI hardening assets, runtime fallbacks, AI coverage, app-wide button bindings and JavaScript syntax verified.")
+print("KAYI UI hardening assets, runtime fallbacks, AI coverage, settings guidance, app-wide button bindings and JavaScript syntax verified.")
