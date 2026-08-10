@@ -42,7 +42,7 @@ function updateWallTransparency() {
   wallMeshes.forEach((wall) => {
     const name = wall.userData.wall;
     let opacity = 1;
-    if (transparent && state.view.mode === '3d') {
+    if (transparent && state.view.mode === 'perspective') {
       if (name === 'front') opacity = 0.18;
       else if (name === 'right') opacity = 0.62;
     }
