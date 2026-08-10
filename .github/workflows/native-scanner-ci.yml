@@ -15,6 +15,16 @@ jobs:
       - uses: actions/checkout@v5
       - name: Assemble application source
         run: bash scripts/unpack-source.sh
+      - name: Audit account deletion, AI and mobile contracts
+        run: |
+          echo '=== Account deletion references ==='
+          grep -RInE 'deletion|delete.account|account.delete|Konto.*löschen|Lösch|delete_request' erp config templates mobile tests 2>/dev/null | head -n 180 || true
+          echo '=== AI / photo / voice endpoints and consent candidates ==='
+          grep -RInE 'OpenAI|analyze_room_photos|AIPhoto|ai/chat|ai-report|voice|transcri|audio|measurements/analyze' erp config templates mobile tests 2>/dev/null | head -n 220 || true
+          echo '=== Existing legal/privacy/support references ==='
+          grep -RInE 'Datenschutz|Privacy|privacy|Impressum|Support|support' erp config templates mobile 2>/dev/null | head -n 160 || true
+          echo '=== Native web/store assets ==='
+          find native -maxdepth 4 -type f \( -iname '*.png' -o -iname '*.svg' -o -iname '*.webp' -o -iname '*.json' -o -iname '*.html' -o -iname '*.ts' \) | sort | head -n 220
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
