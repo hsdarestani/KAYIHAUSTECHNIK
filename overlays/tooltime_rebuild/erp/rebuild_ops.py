@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import re
+
 from django import forms
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from . import models as m
-from .rebuild_views import StyledModelForm, _org, _unique_number
+from .rebuild_views import StyledModelForm, _org
 
 
 class TaskForm(StyledModelForm):
@@ -43,10 +47,92 @@ class ExpenseForm(StyledModelForm):
 
 
 class EmployeeForm(StyledModelForm):
+    username = forms.CharField(label="App-Benutzername", required=False)
+    password = forms.CharField(label="Startpasswort", required=False, widget=forms.PasswordInput(render_value=True))
+
     class Meta:
         model = m.Employee
         fields = ["first_name", "last_name", "email", "phone", "trade", "hourly_cost", "hourly_rate", "active", "color"]
         widgets = {"color": forms.TextInput(attrs={"type": "color"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Legacy employee creation did not require accounting values. Keep that
+        # low-friction behavior in the rebuilt UI and use model defaults.
+        for name in ("hourly_cost", "hourly_rate", "color"):
+            self.fields[name].required = False
+        if not self.is_bound:
+            self.fields["hourly_cost"].initial = self.instance.hourly_cost if self.instance and self.instance.pk else 0
+            self.fields["hourly_rate"].initial = self.instance.hourly_rate if self.instance and self.instance.pk else 0
+            self.fields["color"].initial = self.instance.color if self.instance and self.instance.pk else "#2f80ed"
+            if self.instance and self.instance.user_id:
+                self.fields["username"].initial = self.instance.user.username
+
+    def clean_hourly_cost(self):
+        return self.cleaned_data.get("hourly_cost") or 0
+
+    def clean_hourly_rate(self):
+        return self.cleaned_data.get("hourly_rate") or 0
+
+    def clean_color(self):
+        return self.cleaned_data.get("color") or "#2f80ed"
+
+
+def _employee_number(org) -> str:
+    existing = m.Employee.objects.filter(organization=org).count() + 1
+    candidate = f"M-{existing:04d}"
+    while m.Employee.objects.filter(organization=org, employee_number=candidate).exists():
+        existing += 1
+        candidate = f"M-{existing:04d}"
+    return candidate
+
+
+def _username_candidate(form: EmployeeForm, employee: m.Employee) -> str:
+    explicit = (form.cleaned_data.get("username") or "").strip()
+    if explicit:
+        return explicit
+    if employee.email:
+        base = employee.email.split("@", 1)[0]
+    else:
+        base = f"{employee.first_name}.{employee.last_name}"
+    base = re.sub(r"[^a-zA-Z0-9._-]+", ".", base).strip("._-").lower() or f"monteur{employee.pk or ''}"
+    User = get_user_model()
+    candidate = base
+    suffix = 2
+    while User.objects.filter(username=candidate).exclude(pk=employee.user_id).exists():
+        candidate = f"{base}{suffix}"
+        suffix += 1
+    return candidate
+
+
+def _ensure_technician_login(org, employee: m.Employee, form: EmployeeForm) -> None:
+    User = get_user_model()
+    username = _username_candidate(form, employee)
+    password = (form.cleaned_data.get("password") or "").strip()
+    if employee.user_id:
+        user = employee.user
+        user.username = username
+        if employee.email:
+            user.email = employee.email
+        if password:
+            user.set_password(password)
+        user.save()
+    else:
+        user = User(username=username, email=employee.email or "")
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+        employee.user = user
+        employee.save(update_fields=["user", "updated_at"])
+
+    profile, _ = m.UserProfile.objects.get_or_create(user=user)
+    profile.organization = org
+    profile.role = m.UserProfile.Role.TECHNICIAN
+    profile.phone = employee.phone or profile.phone
+    profile.is_mobile_worker = True
+    profile.save()
 
 
 @login_required
@@ -117,7 +203,7 @@ def expense_edit(request, pk=None):
 @login_required
 def employee_list(request):
     org = _org(request)
-    employees = m.Employee.objects.filter(organization=org).select_related("user").order_by("active", "last_name", "first_name")
+    employees = m.Employee.objects.filter(organization=org).select_related("user").order_by("-active", "last_name", "first_name")
     return render(request, "rebuild/employees.html", {"employees": employees})
 
 
@@ -128,17 +214,13 @@ def employee_edit(request, pk=None):
     employee = get_object_or_404(m.Employee, organization=org, pk=pk) if pk else None
     form = EmployeeForm(request.POST or None, instance=employee)
     if request.method == "POST" and form.is_valid():
-        obj = form.save(commit=False)
-        obj.organization = org
-        if not obj.employee_number:
-            # Employee uses the same human-readable sequence principle as the rest of KAYI.
-            existing = m.Employee.objects.filter(organization=org).count() + 1
-            candidate = f"M-{existing:04d}"
-            while m.Employee.objects.filter(organization=org, employee_number=candidate).exists():
-                existing += 1
-                candidate = f"M-{existing:04d}"
-            obj.employee_number = candidate
-        obj.save()
-        messages.success(request, "Mitarbeiter gespeichert.")
+        with transaction.atomic():
+            obj = form.save(commit=False)
+            obj.organization = org
+            if not obj.employee_number:
+                obj.employee_number = _employee_number(org)
+            obj.save()
+            _ensure_technician_login(org, obj, form)
+        messages.success(request, "Mitarbeiter gespeichert. App-Zugang ist mit der Monteur-Rolle verknüpft.")
         return redirect("next-employees")
     return render(request, "rebuild/ops_form.html", {"form": form, "kind": "employee", "object": employee})
