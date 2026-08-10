@@ -36,9 +36,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install native dependencies
-        working-directory: native
-        run: npm install --no-audit --no-fund
+      - name: Install native and branding dependencies
+        run: |
+          cd native && npm install --no-audit --no-fund
+          python3 -m pip install --user Pillow
       - name: Generate Android project
         working-directory: native
         run: |
@@ -52,12 +53,14 @@ jobs:
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kayi-upload.jks"
             echo "KAYI_ANDROID_KEYSTORE=$RUNNER_TEMP/kayi-upload.jks" >> "$GITHUB_ENV"
           fi
-      - name: Configure release
+      - name: Configure release and KAYI launcher assets
         env:
           KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: python3 scripts/configure_native_release.py android
+        run: |
+          python3 scripts/configure_native_release.py android
+          python3 scripts/generate_store_brand_assets.py --native
       - name: Verify Android 16 target and sensitive permissions
         working-directory: native
         run: |
@@ -65,11 +68,21 @@ jobs:
           grep -q 'targetSdkVersion = 36' android/variables.gradle
           grep -q "versionName \"${KAYI_APP_VERSION}\"" android/app/build.gradle
           grep -q "versionCode ${KAYI_BUILD_NUMBER}" android/app/build.gradle
+          grep -q 'coreLibraryDesugaringEnabled true' android/app/build.gradle
+          grep -q 'coreLibraryDesugaringEnabled true' plugins/kayi-room-scanner/android/build.gradle
           ! grep -Rqs 'READ_MEDIA_IMAGES\|READ_EXTERNAL_STORAGE\|MANAGE_EXTERNAL_STORAGE' android/app/src/main/AndroidManifest.xml
           grep -q 'usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
+          test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
       - name: Android release lint
         working-directory: native/android
-        run: ./gradlew lintRelease --stacktrace
+        run: |
+          set +e
+          ./gradlew lintRelease --stacktrace
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            find . -name 'lint-results-release.txt' -print -exec cat {} \; || true
+          fi
+          exit "$status"
       - name: Build Play AAB and release APK
         working-directory: native/android
         env:
@@ -78,7 +91,7 @@ jobs:
           KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KAYI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew bundleRelease assembleRelease --stacktrace
-      - name: Verify merged manifest and 16 KB native-library alignment
+      - name: Verify merged manifest and 16 KB native-library compatibility
         working-directory: native
         run: |
           MERGED="android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml"
@@ -87,11 +100,29 @@ jobs:
           echo "Merged manifest: $MERGED"
           grep -n 'android.permission.CAMERA\|android.permission.RECORD_AUDIO\|android.permission.INTERNET' "$MERGED" || true
           ! grep -q 'READ_MEDIA_IMAGES\|READ_EXTERNAL_STORAGE\|MANAGE_EXTERNAL_STORAGE' "$MERGED"
+
           APK="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -f "$APK"
           ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -n 1)"
           test -x "$ZIPALIGN"
           "$ZIPALIGN" -c -P 16 -v 4 "$APK"
+
+          rm -rf /tmp/kayi-elf && mkdir -p /tmp/kayi-elf
+          unzip -q "$APK" 'lib/*/*.so' -d /tmp/kayi-elf || true
+          count=0
+          while IFS= read -r so; do
+            count=$((count+1))
+            echo "Checking ELF LOAD alignment: $so"
+            while read -r alignment; do
+              python3 - "$alignment" <<'PY'
+          import sys
+          value=int(sys.argv[1], 0)
+          if value < 16384:
+              raise SystemExit(f"ELF LOAD alignment is only {value} bytes; 16 KB is required")
+          PY
+            done < <(readelf -lW "$so" | awk '$1 == "LOAD" {print $NF}')
+          done < <(find /tmp/kayi-elf -type f -name '*.so' -print)
+          test "$count" -gt 0
       - name: Upload Google Play artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -100,6 +131,8 @@ jobs:
             native/android/app/build/outputs/bundle/release/*.aab
             native/android/app/build/outputs/apk/release/*.apk
             native/android/app/build/reports/lint-results-release.html
+            store/generated/google-play-icon-512.png
+            store/generated/google-play-feature-graphic-1024x500.png
           if-no-files-found: error
           retention-days: 14
 
@@ -119,17 +152,20 @@ jobs:
           MAJOR="$(xcodebuild -version | awk '/Xcode/{split($2,v,"."); print v[1]}')"
           test "$MAJOR" -ge 26
           xcrun --sdk iphoneos --show-sdk-version | grep -E '^26(\.|$)'
-      - name: Install native dependencies
-        working-directory: native
-        run: npm install --no-audit --no-fund
+      - name: Install native and branding dependencies
+        run: |
+          cd native && npm install --no-audit --no-fund
+          python3 -m pip install --user Pillow
       - name: Generate iOS project
         working-directory: native
         run: |
           npx cap add ios
           npx cap sync ios
-      - name: Configure release
-        run: python3 scripts/configure_native_release.py ios
-      - name: Validate privacy and purpose strings
+      - name: Configure release and KAYI AppIcon
+        run: |
+          python3 scripts/configure_native_release.py ios
+          python3 scripts/generate_store_brand_assets.py --native
+      - name: Validate privacy, icon and purpose strings
         working-directory: native
         run: |
           plutil -lint ios/App/App/Info.plist
@@ -142,6 +178,7 @@ jobs:
           grep -q "CURRENT_PROJECT_VERSION = ${KAYI_BUILD_NUMBER}" ios/App/App.xcodeproj/project.pbxproj
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 16.0' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'PrivacyInfo.xcprivacy in Resources' ios/App/App.xcodeproj/project.pbxproj
+          find ios/App/App/Assets.xcassets/AppIcon.appiconset -name '*.png' -size +1k | grep -q .
       - name: Archive unsigned App Store release for validation
         working-directory: native
         run: |
@@ -169,6 +206,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kayi-app-store-validation-${{ github.run_id }}
-          path: ${{ runner.temp }}/KAYI-unsigned-xcarchive.zip
+          path: |
+            ${{ runner.temp }}/KAYI-unsigned-xcarchive.zip
+            store/generated/app-store-icon-1024.png
           if-no-files-found: error
           retention-days: 14
