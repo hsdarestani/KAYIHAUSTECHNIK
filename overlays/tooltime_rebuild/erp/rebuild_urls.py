@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import rebuild_migration as migration
 from . import rebuild_ops as ops
 from . import rebuild_views as views
 
@@ -36,6 +37,6 @@ urlpatterns = [
     path("invoices/new/", views.invoice_editor, name="next-invoice-create"),
     path("invoices/<int:pk>/", views.invoice_editor, name="next-invoice-edit"),
     path("invoices/<int:pk>/payment/", views.invoice_payment, name="next-invoice-payment"),
-    path("migration/tooltime/", views.migration_import, name="next-tooltime-migration"),
+    path("migration/tooltime/", migration.migration_import, name="next-tooltime-migration"),
     path("settings/next/", views.settings_page, name="next-settings"),
 ]
