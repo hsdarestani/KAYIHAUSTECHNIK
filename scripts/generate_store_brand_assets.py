@@ -31,7 +31,6 @@ def font(size: int, bold: bool = False):
 
 
 def sparkle(draw: ImageDraw.ImageDraw, cx: float, cy: float, radius: float, fill=PURPLE):
-    # KAYI's simple four-point vision mark; symmetrical and legible at launcher sizes.
     points = [
         (cx, cy - radius),
         (cx + radius * 0.23, cy - radius * 0.23),
@@ -51,7 +50,6 @@ def icon(size: int, destination: Path, transparent: bool = False):
     pad = int(size * 0.16)
     if transparent:
         d.rounded_rectangle((pad, pad, size - pad, size - pad), radius=int(size * 0.15), fill=BG)
-    # soft halo helps the mark survive masks without looking like a copied store glyph.
     halo = int(size * 0.18)
     d.ellipse((size // 2 - halo, size // 2 - halo, size // 2 + halo, size // 2 + halo), fill=SOFT)
     sparkle(d, size / 2, size / 2, size * 0.205)
@@ -75,37 +73,36 @@ def feature_graphic(destination: Path):
     image.save(destination, optimize=True)
 
 
-def android_launcher(native: Path):
+def android_launcher(native: Path) -> bool:
     res = native / "android" / "app" / "src" / "main" / "res"
+    if not res.exists():
+        return False
     densities = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for density, size in densities.items():
         folder = res / f"mipmap-{density}"
         for name in ("ic_launcher.png", "ic_launcher_round.png"):
             icon(size, folder / name)
-        # Capacitor templates may reference a separate adaptive foreground.
         if (folder / "ic_launcher_foreground.png").exists():
             icon(size, folder / "ic_launcher_foreground.png", transparent=True)
-
-    # Android 13+ themed icon when adaptive launcher XML uses a monochrome layer.
     for folder in res.glob("mipmap-*"):
         mono = folder / "ic_launcher_monochrome.png"
         if mono.exists():
             icon(Image.open(mono).size[0], mono, transparent=True)
+    return True
 
 
-def ios_app_icon(native: Path):
+def ios_app_icon(native: Path) -> bool:
     appicon = native / "ios" / "App" / "App" / "Assets.xcassets" / "AppIcon.appiconset"
     contents = appicon / "Contents.json"
     if not contents.exists():
-        raise RuntimeError(f"Missing iOS AppIcon catalog: {contents}")
+        return False
     data = json.loads(contents.read_text(encoding="utf-8"))
     generated = set()
     for entry in data.get("images", []):
         filename = entry.get("filename")
         if not filename:
-            # Xcode 26 templates can omit filenames. Give deterministic names.
             idiom = entry.get("idiom", "universal").replace("-", "_")
-            size_label = entry.get("size", "1024x1024").replace(".", "_").replace("x", "x")
+            size_label = entry.get("size", "1024x1024").replace(".", "_")
             scale_label = entry.get("scale", "1x")
             filename = f"KAYI-{idiom}-{size_label}-{scale_label}.png"
             entry["filename"] = filename
@@ -119,11 +116,12 @@ def ios_app_icon(native: Path):
     contents.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     if not generated:
         icon(1024, appicon / "AppIcon-512@2x.png")
+    return True
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--native", action="store_true", help="also replace generated Android/iOS launcher icons")
+    parser.add_argument("--native", action="store_true", help="replace launcher icons for whichever native platform has already been generated")
     args = parser.parse_args()
 
     STORE.mkdir(parents=True, exist_ok=True)
@@ -131,11 +129,17 @@ def main():
     icon(1024, STORE / "app-store-icon-1024.png")
     feature_graphic(STORE / "google-play-feature-graphic-1024x500.png")
 
+    generated = []
     if args.native:
-        android_launcher(ROOT / "native")
-        ios_app_icon(ROOT / "native")
+        if android_launcher(ROOT / "native"):
+            generated.append("Android")
+        if ios_app_icon(ROOT / "native"):
+            generated.append("iOS")
+        if not generated:
+            raise RuntimeError("No generated Android or iOS project was found for native launcher assets")
 
-    print(f"KAYI store brand assets generated in {STORE}")
+    suffix = f"; native: {', '.join(generated)}" if generated else ""
+    print(f"KAYI store brand assets generated in {STORE}{suffix}")
 
 
 if __name__ == "__main__":
