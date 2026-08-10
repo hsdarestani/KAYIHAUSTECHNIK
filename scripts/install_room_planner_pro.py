@@ -28,6 +28,22 @@ def assemble_asset(name: str, target: Path) -> None:
     target.write_text("".join(part.read_text(encoding="utf-8") for part in parts), encoding="utf-8")
 
 
+def patch_room_state_canonicalization() -> None:
+    path = ROOT / "erp" / "services" / "room_planner_state.py"
+    text = path.read_text(encoding="utf-8")
+    old = '''        maximum_offset = max(Decimal("0"), wall_length - opening_width)
+        offset = min(_decimal(raw.get("offset_m", 0.5), f"openings[{index}].offset_m"), maximum_offset)
+'''
+    new = '''        maximum_offset = max(Decimal("0.000"), wall_length - opening_width).quantize(Decimal("0.001"))
+        offset = min(_decimal(raw.get("offset_m", 0.5), f"openings[{index}].offset_m"), maximum_offset).quantize(Decimal("0.001"))
+'''
+    if new in text:
+        return
+    if old not in text:
+        raise RuntimeError("Could not canonicalize Room Planner opening offsets")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
 def patch_rebuild_urls() -> None:
     path = ROOT / "erp" / "rebuild_urls.py"
     text = path.read_text(encoding="utf-8")
@@ -91,6 +107,9 @@ def guard() -> None:
     urls = (ROOT / "erp" / "rebuild_urls.py").read_text(encoding="utf-8")
     if 'include("erp.room_planner_urls")' not in urls:
         raise RuntimeError("Room Planner Pro URLs were not installed")
+    state_service = (ROOT / "erp" / "services" / "room_planner_state.py").read_text(encoding="utf-8")
+    if 'maximum_offset = max(Decimal("0.000")' not in state_service:
+        raise RuntimeError("Room Planner Pro canonical geometry state was not installed")
     js = (ROOT / "static" / "js" / "room-planner.js").read_text(encoding="utf-8")
     if "KAYI_ROOM_PLANNER_PRO" not in js or "WebGLRenderer" not in js:
         raise RuntimeError("Professional WebGL room engine is missing")
@@ -111,6 +130,7 @@ copy_tree(OVERLAY / "templates", ROOT / "templates")
 copy_tree(OVERLAY / "tests", ROOT / "tests")
 assemble_asset("room-planner.css", ROOT / "static" / "css" / "room-planner.css")
 assemble_asset("room-planner.js", ROOT / "static" / "js" / "room-planner.js")
+patch_room_state_canonicalization()
 patch_rebuild_urls()
 patch_production_smoke()
 guard()
