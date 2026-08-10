@@ -111,9 +111,11 @@ def patch_production_smoke() -> None:
             quick.click()
             page.wait_for_load_state("domcontentloaded")
             quick_html = page.content()
-            for marker in ("Schnellauftrag", "Bestehender Kunde", "Neuer Kunde", "Auftrag anlegen & Freigabe öffnen"):
+            for marker in ("Schnellauftrag", "Bestehender Kunde", "Neuer Kunde"):
                 if marker not in quick_html:
                     fail(f"quick-job flow is missing {marker!r}")
+            if page.locator('button[type="submit"]:has-text("Auftrag anlegen")').count() != 1:
+                fail("quick-job flow is missing its visible submit action")
 '''
     path.write_text(text.replace(anchor, block, 1), encoding="utf-8")
 
