@@ -1,0 +1,141 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const KAYI_ROOM_PLANNER_PRO = '2026.08.10.1';
+const root = document.querySelector('[data-room-planner]');
+if (!root) throw new Error('Room planner root missing');
+
+const $ = (sel, scope = document) => scope.querySelector(sel);
+const $$ = (sel, scope = document) => [...scope.querySelectorAll(sel)];
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+const round = (v, p = 3) => Number(Number(v || 0).toFixed(p));
+const metric = (v) => `${Number(v || 0).toFixed(2)} m`;
+const deepClone = (v) => JSON.parse(JSON.stringify(v));
+const csrf = () => document.querySelector('input[name=csrfmiddlewaretoken]')?.value || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+const uid = (prefix = 'obj') => `${prefix}-${crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
+
+const canvas = $('[data-rp-canvas]', root);
+const loading = $('[data-rp-loading]', root);
+const engineError = $('[data-rp-engine-error]', root);
+const dragHud = $('[data-rp-drag-metrics]', root);
+const inspector = $('[data-rp-inspector-form]', root);
+const inspectorEmpty = $('[data-rp-inspector-empty]', root);
+const stats = null;
+const saveButtons = $$('[data-rp-save]', root);
+const saveStatus = $('[data-rp-save-state]', root);
+const visionDialog = $('[data-rp-vision-dialog]', root);
+const visionForm = $('.rp-dialog-shell', root);
+const visionStatus = $('[data-rp-vision-feedback]', root);
+const fileInput = $('[data-rp-vision-files]', root);
+const filePreview = $('[data-rp-photo-previews]', root);
+const readonly = root.dataset.readonly === '1';
+
+let state = JSON.parse($('#room-planner-state')?.textContent || '{}');
+state = normalizeState(state);
+let selected = null;
+let selectedKind = null;
+let hover = null;
+let dragging = null;
+let pointerDown = null;
+let dirty = false;
+let renderQueued = false;
+let collisionIds = new Set();
+let sceneObjectMap = new Map();
+let wallMeshes = [];
+let openingMeshes = [];
+let ceilingMesh = null;
+let gridHelper = null;
+let guidesGroup = null;
+let history = [deepClone(state)];
+let historyIndex = 0;
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf6f7f9);
+scene.fog = new THREE.Fog(0xf6f7f9, 10, 28);
+
+const camera = new THREE.PerspectiveCamera(48, 1, 0.05, 100);
+camera.position.set(5.8, 4.5, 6.8);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.screenSpacePanning = true;
+controls.minDistance = 1.2;
+controls.maxDistance = 22;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.target.set(0, 1.2, 0);
+
+const ambient = new THREE.HemisphereLight(0xffffff, 0xb8bdc8, 2.1);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffffff, 3.1);
+sun.position.set(5, 8, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 25;
+sun.shadow.camera.left = -8;
+sun.shadow.camera.right = 8;
+sun.shadow.camera.top = 8;
+sun.shadow.camera.bottom = -8;
+scene.add(sun);
+
+const world = new THREE.Group();
+scene.add(world);
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const floorDragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const dragIntersection = new THREE.Vector3();
+
+function normalizeState(raw) {
+  const s = deepClone(raw || {});
+  s.schema_version = 3;
+  s.room ||= {};
+  s.room.length_m = Number(s.room.length_m || 4.2);
+  s.room.width_m = Number(s.room.width_m || 3.4);
+  s.room.height_m = Number(s.room.height_m || 2.6);
+  s.room.wall_thickness_m = Number(s.room.wall_thickness_m || 0.12);
+  s.openings = Array.isArray(s.openings) ? s.openings : [];
+  s.objects = Array.isArray(s.objects) ? s.objects : [];
+  s.materials ||= { floor: 'warm_concrete', walls: 'soft_white' };
+  s.lighting ||= { temperature: 'neutral', intensity: 1 };
+  s.view ||= {};
+  s.view.mode ||= 'perspective';
+  if (s.view.mode === '3d') s.view.mode = 'perspective';
+  s.view.show_ceiling = Boolean(s.view.show_ceiling);
+  s.view.transparent_near_walls = s.view.transparent_near_walls !== false;
+  s.view.grid = s.view.grid !== false;
+  s.view.snap = s.view.snap !== false;
+  s.calibration ||= { scale_verified: false, method: 'unknown', confidence: null, warnings: [] };
+  s.openings.forEach((o) => {
+    o.id ||= uid('opening');
+    o.kind ||= 'door';
+    o.wall ||= 'back';
+    o.offset_m = Number(o.offset_m || 0.5);
+    o.width_m = Number(o.width_m || (o.kind === 'door' ? 0.9 : 1.1));
+    o.height_m = Number(o.height_m || (o.kind === 'door' ? 2.05 : 1.1));
+    o.sill_height_m = Number(o.sill_height_m || (o.kind === 'window' ? 0.9 : 0));
+    o.enabled = o.enabled !== false;
+    o.locked = Boolean(o.locked);
+  });
+  s.objects.forEach((o) => {
+    o.id ||= uid('obj');
+    o.kind ||= 'fixture';
+    o.label ||= labelForKind(o.kind);
+    o.anchor ||= wallOnlyKinds.has(o.kind) ? 'wall' : 'floor';
+    o.wall ||= o.anchor === 'wall' ? 'back' : null;
+    o.x_m = Number(o.x_m ?? o.x ?? 1);
+    o.z_m = Number(o.z_m ?? o.z ?? 1);
+    o.elevation_m = Number(o.elevation_m || 0);
+    o.width_m = Number(o.width_m || defaultSize(o.kind)[0]);
+    o.depth_m = Number(o.depth_m || defaultSize(o.kind)[1]);
+    o.height_m = Number(o.height_m || defaultSize(o.kind)[2]);
+    o.rotation_deg = Number(o.rotation_deg || 0);
+    o.enabled = o.enabled 
