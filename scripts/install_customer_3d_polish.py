@@ -106,7 +106,6 @@ def patch_room_template() -> None:
             raise RuntimeError("Room planner inspector anchor changed")
         text = text.replace(anchor, ki_card + anchor, 1)
 
-    # User-visible terminology is German-only; internal model/source names remain untouched.
     text = text.replace("AI setzt", "KI setzt").replace("AI Objekte", "KI Objekte").replace("AI-Fotoerkennung", "KI-Fotoerkennung")
     text = re.sub(r"\bAI\b", "KI", text)
     text = re.sub(r"(room-planner\.(?:css|js)' %\}\?v=)[^\"']+", rf"\g<1>{VERSION}", text)
@@ -142,6 +141,13 @@ def patch_room_assets() -> None:
     write(js_path, js)
 
 
+def patch_remaining_german_text() -> None:
+    path = "static/js/app.js"
+    text = read(path)
+    text = text.replace("KAYI AI Live Edit", "KAYI KI Live Edit")
+    write(path, text)
+
+
 def bust_pwa_cache() -> None:
     replacements = {
         "kayi-shell-v18-20260810-de": "kayi-shell-v19-20260810-3dpolish",
@@ -166,6 +172,7 @@ def guard() -> None:
     js = read("static/js/room-planner.js")
     views = read("erp/room_planner_views.py")
     urls = read("erp/room_planner_urls.py")
+    app_js = read("static/js/app.js")
     for needle in ["Abweichenden Einsatzort hinzufügen", "Etage", "Hinweise zum Zugang"]:
         if needle not in customer:
             raise RuntimeError(f"Customer form polish missing: {needle}")
@@ -174,9 +181,11 @@ def guard() -> None:
             raise RuntimeError(f"Room planner KI UI missing: {needle}")
     if "AI setzt" in room or ">AI<" in room:
         raise RuntimeError("Visible English AI terminology remains in room planner template")
-    if css_marker := "KAYI customer/3D polish 20260810":
-        if css_marker not in css:
-            raise RuntimeError("Room planner typography polish is missing")
+    if "KAYI AI Live Edit" in app_js:
+        raise RuntimeError("Legacy tutorial still exposes English AI terminology")
+    css_marker = "KAYI customer/3D polish 20260810"
+    if css_marker not in css:
+        raise RuntimeError("Room planner typography polish is missing")
     for needle in ["KAYI 3D KI assistant polish 20260810", "credentials:'same-origin'", "dataset.aiUrl"]:
         if needle not in js:
             raise RuntimeError(f"Room planner JS polish missing: {needle}")
@@ -190,6 +199,7 @@ install_customer_form()
 install_room_ai_service()
 patch_room_template()
 patch_room_assets()
+patch_remaining_german_text()
 bust_pwa_cache()
 guard()
 print("KAYI customer form and professional 3D KI polish installed and verified.")
