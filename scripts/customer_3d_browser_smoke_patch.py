@@ -3,6 +3,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 path = ROOT / "scripts" / "production_browser_smoke.py"
 text = path.read_text(encoding="utf-8")
+
+# The previous KAYI Next smoke expected the old long-form helper copy. The new
+# progressive customer form deliberately replaces that sentence, so update only
+# the obsolete visible marker while retaining the route/page assertion itself.
+text = text.replace('"Nur das eintragen"', '"Weitere Angaben"')
+text = text.replace("'Nur das eintragen'", "'Weitere Angaben'")
+
 marker = "KAYI customer form and 3D KI polish smoke"
 if marker not in text:
     project_anchor = '''            if visible_controls.count() < 4:\n                fail("new project flow has too few controls and appears broken")\n'''
@@ -16,5 +23,5 @@ if marker not in text:
     if planner_anchor not in text:
         raise RuntimeError("Room Planner Pro browser smoke anchor changed")
     text = text.replace(planner_anchor, planner_block, 1)
-    path.write_text(text, encoding="utf-8")
+path.write_text(text, encoding="utf-8")
 print("KAYI customer form and 3D KI browser smoke installed.")
