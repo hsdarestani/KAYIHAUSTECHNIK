@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 
@@ -60,13 +59,13 @@ def patch_document_views() -> None:
 def patch_document_template() -> None:
     path = "templates/rebuild/document_editor.html"
     text = read(path)
-    # The catalog hardening layer has already run before this installer. Replace
-    # only catalog price references, not saved quote/invoice item unit prices.
     if "effective_price_source_kind" not in text:
         text = text.replace('data-price="{{ item.sales_price|stringformat:\'s\' }}"', 'data-price="{{ item.effective_sales_price|stringformat:\'s\' }}"')
         text = text.replace('{{ item.code }} · {{ item.sales_price|floatformat:2 }} € / {{ item.unit }}', '{{ item.code }} · {{ item.effective_sales_price|floatformat:2 }} € / {{ item.unit }} · {{ item.effective_price_source_kind }}')
-        # Keep a machine-readable source for KI and browser tests.
-        text = text.replace('data-tax="{{ item.tax_rate|stringformat:\'s\' }}"', 'data-tax="{{ item.tax_rate|stringformat:\'s\' }}" data-price-source="{{ item.effective_price_source|escape }}" data-price-source-kind="{{ item.effective_price_source_kind|escape }}"')
+        text = text.replace(
+            'data-tax="{{ item.tax_rate|stringformat:\'s\' }}"',
+            'data-tax="{{ item.tax_rate|stringformat:\'s\' }}" data-price-source="{{ item.effective_price_source|escape }}" data-price-source-kind="{{ item.effective_price_source_kind|escape }}" data-price-reference-code="{{ item.effective_price_reference_code|escape }}" data-price-match-kind="{{ item.effective_price_match_kind|escape }}"',
+        )
     if "item.effective_sales_price" not in text:
         raise RuntimeError("document editor still does not render effective prices")
     write(path, text)
@@ -93,7 +92,7 @@ def patch_field_authorization() -> None:
 
 def install_tests() -> None:
     target = ROOT / "tests" / "test_bo_effective_pricing_contract.py"
-    target.write_text('''from pathlib import Path\nfrom django.test import SimpleTestCase\n\n\nclass BoEffectivePricingContractTests(SimpleTestCase):\n    def test_offer_invoice_and_field_flow_use_effective_pricing(self):\n        service = Path("erp/services/effective_pricing.py").read_text(encoding="utf-8")\n        views = Path("erp/rebuild_views.py").read_text(encoding="utf-8")\n        field = Path("erp/field_authorization_views.py").read_text(encoding="utf-8")\n        template = Path("templates/rebuild/document_editor.html").read_text(encoding="utf-8")\n        self.assertIn("B&O", service)\n        self.assertIn("source__active=True", service)\n        self.assertIn("catalog_with_effective_prices", views)\n        self.assertIn("effective_price_for_catalog_item", field)\n        self.assertIn("effective_sales_price", template)\n        self.assertIn("data-price-source-kind", template)\n\n    def test_zero_is_only_final_fallback(self):\n        service = Path("erp/services/effective_pricing.py").read_text(encoding="utf-8")\n        self.assertIn("A non-zero B&O PriceItem", service)\n        self.assertIn("best other active PriceItem", service)\n        self.assertIn('source_kind = "Fehlt"', service)\n''', encoding="utf-8")
+    target.write_text('''from decimal import Decimal\nfrom pathlib import Path\n\nfrom django.test import SimpleTestCase, TestCase\n\nfrom erp.models import CatalogItem, Organization, PriceItem, PriceSource\nfrom erp.services.effective_pricing import apply_effective_prices\n\n\nclass BoEffectivePricingContractTests(SimpleTestCase):\n    def test_offer_invoice_and_field_flow_use_effective_pricing(self):\n        service = Path("erp/services/effective_pricing.py").read_text(encoding="utf-8")\n        views = Path("erp/rebuild_views.py").read_text(encoding="utf-8")\n        field = Path("erp/field_authorization_views.py").read_text(encoding="utf-8")\n        template = Path("templates/rebuild/document_editor.html").read_text(encoding="utf-8")\n        self.assertIn("_semantic_bo_matches", service)\n        self.assertIn("_external_codes", service)\n        self.assertIn("effective_price_reference_code", service)\n        self.assertIn("catalog_with_effective_prices", views)\n        self.assertIn("effective_price_for_catalog_item", field)\n        self.assertIn("effective_sales_price", template)\n        self.assertIn("data-price-source-kind", template)\n        self.assertIn("data-price-reference-code", template)\n\n    def test_zero_is_only_final_fallback(self):\n        service = Path("erp/services/effective_pricing.py").read_text(encoding="utf-8")\n        self.assertIn("conservative semantic B&O match", service)\n        self.assertIn('source_kind = "Fehlt"', service)\n        self.assertIn('source_kind = "B&O"', service)\n\n\nclass BoEffectivePricingDatabaseTests(TestCase):\n    def setUp(self):\n        self.org = Organization.objects.create(name="KAYI B&O Pricing")\n        self.source = PriceSource.objects.create(\n            organization=self.org,\n            name="B&O VA04 Preisdatei",\n            original_filename="B&O-VA04-Preise.xlsx",\n            active=True,\n        )\n        self.bo = PriceItem.objects.create(\n            organization=self.org,\n            source=self.source,\n            code="VA04-2.02.04.0020",\n            description="Montage Waschtisch, mit vorh. Anschlussteilen",\n            unit="Stk.",\n            sales_price=Decimal("48.74"),\n        )\n\n    def test_internal_kayi_code_resolves_real_bo_price_semantically(self):\n        item = CatalogItem.objects.create(\n            organization=self.org, code="S1002", name="Waschtisch montieren",\n            unit="Stk.", sales_price=Decimal("0.00"), active=True,\n        )\n        apply_effective_prices(self.org, [item])\n        self.assertEqual(item.effective_sales_price, Decimal("48.74"))\n        self.assertEqual(item.effective_price_source_kind, "B&O")\n        self.assertEqual(item.effective_price_reference_code, "VA04-2.02.04.0020")\n        self.assertEqual(item.effective_price_match_kind, "semantic")\n\n    def test_explicit_external_va04_code_has_priority(self):\n        item = CatalogItem.objects.create(\n            organization=self.org, code="S1999", name="Interne Bezeichnung",\n            external_codes={"bo_code": "VA04-2.02.04.0020"},\n            unit="Stk.", sales_price=Decimal("0.00"), active=True,\n        )\n        apply_effective_prices(self.org, [item])\n        self.assertEqual(item.effective_sales_price, Decimal("48.74"))\n        self.assertEqual(item.effective_price_reference_code, "VA04-2.02.04.0020")\n        self.assertEqual(item.effective_price_match_kind, "external_code")\n''', encoding="utf-8")
 
 
 def guard() -> None:
@@ -101,16 +100,20 @@ def guard() -> None:
     views = read("erp/rebuild_views.py")
     field = read("erp/field_authorization_views.py")
     template = read("templates/rebuild/document_editor.html")
-    for needle in ("_is_bo", "source__active=True", "effective_sales_price", "catalog_with_effective_prices"):
+    tests = read("tests/test_bo_effective_pricing_contract.py")
+    for needle in ("_is_bo", "_semantic_bo_matches", "_external_codes", "source__active=True", "effective_sales_price", "effective_price_reference_code", "catalog_with_effective_prices"):
         if needle not in service:
             raise RuntimeError(f"B&O pricing service missing: {needle}")
     if views.count("catalog_with_effective_prices(org, limit=500)") < 2:
         raise RuntimeError("Offer/invoice editors are not both using effective pricing")
     if "effective_price_for_catalog_item(org, catalog)" not in field:
         raise RuntimeError("Field authorization still bypasses effective pricing")
-    for needle in ("item.effective_sales_price", "data-price-source", "effective_price_source_kind"):
+    for needle in ("item.effective_sales_price", "data-price-source", "effective_price_source_kind", "data-price-reference-code"):
         if needle not in template:
             raise RuntimeError(f"Document editor effective price UI missing: {needle}")
+    for needle in ("S1002", "VA04-2.02.04.0020", 'Decimal("48.74")', "external_code", "semantic"):
+        if needle not in tests:
+            raise RuntimeError(f"B&O database regression test missing: {needle}")
 
 
 install_service()
@@ -119,4 +122,4 @@ patch_document_template()
 patch_field_authorization()
 install_tests()
 guard()
-print("KAYI B&O effective pricing installed: Angebot, Rechnung and customer field pricing now resolve active reference prices by code.")
+print("KAYI B&O effective pricing installed: Angebot, Rechnung and field KI resolve active B&O prices by KAYI code, external VA04 code or conservative service-name mapping.")

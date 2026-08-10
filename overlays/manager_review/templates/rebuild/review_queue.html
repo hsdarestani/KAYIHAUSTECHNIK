@@ -1,0 +1,31 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Einsatzprüfung · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Büro · Qualität & Abrechnung</div><h1>Einsatzprüfung</h1><p>Abgeschlossene Vor-Ort-Einsätze prüfen, freigeben oder zur Korrektur zurückgeben.</p></div><div class="nx-actions"><span class="nx-review-count">{{ pending_count }} offen</span></div></div>
+
+{% if pending_reviews or legacy_reviews %}
+<section class="nx-card nx-review-section">
+  <div class="nx-card-head"><div><h2>Zur Prüfung</h2><p>Erst nach Bürofreigabe ist der Einsatz für die Rechnungsstellung bereit.</p></div></div>
+  <div class="nx-review-list">
+    {% for doc in pending_reviews %}{% include 'rebuild/review_row.html' with doc=doc legacy=False %}{% endfor %}
+    {% for doc in legacy_reviews %}{% include 'rebuild/review_row.html' with doc=doc legacy=True %}{% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="nx-card nx-empty"><h2>Alles geprüft</h2><p>Aktuell wartet kein abgeschlossener Einsatz auf die Bürofreigabe.</p></section>
+{% endif %}
+
+{% if changes_requested %}
+<section class="nx-card nx-review-section"><div class="nx-card-head"><div><h2>Änderung angefordert</h2><p>Diese Einsätze sind beim Monteur wieder geöffnet.</p></div></div><div class="nx-review-list">
+{% for doc in changes_requested %}
+<article class="nx-review-row is-change"><div class="nx-review-main"><div class="nx-review-status">↺ Korrektur</div><h3>{% if doc.project %}{{ doc.project.number }} · {{ doc.project.title }}{% else %}Einsatz #{{ doc.metadata.event_id }}{% endif %}</h3><p>{% if doc.project %}{{ doc.project.customer.display_name }} · {% endif %}{{ doc.created_at|date:'d.m.Y H:i' }}</p><blockquote>{{ doc.metadata.review_note }}</blockquote></div><div class="nx-review-actions"><a class="nx-btn" href="/appointments/{{ doc.metadata.event_id }}/">Einsatz öffnen</a></div></article>
+{% endfor %}</div></section>
+{% endif %}
+
+{% if approved_reviews %}
+<section class="nx-card nx-review-section"><div class="nx-card-head"><div><h2>Freigegeben</h2><p>Geprüfte Einsätze, die für die Abrechnung bereit sind.</p></div></div><div class="nx-review-list">
+{% for doc in approved_reviews %}
+<article class="nx-review-row is-approved"><div class="nx-review-main"><div class="nx-review-status">✓ Freigegeben</div><h3>{% if doc.project %}{{ doc.project.number }} · {{ doc.project.title }}{% else %}Einsatz #{{ doc.metadata.event_id }}{% endif %}</h3><p>{% if doc.project %}{{ doc.project.customer.display_name }} · {% endif %}{{ doc.metadata.reviewed_by }} · {{ doc.metadata.reviewed_at|default:'' }}</p></div><div class="nx-review-actions"><a class="nx-btn" href="/appointments/{{ doc.metadata.event_id }}/">Einsatz</a>{% if doc.project %}<a class="nx-btn nx-btn-primary" href="{% url 'next-invoice-create' %}?project={{ doc.project.pk }}">Rechnung erstellen</a>{% endif %}</div></article>
+{% endfor %}</div></section>
+{% endif %}
+{% endblock %}

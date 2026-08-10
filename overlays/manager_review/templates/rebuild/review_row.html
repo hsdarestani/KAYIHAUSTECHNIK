@@ -1,0 +1,12 @@
+<article class="nx-review-row">
+  <div class="nx-review-main">
+    <div class="nx-review-status">{% if legacy %}◷ Altbestand · prüfen{% else %}◷ Wartet auf Freigabe{% endif %}</div>
+    <h3>{% if doc.project %}{{ doc.project.number }} · {{ doc.project.title }}{% else %}Einsatz #{{ doc.metadata.event_id }}{% endif %}</h3>
+    <p>{% if doc.project %}{{ doc.project.customer.display_name }} · {% endif %}Abgeschlossen {{ doc.created_at|date:'d.m.Y H:i' }}{% if doc.uploaded_by %} · {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}{% endif %}</p>
+    <div class="nx-review-links"><a href="/appointments/{{ doc.metadata.event_id }}/">Einsatzakte öffnen</a><a href="/appointments/{{ doc.metadata.event_id }}/completion/pdf/" target="_blank">Abschluss-PDF</a></div>
+  </div>
+  <div class="nx-review-actions">
+    <form method="post" action="{% url 'field-review-approve' doc.pk %}">{% csrf_token %}<input class="nx-control" name="note" placeholder="Notiz (optional)"><button class="nx-btn nx-btn-primary" type="submit">✓ Freigeben</button></form>
+    <form method="post" action="{% url 'field-review-changes' doc.pk %}">{% csrf_token %}<input class="nx-control" name="note" required placeholder="Was soll korrigiert werden?"><button class="nx-btn" type="submit">↺ Änderung anfordern</button></form>
+  </div>
+</article>
