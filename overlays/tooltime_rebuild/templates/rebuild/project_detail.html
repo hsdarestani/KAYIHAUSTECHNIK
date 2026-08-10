@@ -8,7 +8,7 @@
 
 {% if project.job_type == 'insurance' %}
 <section class="nx-card nx-card-pad" style="margin-top:16px;border-color:rgba(139,124,255,.28)">
-  <div class="nx-card-head" style="padding:0"><div><div class="nx-kicker">B&O / Versicherung</div><h2 style="margin-top:6px">B&O Leistungsnachweis / Regiebericht</h2><p>Kundenabnahme, Arbeitsbeschreibung und Unterschrift bleiben Teil des operativen Projektflusses.</p></div><div class="nx-actions">{% if bando_report %}<a class="nx-btn nx-btn-primary" href="{% url 'site-report-edit' bando_report.pk %}">Weiterbearbeiten →</a>{% else %}<a class="nx-btn nx-btn-primary" href="{% url 'site-report-create' project.pk %}">Leistungsnachweis erstellen →</a>{% endif %}</div></div>
+  <div class="nx-card-head" style="padding:0"><div><div class="nx-kicker">B&O / Versicherung</div><h2 style="margin-top:6px">B&O Leistungsnachweis / Regiebericht</h2><p>Kundenabnahme, Arbeitsbeschreibung und Unterschrift bleiben Teil des operativen Projektflusses.</p></div><div class="nx-actions">{% if bando_report %}<a class="nx-btn" href="{% url 'site-report-pdf' bando_report.pk %}" target="_blank">PDF öffnen</a><a class="nx-btn nx-btn-primary" href="{% url 'site-report-edit' bando_report.pk %}">Weiterbearbeiten →</a>{% else %}<a class="nx-btn nx-btn-primary" href="{% url 'site-report-create' project.pk %}">Leistungsnachweis erstellen →</a>{% endif %}</div></div>
 </section>
 {% endif %}
 
