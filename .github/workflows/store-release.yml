@@ -71,8 +71,7 @@ jobs:
           grep -q 'targetSdkVersion = 36' android/variables.gradle
           grep -q "versionName \"${KAYI_APP_VERSION}\"" android/app/build.gradle
           grep -q "versionCode ${KAYI_BUILD_NUMBER}" android/app/build.gradle
-          grep -q 'coreLibraryDesugaringEnabled true' android/app/build.gradle
-          grep -q 'coreLibraryDesugaringEnabled true' plugins/kayi-room-scanner/android/build.gradle
+          ! grep -Rqs 'java.time.Instant\|Instant.now' plugins/kayi-room-scanner/android/src/main/java
           ! grep -Rqs 'READ_MEDIA_IMAGES\|READ_EXTERNAL_STORAGE\|MANAGE_EXTERNAL_STORAGE' android/app/src/main/AndroidManifest.xml
           grep -q 'usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
           test -s android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
