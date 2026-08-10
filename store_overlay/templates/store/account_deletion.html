@@ -1,0 +1,19 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Konto und Daten löschen · KAYI{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">DATENSCHUTZ</div><h1>Konto und Daten löschen</h1><p>Hier kannst du die Löschung deines KAYI-Haustechnik-Kontos und der damit verknüpften personenbezogenen Daten anfordern – auch ohne installierte App.</p></div></div>
+<section class="nx-card nx-card-pad" style="max-width:760px">
+{% if submitted %}
+<div class="nx-empty"><h2>Anfrage erhalten</h2><p>Die Löschanfrage wurde erfasst. Zum Schutz vor unbefugten Löschungen wird die Identität vor der endgültigen Löschung geprüft. Daten, die aufgrund gesetzlicher Aufbewahrungspflichten weiter gespeichert werden müssen, werden nur für diesen Zweck aufbewahrt und danach gelöscht bzw. anonymisiert.</p></div>
+{% else %}
+<h2>Löschung anfordern</h2>
+<p>Mit der Löschung werden – soweit keine gesetzliche Aufbewahrungspflicht entgegensteht – Kontodaten und dem Konto eindeutig zuordenbare personenbezogene Daten gelöscht. Geschäftliche Belege und Nachweise können für vorgeschriebene Fristen aufbewahrt werden.</p>
+<form method="post" class="nx-form">{% csrf_token %}
+{% if not request.user.is_authenticated %}<div class="nx-field"><label for="deleteIdentifier">E-Mail-Adresse oder Benutzername</label><input id="deleteIdentifier" class="nx-control" type="text" name="identifier" autocomplete="username" required><small class="nx-muted">Wir zeigen aus Sicherheitsgründen nicht an, ob ein Konto zu dieser Angabe existiert.</small></div>{% else %}<p><strong>Angemeldet als {{ request.user.username }}</strong></p>{% endif %}
+<label style="display:flex;gap:10px;align-items:flex-start;margin:16px 0"><input type="checkbox" required style="margin-top:4px"><span>Ich möchte die Löschung meines KAYI-Kontos und der zugehörigen personenbezogenen Daten anfordern.</span></label>
+<button class="nx-btn nx-btn-primary" type="submit">Löschung anfordern</button>
+</form>
+{% endif %}
+</section>
+<div class="nx-form-actions"><a class="nx-btn" href="{% url 'store-privacy' %}">Datenschutz</a><a class="nx-btn" href="{% url 'store-support' %}">Support</a></div>
+{% endblock %}
