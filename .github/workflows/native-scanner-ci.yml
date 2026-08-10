@@ -10,7 +10,7 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - name: Assemble application source
@@ -26,11 +26,25 @@ jobs:
       - name: Install native dependencies
         working-directory: native
         run: npm install --no-audit --no-fund
+      - name: Audit Capacitor release configuration
+        working-directory: native
+        run: |
+          echo '=== package.json ==='
+          cat package.json
+          echo '=== capacitor config ==='
+          for f in capacitor.config.*; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done
       - name: Generate and synchronize Android project
         working-directory: native
         run: |
           npx cap add android
           npx cap sync android
+      - name: Audit generated Android configuration
+        working-directory: native
+        run: |
+          echo '=== Android Gradle identifiers / SDK levels ==='
+          grep -RInE 'namespace|applicationId|compileSdk|targetSdk|minSdk|versionCode|versionName' android/app/build.gradle* android/variables.gradle android/build.gradle* || true
+          echo '=== Android permissions ==='
+          grep -RInE 'uses-permission|uses-feature' android/app/src/main/AndroidManifest.xml || true
       - name: Build Android debug APK
         working-directory: native/android
         run: ./gradlew assembleDebug --stacktrace
@@ -43,7 +57,7 @@ jobs:
 
   ios:
     runs-on: macos-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Assemble application source
@@ -54,6 +68,14 @@ jobs:
       - name: Install native dependencies
         working-directory: native
         run: npm install --no-audit --no-fund
+      - name: Audit Xcode version and Capacitor release configuration
+        working-directory: native
+        run: |
+          xcodebuild -version
+          echo '=== package.json ==='
+          cat package.json
+          echo '=== capacitor config ==='
+          for f in capacitor.config.*; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done
       - name: Generate and synchronize iOS project
         working-directory: native
         run: |
@@ -62,6 +84,15 @@ jobs:
           sed -i '' 's/\.iOS(.v15)/.iOS(.v16)/g' ios/App/CapApp-SPM/Package.swift
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
             /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
+      - name: Audit generated iOS configuration
+        working-directory: native
+        run: |
+          echo '=== Bundle / deployment configuration ==='
+          grep -nE 'PRODUCT_BUNDLE_IDENTIFIER|MARKETING_VERSION|CURRENT_PROJECT_VERSION|IPHONEOS_DEPLOYMENT_TARGET' ios/App/App.xcodeproj/project.pbxproj || true
+          echo '=== Info.plist ==='
+          plutil -p ios/App/App/Info.plist || true
+          echo '=== Privacy manifests ==='
+          find ios -name 'PrivacyInfo.xcprivacy' -print || true
       - name: Compile iOS simulator application
         working-directory: native
         run: |
