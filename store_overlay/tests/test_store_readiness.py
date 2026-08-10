@@ -24,6 +24,13 @@ class StoreReadinessTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, marker)
 
+    def test_privacy_page_discloses_google_arcore(self):
+        response = self.client.get(reverse("store-privacy"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Google Play Services for AR (ARCore)")
+        self.assertContains(response, "https://policies.google.com/privacy")
+        self.assertContains(response, "https://policies.google.com/terms")
+
     def test_external_deletion_request_does_not_require_installed_app(self):
         response = self.client.post(reverse("store-account-deletion"), {"identifier": self.user.email})
         self.assertEqual(response.status_code, 200)
