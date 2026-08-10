@@ -140,7 +140,11 @@ runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_polish.py"), run_name
 runpy.run_path(str(ROOT / "scripts" / "patch_customer_3d_ai_consent.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "install_customer_3d_tests.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "customer_3d_browser_smoke_patch.py"), run_name="__main__")
+# Global assistant and customer handoff are intentionally the last product layer:
+# profile controls, KI omnibox, real field recording, signature and generated PDF
+# must survive every previous UI, privacy and room-planner patch.
+runpy.run_path(str(ROOT / "scripts" / "install_global_ai_field_handoff.py"), run_name="__main__")
 # Read-only diagnostic of legacy routes still present behind KAYI Next. This does
 # not reapply old fixes; it reports what survived in the actual assembled source.
 runpy.run_path(str(ROOT / "scripts" / "audit_legacy_regressions.py"), run_name="__main__")
-print("KAYI Next, specialist flows, German-only UI, store readiness, UI hardening, customer UX and 3D KI polish installed and verified.")
+print("KAYI Next installed and verified with global KI, profile menu, field voice/signature/PDF handoff, specialist flows, German UI and store readiness.")
