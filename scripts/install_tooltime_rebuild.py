@@ -99,4 +99,8 @@ guard()
 # integrations survive every deterministic source assembly and production deploy.
 runpy.run_path(str(ROOT / "scripts" / "install_room_planner_pro.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "install_field_authorization.py"), run_name="__main__")
-print("KAYI Next, Room Planner Pro and signed field authorization installed and verified.")
+# Final quality layers run after every specialist overlay so no old template can
+# reintroduce English UI or the obsolete single-FileList photo flow.
+runpy.run_path(str(ROOT / "scripts" / "install_german_ui_quality.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "patch_german_browser_smoke.py"), run_name="__main__")
+print("KAYI Next, specialist flows, German-only UI and German browser audit installed and verified.")
