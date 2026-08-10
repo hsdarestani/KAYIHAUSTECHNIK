@@ -130,6 +130,10 @@ def patch_android_scanner_compatibility() -> None:
         "import java.nio.file.StandardOpenOption;\r\n",
     ):
         text = text.replace(old_import, "")
+    # Cover any additional java.nio.file import that may be introduced by the
+    # generated scanner source. This remains safe because scanner storage uses
+    # java.io.File/FileOutputStream exclusively after the rewrite below.
+    text = re.sub(r"(?m)^[ \t]*import\s+java\.nio\.file\.[^;]+;[ \t]*\r?\n?", "", text)
 
     if "import java.io.FileOutputStream;" not in text:
         text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
