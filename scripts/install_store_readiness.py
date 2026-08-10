@@ -107,23 +107,22 @@ def patch_privacy_ui() -> None:
             room_template.write_text(text, encoding="utf-8")
 
 
-def patch_legacy_test_contract() -> None:
-    # Existing AI resilience/measurement tests predate store consent. They should
-    # continue testing provider failures and human confirmation after consenting,
-    # rather than bypassing the new production gate.
-    snippet = '''        profile = self.user.profile\n        prefs = dict(profile.preferences or {})\n        prefs.update({"ai_third_party_consent_at": "2026-08-10T00:00:00+00:00", "ai_third_party_consent_version": "2026-08-10", "ai_third_party_consent_revoked_at": None})\n        profile.preferences = prefs\n        profile.save(update_fields=["preferences", "updated_at"])\n'''
-    for relative in ("tests/test_ai_resilience.py", "tests/test_v2.py"):
-        path = ROOT / relative
-        if not path.exists():
-            continue
-        text = path.read_text(encoding="utf-8")
-        marker = "# KAYI_STORE_TEST_AI_CONSENT"
-        if marker in text:
-            continue
-        needle = "        self.client.force_login(self.user)\n"
-        if needle in text:
-            text = text.replace(needle, needle + "        # KAYI_STORE_TEST_AI_CONSENT\n" + snippet)
-            path.write_text(text, encoding="utf-8")
+def patch_android_scanner_compatibility() -> None:
+    path = ROOT / "native" / "plugins" / "kayi-room-scanner" / "android" / "src" / "main" / "java" / "de" / "kayihaustechnik" / "scanner" / "ArCoreRoomScanActivity.java"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    # java.time.Instant is API 26. KAYI deliberately supports Android 7/API 24,
+    # so the scanner uses a legacy-compatible ISO-like timestamp instead of
+    # relying on desugaring inside a locally linked Capacitor library module.
+    if "Instant.now().toString()" in text:
+        text = text.replace(
+            "Instant.now().toString()",
+            'new java.text.SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ss.SSSZ", java.util.Locale.US).format(new java.util.Date())',
+        )
+    text = text.replace("import java.time.Instant;\n", "")
+    text = text.replace("import java.time.Instant;\r\n", "")
+    path.write_text(text, encoding="utf-8")
 
 
 def guard() -> None:
@@ -149,6 +148,9 @@ def guard() -> None:
     room_path = ROOT / "erp" / "room_planner_views.py"
     if room_path.exists() and "analyze_room_photos" in room_path.read_text(encoding="utf-8") and "KAYI_STORE_ROOM_AI_CONSENT" not in room_path.read_text(encoding="utf-8"):
         raise RuntimeError("Room Planner photo AI is not protected by explicit consent")
+    scanner = ROOT / "native" / "plugins" / "kayi-room-scanner" / "android" / "src" / "main" / "java" / "de" / "kayihaustechnik" / "scanner" / "ArCoreRoomScanActivity.java"
+    if scanner.exists() and "Instant.now()" in scanner.read_text(encoding="utf-8"):
+        raise RuntimeError("Android scanner still requires API 26 java.time.Instant despite minSdk 24")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
@@ -157,6 +159,6 @@ copy_tree(OVERLAY / "tests", ROOT / "tests")
 patch_urls()
 patch_user_ai_guards()
 patch_privacy_ui()
-patch_legacy_test_contract()
+patch_android_scanner_compatibility()
 guard()
-print("KAYI store readiness layer installed: public privacy/support/deletion, explicit AI consent and native store URLs.")
+print("KAYI store readiness layer installed: public privacy/support/deletion, explicit AI consent, native store URLs and Android 7-compatible scanner timestamp.")
