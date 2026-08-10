@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import rebuild_ops as ops
 from . import rebuild_views as views
 
 
@@ -19,6 +20,15 @@ urlpatterns = [
     path("appointments/<int:pk>/ai-report/", views.ai_structure_report, name="next-ai-report"),
     path("field/", views.field_home, name="next-field"),
     path("time/", views.time_overview, name="next-time"),
+    path("tasks/", ops.task_list, name="next-tasks"),
+    path("tasks/new/", ops.task_edit, name="next-task-create"),
+    path("tasks/<int:pk>/", ops.task_edit, name="next-task-edit"),
+    path("expenses/", ops.expense_list, name="next-expenses"),
+    path("expenses/new/", ops.expense_edit, name="next-expense-create"),
+    path("expenses/<int:pk>/", ops.expense_edit, name="next-expense-edit"),
+    path("employees/", ops.employee_list, name="next-employees"),
+    path("employees/new/", ops.employee_edit, name="next-employee-create"),
+    path("employees/<int:pk>/", ops.employee_edit, name="next-employee-edit"),
     path("quotes/", views.quote_list, name="next-quotes"),
     path("quotes/new/", views.quote_editor, name="next-quote-create"),
     path("quotes/<int:pk>/", views.quote_editor, name="next-quote-edit"),
