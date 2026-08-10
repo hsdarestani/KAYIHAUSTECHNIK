@@ -112,9 +112,9 @@ def patch_android_scanner_compatibility() -> None:
     if not path.exists():
         return
     text = path.read_text(encoding="utf-8")
-    # java.time.Instant is API 26. KAYI deliberately supports Android 7/API 24,
-    # so the scanner uses a legacy-compatible ISO-like timestamp instead of
-    # relying on desugaring inside a locally linked Capacitor library module.
+
+    # java.time.Instant and java.nio.file Files/toPath are API 26. KAYI keeps
+    # Android 7/API 24 support, so use only java.io APIs available on minSdk 24.
     if "Instant.now().toString()" in text:
         text = text.replace(
             "Instant.now().toString()",
@@ -122,6 +122,26 @@ def patch_android_scanner_compatibility() -> None:
         )
     text = text.replace("import java.time.Instant;\n", "")
     text = text.replace("import java.time.Instant;\r\n", "")
+
+    if "import java.io.FileOutputStream;" not in text:
+        text = text.replace("import java.io.File;\n", "import java.io.File;\nimport java.io.FileOutputStream;\n", 1)
+
+    text = text.replace(
+        "java.nio.file.Files.write(geometryFile.toPath(), geometryJson.getBytes(StandardCharsets.UTF_8));",
+        "writeUtf8(geometryFile, geometryJson);",
+    )
+    text = text.replace(
+        "java.nio.file.Files.write(metadataFile.toPath(), metadataJson.getBytes(StandardCharsets.UTF_8));",
+        "writeUtf8(metadataFile, metadataJson);",
+    )
+
+    helper = '''    private static void writeUtf8(File file, String value) throws Exception {\n        try (FileOutputStream stream = new FileOutputStream(file)) {\n            stream.write(value.getBytes(StandardCharsets.UTF_8));\n            stream.flush();\n        }\n    }\n\n'''
+    if "private static void writeUtf8(" not in text:
+        marker = "    private void writePayload() throws Exception {\n"
+        if marker not in text:
+            raise RuntimeError("Could not locate Android scanner writePayload method for API24 compatibility patch")
+        text = text.replace(marker, helper + marker, 1)
+
     path.write_text(text, encoding="utf-8")
 
 
@@ -149,8 +169,14 @@ def guard() -> None:
     if room_path.exists() and "analyze_room_photos" in room_path.read_text(encoding="utf-8") and "KAYI_STORE_ROOM_AI_CONSENT" not in room_path.read_text(encoding="utf-8"):
         raise RuntimeError("Room Planner photo AI is not protected by explicit consent")
     scanner = ROOT / "native" / "plugins" / "kayi-room-scanner" / "android" / "src" / "main" / "java" / "de" / "kayihaustechnik" / "scanner" / "ArCoreRoomScanActivity.java"
-    if scanner.exists() and "Instant.now()" in scanner.read_text(encoding="utf-8"):
-        raise RuntimeError("Android scanner still requires API 26 java.time.Instant despite minSdk 24")
+    if scanner.exists():
+        scanner_text = scanner.read_text(encoding="utf-8")
+        forbidden = ("Instant.now()", "java.time.Instant", "java.nio.file.Files", ".toPath()")
+        remaining = [item for item in forbidden if item in scanner_text]
+        if remaining:
+            raise RuntimeError(f"Android scanner still uses API26-only file/time calls despite minSdk 24: {remaining}")
+        if "private static void writeUtf8(" not in scanner_text:
+            raise RuntimeError("Android scanner API24-compatible UTF-8 file writer was not installed")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
@@ -161,4 +187,4 @@ patch_user_ai_guards()
 patch_privacy_ui()
 patch_android_scanner_compatibility()
 guard()
-print("KAYI store readiness layer installed: public privacy/support/deletion, explicit AI consent, native store URLs and Android 7-compatible scanner timestamp.")
+print("KAYI store readiness layer installed: public privacy/support/deletion, explicit AI consent, native store URLs and Android 7-compatible room scanner I/O.")
