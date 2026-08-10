@@ -28,9 +28,6 @@ def install_clean_js_tail() -> None:
     if JS_MARKER not in text:
         raise RuntimeError("Malformed KAYI Next hardening tail marker is missing")
     prefix = text.split(JS_MARKER, 1)[0].rstrip()
-    # The old raw-string patch leaves literal backslash-n separators and the
-    # leading // fragment immediately before the marker. Strip only that legacy
-    # boundary, never JavaScript escapes inside the real source prefix.
     if prefix.endswith("//"):
         prefix = prefix[:-2].rstrip()
     while prefix.endswith("\\n") or prefix.endswith("\\r"):
@@ -44,11 +41,14 @@ def dataset_name(attribute: str) -> str:
     return parts[0] + "".join(part[:1].upper() + part[1:] for part in parts[1:])
 
 
-def has_js_reference(tag: str, js_corpus: str) -> bool:
+def has_js_reference(tag: str, handler_corpus: str) -> bool:
+    id_match = re.search(r"\bid\s*=\s*['\"]([^'\"]+)['\"]", tag, flags=re.IGNORECASE)
+    if id_match and id_match.group(1) in handler_corpus:
+        return True
     data_attrs = re.findall(r"\b(data-[a-z0-9_-]+)(?:\s*=|\s|>)", tag.lower())
     for attribute in data_attrs:
         camel = dataset_name(attribute)
-        if attribute in js_corpus or f"dataset.{camel}" in js_corpus:
+        if attribute in handler_corpus or f"dataset.{camel}" in handler_corpus:
             return True
     class_match = re.search(r"\bclass\s*=\s*['\"]([^'\"]+)['\"]", tag, flags=re.IGNORECASE)
     if class_match:
@@ -60,29 +60,43 @@ def has_js_reference(tag: str, js_corpus: str) -> bool:
         for token in class_match.group(1).split():
             if token in generic or token.startswith("btn-") or token.startswith("nx-btn"):
                 continue
-            if token in js_corpus:
+            if token in handler_corpus:
                 return True
     return False
 
 
+def inside_script(text: str, offset: int) -> bool:
+    open_pos = text.rfind("<script", 0, offset)
+    close_pos = text.rfind("</script", 0, offset)
+    return open_pos > close_pos
+
+
 def audit_buttons() -> None:
     failures: list[str] = []
-    js_corpus = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "static" / "js").rglob("*.js"))
-    for path in sorted((ROOT / "templates").rglob("*.html")):
+    static_js = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "static" / "js").rglob("*.js"))
+    template_paths = sorted((ROOT / "templates").rglob("*.html"))
+    # Inline scripts are real handlers too. Include all template source in the
+    # reference corpus, while excluding button-like HTML strings *inside* script
+    # tags from the server-rendered button inventory.
+    template_corpus = "\n".join(path.read_text(encoding="utf-8") for path in template_paths)
+    handler_corpus = static_js + "\n" + template_corpus
+    for path in template_paths:
         text = path.read_text(encoding="utf-8")
         for match in re.finditer(r"<button\b[^>]*>", text, flags=re.IGNORECASE):
+            if inside_script(text, match.start()):
+                continue
             tag = match.group(0)
             if not re.search(r"\btype\s*=\s*['\"]button['\"]", tag, flags=re.IGNORECASE):
                 continue
             lowered = tag.lower()
             if " disabled" in lowered or "onclick=" in lowered or "nx-item-remove" in lowered:
                 continue
-            if has_js_reference(tag, js_corpus):
+            if has_js_reference(tag, handler_corpus):
                 continue
             line = text.count("\n", 0, match.start()) + 1
             failures.append(f"{path.relative_to(ROOT)}:{line}: {tag[:200]}")
     if failures:
-        raise RuntimeError("Visible type=button controls without a JavaScript binding were found:\n" + "\n".join(failures[:60]))
+        raise RuntimeError("Visible type=button controls without a JavaScript/inline binding were found:\n" + "\n".join(failures[:60]))
 
 
 def check_js_syntax() -> None:
@@ -99,7 +113,6 @@ def check_js_syntax() -> None:
 runpy.run_path(str(ROOT / "scripts" / "document_position_runtime_fallback.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "static_cache_bust_hardening.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "ai_service_coverage_hardening.py"), run_name="__main__")
-
 normalize_css_tail("static/css/kayi-next.css")
 install_clean_js_tail()
 
