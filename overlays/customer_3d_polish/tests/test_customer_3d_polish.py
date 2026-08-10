@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+import json
+from decimal import Decimal
+from unittest.mock import patch
+
+from django.contrib.auth.models import User
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from erp.models import Customer, Organization, Project, RoomMeasurement, RoomModelRevision, UserProfile
+from erp.services.numbering import next_number
+from erp.services.room_planner_state import normalize_room_state
+
+
+class CustomerAndRoomPlannerPolishTests(TestCase):
+    def setUp(self):
+        self.org = Organization.objects.create(name="KAYI Polish Test")
+        self.user = User.objects.create_user("polish-admin", password="very-secure-password", email="polish@example.com")
+        self.user.profile.organization = self.org
+        self.user.profile.role = UserProfile.Role.ADMIN
+        self.user.profile.save()
+        self.customer = Customer.objects.create(
+            organization=self.org,
+            number=next_number(self.org, "customer"),
+            company="KAYI Testkunde",
+        )
+        self.project = Project.objects.create(
+            organization=self.org,
+            number=next_number(self.org, "project"),
+            title="3D KI Test",
+            customer=self.customer,
+        )
+        self.measurement = RoomMeasurement.objects.create(
+            organization=self.org,
+            project=self.project,
+            name="Bad",
+            method=RoomMeasurement.Method.MANUAL,
+            status=RoomMeasurement.Status.REVIEW,
+            length_m=Decimal("4.000"),
+            width_m=Decimal("3.000"),
+            height_m=Decimal("2.500"),
+            created_by=self.user,
+        )
+        self.client = Client()
+        self.client.login(username="polish-admin", password="very-secure-password")
+
+    def state(self):
+        return normalize_room_state({
+            "schema_version": 3,
+            "room": {"length_m": 4, "width_m": 3, "height_m": 2.5, "wall_thickness_m": 0.12},
+            "openings": [],
+            "objects": [],
+            "view": {"mode": "perspective", "grid": True, "snap": True},
+        }, self.measurement)
+
+    def test_customer_form_uses_progressive_german_fields(self):
+        response = self.client.get(reverse("next-customer-create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Weitere Angaben")
+        self.assertContains(response, "Abweichenden Einsatzort hinzufügen")
+        self.assertContains(response, "Etage")
+        self.assertContains(response, "Hinweise zum Zugang")
+        self.assertNotContains(response, ">Floor<")
+        self.assertNotContains(response, ">Access notes<")
+
+    def test_room_planner_sets_fresh_csrf_cookie_and_visible_ki_assistant(self):
+        response = self.client.get(reverse("next-room-planner", args=[self.project.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("csrftoken", response.cookies)
+        self.assertContains(response, "KI-Raumassistent")
+        self.assertContains(response, "KI-Vorschlag anwenden")
+        self.assertContains(response, "data-rp-ai-command")
+        self.assertContains(response, "20260810-7")
+        self.assertNotContains(response, "AI setzt")
+
+    @patch("erp.room_planner_views.adjust_room_scene")
+    def test_ki_command_returns_editable_draft_without_creating_revision(self, adjust):
+        draft = self.state()
+        draft["objects"] = [{
+            "id": "wc-ki", "kind": "toilet", "label": "WC", "category": "sanitary",
+            "anchor": "wall", "wall": "right", "x_m": "2.790", "z_m": "2.000",
+            "elevation_m": "0.000", "width_m": "0.420", "depth_m": "0.720", "height_m": "0.820",
+            "rotation_deg": "270.000", "color": "#f6f8f9", "enabled": True, "locked": False,
+            "source": "ki_command", "confidence": "0.900", "evidence": "Anweisung des Nutzers",
+        }]
+        adjust.return_value = {"state": draft, "summary": "WC an die rechte Wand gesetzt.", "warnings": []}
+        before = RoomModelRevision.objects.filter(measurement=self.measurement).count()
+        response = self.client.post(
+            reverse("next-room-planner-ai", args=[self.project.pk]),
+            data=json.dumps({"measurement_id": self.measurement.pk, "command": "Stelle das WC an die rechte Wand.", "state": self.state()}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["state"]["objects"][0]["kind"], "toilet")
+        self.assertEqual(RoomModelRevision.objects.filter(measurement=self.measurement).count(), before)
+        adjust.assert_called_once()
+
+    def test_save_endpoint_still_accepts_authenticated_json(self):
+        response = self.client.post(
+            reverse("next-room-planner-save", args=[self.project.pk]),
+            data=json.dumps({"measurement_id": self.measurement.pk, "label": "Polish Save", "state": self.state()}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(RoomModelRevision.objects.filter(measurement=self.measurement).count(), 1)
