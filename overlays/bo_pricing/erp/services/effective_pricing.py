@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from decimal import Decimal
+from difflib import SequenceMatcher
 
 from erp import models as m
 
@@ -12,8 +13,65 @@ _STOPWORDS = {
     "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "einem", "einen",
     "und", "oder", "mit", "ohne", "bei", "auf", "aus", "in", "im", "am", "an", "zum", "zur",
     "von", "vorh", "vorhanden", "vorhandene", "vorhandenen", "inkl", "inklusive", "ggf", "ca",
-    "stk", "stueck", "pausch", "pauschal", "meter", "qm", "m2",
+    "stk", "stueck", "pausch", "pauschal", "meter", "qm", "m2", "durchfuehren", "durchgefuehrt",
 }
+_TECH_SHORT_TOKENS = {"wc", "ap", "up", "dn"}
+_ACTION_FEATURES = {
+    "montage", "demontage", "pruef", "einbring", "verleg", "anschliess", "erneuer", "abkleb",
+    "abdeck", "bohr", "stemm", "abdicht", "reinig", "wartung",
+}
+# Domain concepts are deliberately conservative. They normalize common German
+# B&O wording differences without inventing a price or crossing variants.
+_FEATURE_RULES = (
+    (r"\b(?:wc|toilett\w*)\b", "wc"),
+    (r"dusch|braus", "dusch"),
+    (r"armatur", "armatur"),
+    (r"abtrenn|trennwand", "abtrennung"),
+    (r"rinn", "rinne"),
+    (r"ablauf|entwaesser", "ablauf"),
+    (r"waschtisch|waschbecken", "waschtisch"),
+    (r"spuelbecken|spuele", "spuele"),
+    (r"spuelkasten", "spuelkasten"),
+    (r"badewanne|wannen", "wanne"),
+    (r"urinal", "urinal"),
+    (r"bidet", "bidet"),
+    (r"siphon|sifon", "siphon"),
+    (r"dicht", "dicht"),
+    (r"pruef|kontroll", "pruef"),
+    (r"ausgleich|nivellier|spachtelmasse", "ausgleich"),
+    (r"\bmasse\b|ausgleichsmasse|nivelliermasse", "masse"),
+    (r"aufputz|\bap\b", "ap"),
+    (r"unterputz|\bup\b", "up"),
+    (r"montag|montier|einbau|einbauen", "montage"),
+    (r"demont|ausbau|ausbauen", "demontage"),
+    (r"einbring|eingebrach", "einbring"),
+    (r"verleg", "verleg"),
+    (r"anschliess|anschluss|anschluess", "anschliess"),
+    (r"erneuer|austausch|ersetzen|ersetz", "erneuer"),
+    (r"abdicht", "abdicht"),
+    (r"abkleb", "abkleb"),
+    (r"abdeck", "abdeck"),
+    (r"bohr", "bohr"),
+    (r"stemm", "stemm"),
+    (r"reinig", "reinig"),
+    (r"wartung|warten", "wartung"),
+    (r"durchlauferhitzer", "durchlauferhitzer"),
+    (r"warmwasserbereiter", "warmwasserbereiter"),
+    (r"heizkoerp|radiator", "heizkoerper"),
+    (r"thermostat", "thermostat"),
+    (r"ventil", "ventil"),
+    (r"pumpe", "pumpe"),
+    (r"rohr|leitung", "rohr"),
+    (r"fliese|plattenbelag|wandplatte|bodenplatte", "fliese"),
+    (r"silikon|dauerelast", "silikon"),
+    (r"fug", "fuge"),
+    (r"estrich", "estrich"),
+    (r"daemm|isolier", "daemmung"),
+)
+_CONFLICT_GROUPS = (
+    frozenset({"ap", "up"}),
+    frozenset({"montage", "demontage"}),
+)
 
 
 def _positive(value):
@@ -63,12 +121,18 @@ def _candidate_score(price_item):
     )
 
 
+def _ascii(value: str) -> str:
+    return (value or "").lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+
+
 def _canonical_word(word: str) -> str:
-    word = (word or "").lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    word = _ascii(word)
     if re.fullmatch(r"montag(?:e|en)?|montier(?:en|t|ung)?", word):
         return "montage"
     if re.fullmatch(r"demontag(?:e|en)?|demontier(?:en|t|ung)?", word):
         return "demontage"
+    if word.startswith("pruef"):
+        return "pruef"
     if word.startswith(("verleg", "verlege")):
         return "verleg"
     if word.startswith(("einbring", "eingebrach")):
@@ -77,10 +141,14 @@ def _canonical_word(word: str) -> str:
         return "abkleb"
     if word.startswith(("abdeck", "abgedeck")):
         return "abdeck"
-    if word.startswith(("anschliess", "anschließ")):
+    if word.startswith(("anschliess", "anschluess")):
         return "anschliess"
     if word.startswith(("erneuer", "erneu")):
         return "erneuer"
+    if word == "aufputz":
+        return "ap"
+    if word == "unterputz":
+        return "up"
     return word
 
 
@@ -89,11 +157,49 @@ def _tokens(value: str) -> tuple[str, ...]:
     result = []
     for word in raw:
         token = _canonical_word(word)
-        if len(token) < 3 or token in _STOPWORDS or token.isdigit():
+        if token.isdigit() or token in _STOPWORDS:
+            continue
+        if len(token) < 3 and token not in _TECH_SHORT_TOKENS:
             continue
         if token not in result:
             result.append(token)
     return tuple(result)
+
+
+def _domain_features(value: str) -> set[str]:
+    normalized = _ascii(value)
+    return {feature for pattern, feature in _FEATURE_RULES if re.search(pattern, normalized)}
+
+
+def _has_conflict(query_features: set[str], row_features: set[str]) -> bool:
+    for group in _CONFLICT_GROUPS:
+        query_variant = query_features & group
+        row_variant = row_features & group
+        if query_variant and row_variant and not (query_variant & row_variant):
+            return True
+    return False
+
+
+def _fuzzy_overlap(query_tokens: set[str], row_tokens: set[str]) -> int:
+    """Count close German compound/stem matches after exact tokens are removed."""
+    unmatched_query = [token for token in query_tokens if token not in row_tokens and len(token) >= 5]
+    unmatched_row = [token for token in row_tokens if token not in query_tokens and len(token) >= 5]
+    matched = 0
+    used = set()
+    for query in unmatched_query:
+        best_index = None
+        best_ratio = 0.0
+        for index, row in enumerate(unmatched_row):
+            if index in used:
+                continue
+            ratio = SequenceMatcher(None, query, row).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_index = index
+        if best_index is not None and best_ratio >= 0.78:
+            used.add(best_index)
+            matched += 1
+    return matched
 
 
 def _external_codes(value):
@@ -140,27 +246,27 @@ def _best_by_code(org, codes):
 
 
 def _semantic_bo_matches(org, items):
-    """Match KAYI's short internal service names to the imported B&O catalogue.
+    """Resolve internal KAYI services against the imported B&O VA04 library.
 
-    KAYI intentionally keeps stable internal codes such as S1002 while B&O uses
-    VA04 codes. A semantic fallback is therefore required when an explicit
-    external code has not yet been stored. It is deliberately conservative:
-    at least two meaningful service tokens must match, all tokens of a two-word
-    KAYI service must be present, and the shortest/closest B&O description wins.
-    Price rows are streamed so the 13k+ reference library is not loaded twice.
+    Resolution is deterministic and price-safe: explicit external codes still
+    win, while this fallback only selects an existing priced B&O row. German
+    trade synonyms/compounds are normalized (for example Dusch/Brause,
+    Dichtigkeit/Dichtheit and Ausgleich/Nivellier). Conflicting AP/UP and
+    Montage/Demontage variants are rejected.
     """
     queries = {}
     inverted = defaultdict(set)
     for item in items:
-        tokens = _tokens(" ".join(part for part in (getattr(item, "name", ""), getattr(item, "description", "")) if part))
-        name_tokens = _tokens(getattr(item, "name", ""))
-        if len(name_tokens) >= 2:
-            tokens = name_tokens
-        if len(tokens) < 2:
+        name = getattr(item, "name", "") or ""
+        description = getattr(item, "description", "") or ""
+        name_tokens = set(_tokens(name))
+        tokens = name_tokens or set(_tokens(" ".join(part for part in (name, description) if part)))
+        features = _domain_features(name) or _domain_features(" ".join(part for part in (name, description) if part))
+        if len(tokens) < 2 and len(features) < 2:
             continue
-        queries[item.pk] = tokens
-        for token in tokens:
-            inverted[token].add(item.pk)
+        queries[item.pk] = {"tokens": tokens, "features": features}
+        for key in tokens | features:
+            inverted[key].add(item.pk)
     if not queries:
         return {}
 
@@ -174,27 +280,58 @@ def _semantic_bo_matches(org, items):
     for row in rows:
         if not _is_bo(row) or _price_value(row)[0] is None:
             continue
-        row_tokens = set(_tokens(getattr(row, "description", "")))
-        if not row_tokens:
+        description = getattr(row, "description", "") or ""
+        row_tokens = set(_tokens(description))
+        row_features = _domain_features(description)
+        if not row_tokens and not row_features:
             continue
         candidate_ids = set()
-        for token in row_tokens:
-            candidate_ids.update(inverted.get(token, ()))
+        for key in row_tokens | row_features:
+            candidate_ids.update(inverted.get(key, ()))
         for item_id in candidate_ids:
             query = queries[item_id]
-            qset = set(query)
-            overlap = len(qset & row_tokens)
-            coverage = overlap / len(qset)
-            if overlap < 2:
+            query_tokens = query["tokens"]
+            query_features = query["features"]
+            if _has_conflict(query_features, row_features):
                 continue
-            if len(qset) == 2 and coverage < 1:
+
+            exact_overlap = len(query_tokens & row_tokens)
+            fuzzy_overlap = _fuzzy_overlap(query_tokens, row_tokens)
+            feature_overlap = len(query_features & row_features)
+            query_actions = query_features & _ACTION_FEATURES
+            row_actions = row_features & _ACTION_FEATURES
+            subject_query = query_features - _ACTION_FEATURES
+            subject_overlap = len(subject_query & row_features)
+
+            # Domain-aware path. At least one subject concept must agree. For
+            # two-concept services (e.g. Waschtisch + Montage) both concepts
+            # are normally required; longer names tolerate one extra qualifier.
+            domain_ok = False
+            if len(query_features) >= 2 and subject_query and subject_overlap >= 1:
+                action_ok = not query_actions or not row_actions or bool(query_actions & row_actions)
+                coverage = feature_overlap / max(len(query_features), 1)
+                minimum = 1.0 if len(query_features) == 2 else 0.60
+                domain_ok = action_ok and coverage >= minimum
+
+            # Legacy/fuzzy path keeps coverage for services outside the domain
+            # lexicon. Fuzzy matching is only a supplement to an exact/action
+            # anchor, never a free nearest-neighbour price guess.
+            token_matches = exact_overlap + fuzzy_overlap
+            token_ok = token_matches >= 2
+            if len(query_tokens) == 2:
+                token_ok = token_matches >= 2
+            elif len(query_tokens) >= 3:
+                token_ok = token_matches / len(query_tokens) >= 0.66
+
+            if not domain_ok and not token_ok:
                 continue
-            if len(qset) >= 3 and coverage < 0.75:
-                continue
-            precision = overlap / max(len(row_tokens), 1)
-            extra_words = max(len(row_tokens) - overlap, 0)
+
+            feature_coverage = feature_overlap / max(len(query_features), 1) if query_features else 0.0
+            token_coverage = min(token_matches / max(len(query_tokens), 1), 1.0) if query_tokens else 0.0
+            precision = (feature_overlap + exact_overlap) / max(len(row_features) + len(row_tokens), 1)
+            extra_words = max((len(row_features) + len(row_tokens)) - (feature_overlap + exact_overlap), 0)
             price_score = _candidate_score(row) or (0, 0, 0, 0)
-            score = (coverage, precision, -extra_words, price_score)
+            score = (feature_coverage, token_coverage, precision, -extra_words, price_score)
             previous = best.get(item_id)
             if previous is None or score > previous[0]:
                 best[item_id] = (score, row)
@@ -207,7 +344,7 @@ def apply_effective_prices(org, catalog_items):
     Priority:
     1. non-zero B&O PriceItem addressed by KAYI code or external code;
     2. CatalogItem's own non-zero sales price;
-    3. conservative semantic B&O match for internal KAYI service codes;
+    3. deterministic semantic B&O match for internal KAYI service codes;
     4. best other active PriceItem addressed by code;
     5. zero only when no usable price exists anywhere.
 
