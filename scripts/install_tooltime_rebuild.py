@@ -95,4 +95,7 @@ copy_tree(OVERLAY / "scripts", ROOT / "scripts")
 patch_urls()
 runpy.run_path(str(ROOT / "scripts" / "next_test_contract.py"), run_name="__main__")
 guard()
-print("KAYI Next ToolTime-parity rebuild installed and verified.")
+# Final specialist product layer: the Room Planner is installed after KAYI Next
+# so its project/field integrations and browser smoke survive every deploy.
+runpy.run_path(str(ROOT / "scripts" / "install_room_planner_pro.py"), run_name="__main__")
+print("KAYI Next ToolTime-parity rebuild and Room Planner Pro installed and verified.")

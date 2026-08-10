@@ -1,0 +1,116 @@
+!== false;
+    o.locked = Boolean(o.locked);
+    o.color ||= defaultColor(o.kind);
+  });
+  return s;
+}
+
+const kindLabels = {
+  shower: 'Dusche', vanity: 'Waschtisch', sink: 'Spüle', toilet: 'WC', bathtub: 'Badewanne',
+  radiator: 'Heizkörper', boiler: 'Kessel', water_heater: 'Warmwasserspeicher', heat_pump: 'Wärmepumpe',
+  cabinet: 'Schrank', wardrobe: 'Kleiderschrank', shelf: 'Regal', table: 'Tisch', chair: 'Stuhl', sofa: 'Sofa', bed: 'Bett',
+  kitchen_base: 'Küchenunterschrank', kitchen_wall: 'Küchenoberschrank', fridge: 'Kühlschrank', oven: 'Backofen', stove: 'Kochfeld', dishwasher: 'Spülmaschine', washing_machine: 'Waschmaschine', dryer: 'Trockner',
+  socket: 'Steckdose', switch: 'Schalter', pipe: 'Rohr', drain: 'Ablauf', column: 'Säule', fixture: 'Objekt'
+};
+const defaultSizes = {
+  shower: [0.9, 0.9, 2.05], vanity: [0.8, 0.48, 0.85], sink: [0.75, 0.55, 0.9], toilet: [0.38, 0.68, 0.78], bathtub: [1.7, 0.75, 0.58],
+  radiator: [0.9, 0.11, 0.65], boiler: [0.6, 0.55, 1.25], water_heater: [0.55, 0.55, 1.25], heat_pump: [0.95, 0.55, 1.25],
+  cabinet: [0.9, 0.45, 1.9], wardrobe: [1.4, 0.6, 2.1], shelf: [0.9, 0.35, 1.8], table: [1.2, 0.75, 0.76], chair: [0.48, 0.48, 0.9], sofa: [1.9, 0.85, 0.82], bed: [2.0, 1.6, 0.55],
+  kitchen_base: [0.6, 0.62, 0.9], kitchen_wall: [0.6, 0.36, 0.72], fridge: [0.65, 0.67, 1.85], oven: [0.6, 0.62, 0.9], stove: [0.6, 0.52, 0.06], dishwasher: [0.6, 0.62, 0.85], washing_machine: [0.6, 0.62, 0.85], dryer: [0.6, 0.62, 0.85],
+  socket: [0.1, 0.025, 0.1], switch: [0.09, 0.025, 0.09], pipe: [0.08, 0.08, 1.4], drain: [0.14, 0.14, 0.025], column: [0.35, 0.35, 2.6], fixture: [0.6, 0.6, 0.9]
+};
+const kindColors = {
+  shower: '#cfe8f4', vanity: '#c9b39b', sink: '#e9ecef', toilet: '#f3f4f6', bathtub: '#e6edf2', radiator: '#e7e7e7', boiler: '#d6dde2', water_heater: '#d6dde2', heat_pump: '#cbd5db',
+  cabinet: '#c8aa86', wardrobe: '#b99772', shelf: '#bc9874', table: '#b88c62', chair: '#a77c58', sofa: '#a9adb8', bed: '#b9c5d8', kitchen_base: '#d3c8ba', kitchen_wall: '#ded5ca', fridge: '#dfe4e8', oven: '#34373d', stove: '#24262a', dishwasher: '#d9dfe3', washing_machine: '#e2e5e8', dryer: '#e2e5e8', socket: '#f2f2f2', switch: '#f2f2f2', pipe: '#a9adb2', drain: '#969a9f', column: '#d1d5db', fixture: '#c7ccd3'
+};
+const wallOnlyKinds = new Set(['radiator', 'kitchen_wall', 'socket', 'switch', 'boiler', 'water_heater']);
+function labelForKind(kind) { return kindLabels[kind] || kindLabels.fixture; }
+function defaultSize(kind) { return defaultSizes[kind] || defaultSizes.fixture; }
+function defaultColor(kind) { return kindColors[kind] || kindColors.fixture; }
+
+function pushHistory() {
+  if (readonly) return;
+  const snap = JSON.stringify(state);
+  if (JSON.stringify(history[historyIndex]) === snap) return;
+  history = history.slice(0, historyIndex + 1);
+  history.push(deepClone(state));
+  historyIndex = history.length - 1;
+  if (history.length > 80) { history.shift(); historyIndex--; }
+  updateUndoRedo();
+}
+function restoreHistory(index) {
+  if (index < 0 || index >= history.length) return;
+  historyIndex = index;
+  state = normalizeState(history[index]);
+  selected = null;
+  selectedKind = null;
+  dirty = true;
+  rebuildScene();
+  renderInspector();
+  syncControlsFromState();
+  updateUndoRedo();
+}
+function updateUndoRedo() {
+  $('[data-rp-undo]', root)?.toggleAttribute('disabled', historyIndex <= 0);
+  $('[data-rp-redo]', root)?.toggleAttribute('disabled', historyIndex >= history.length - 1);
+}
+function markDirty() {
+  dirty = true;
+  saveStatus.textContent = 'Nicht gespeichert';
+  saveStatus.dataset.state = 'dirty';
+}
+
+function clearWorld() {
+  while (world.children.length) {
+    const child = world.children.pop();
+    child.traverse?.((node) => {
+      if (node.geometry) node.geometry.dispose?.();
+      if (node.material) {
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((m) => m.dispose?.());
+      }
+    });
+  }
+  sceneObjectMap.clear();
+  wallMeshes = [];
+  openingMeshes = [];
+  ceilingMesh = null;
+  guidesGroup = null;
+}
+
+function material(color, opts = {}) {
+  return new THREE.MeshStandardMaterial({ color, roughness: opts.roughness ?? 0.72, metalness: opts.metalness ?? 0.03, transparent: Boolean(opts.transparent), opacity: opts.opacity ?? 1, side: opts.side ?? THREE.FrontSide });
+}
+function box(w, h, d, mat) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(w, 0.005), Math.max(h, 0.005), Math.max(d, 0.005)), mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+function cylinder(radius, height, mat, segments = 32) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, segments), mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+function addPart(group, mesh, x, y, z, rotX = 0, rotY = 0, rotZ = 0) {
+  mesh.position.set(x, y, z); mesh.rotation.set(rotX, rotY, rotZ); group.add(mesh); return mesh;
+}
+
+function buildRoom() {
+  const { width_m: w, length_m: l, height_m: h, wall_thickness_m: t } = state.room;
+  const floorMat = material(0xd9d7d2, { roughness: 0.88 });
+  const floor = box(w, 0.06, l, floorMat);
+  floor.position.set(w / 2, -0.03, l / 2);
+  floor.receiveShadow = true;
+  floor.userData.role = 'floor';
+  world.add(floor);
+
+  const baseWallMat = () => material(0xf0efec, { roughness: 0.9, transparent: true, opacity: 1, side: THREE.DoubleSide });
+  const wallDefs = [
+    { name: 'back', axis: 'x', length: w, constPos: 0, thickness: t, rotation: 0 },
+    { name: 'front', axis: 'x', length: w, constPos: l, thickness: t, rotation: 0 },
+    { name: 'left', axis: 'z', length: l, constPos: 0, thickness: t, rotation: 0 },
+    { name: 'right', axis: 'z', length: l, constPos: w, thickness: t, rotation: 0 }
+  ];
+  wallDefs.forEach((def) => bui

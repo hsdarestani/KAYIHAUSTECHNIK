@@ -1,0 +1,201 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}Raumplanung 3D · {{ project.number }} · KAYI{% endblock %}
+{% block content %}
+<div class="rp-page" data-room-planner
+     data-project-id="{{ project.pk }}"
+     data-measurement-id="{% if measurement %}{{ measurement.pk }}{% endif %}"
+     data-save-url="{% url 'next-room-planner-save' project.pk %}"
+     data-vision-url="{% url 'next-room-planner-vision' project.pk %}"
+     data-readonly="{% if readonly %}1{% else %}0{% endif %}">
+  <div class="nx-pagehead rp-pagehead">
+    <div>
+      <div class="nx-kicker">{{ project.number }} · Raum & Aufmaß</div>
+      <h1>Raumplanung 3D</h1>
+      <p>Fotos oder Scan erkennen lassen, Positionen prüfen und direkt im vollständigen Raum bearbeiten.</p>
+    </div>
+    <div class="nx-actions">
+      <a class="nx-btn" href="{% url 'next-project-detail' project.pk %}">← Projekt</a>
+      {% if measurement %}<span class="nx-badge {% if measurement.status == 'confirmed' %}nx-badge-success{% else %}nx-badge-info{% endif %}">{{ measurement.get_status_display }}</span>{% endif %}
+      {% if not readonly %}<button class="nx-btn nx-btn-primary" type="button" data-rp-save>Version speichern</button>{% endif %}
+    </div>
+  </div>
+
+  {% if not measurement %}
+  <section class="rp-startbar">
+    <div><span class="rp-start-icon">◇</span><div><b>Noch kein Raum im Projekt</b><small>Du kannst sofort zeichnen, Fotos erkennen lassen oder mit der KAYI App scannen.</small></div></div>
+    <div class="rp-start-actions">
+      {% if not readonly %}<button type="button" class="nx-btn nx-btn-primary" data-rp-open-vision>✦ Aus Fotos erkennen</button>{% endif %}
+      <a class="nx-btn" href="{% url 'room-measurement-create' project.pk %}?scan=1">⌁ Raum scannen</a>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="rp-meta-row">
+    <form method="get" class="rp-room-switcher">
+      <label>Raum
+        <select name="measurement" class="nx-control" onchange="this.form.submit()">
+          {% if not measurement %}<option value="">Neuer Raum</option>{% endif %}
+          {% for item in measurements %}<option value="{{ item.pk }}" {% if measurement.pk == item.pk %}selected{% endif %}>{{ item.name }} · {{ item.get_status_display }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+    <div class="rp-meta-pills">
+      <span data-rp-room-size>–</span>
+      <span data-rp-object-count>0 Objekte</span>
+      <span data-rp-scale-state>Maßstab prüfen</span>
+    </div>
+    <div class="rp-meta-actions">
+      {% if measurement %}<a class="nx-btn nx-btn-ghost" href="{% url 'room-measurement-edit' project.pk measurement.pk %}">Aufmaß prüfen</a>{% endif %}
+      {% if not readonly %}<button type="button" class="nx-btn nx-btn-ghost" data-rp-open-vision>✦ Fotos analysieren</button>{% endif %}
+    </div>
+  </div>
+
+  <div class="rp-layout">
+    <aside class="rp-panel rp-library" data-rp-left-panel>
+      <div class="rp-panel-title"><div><b>Werkzeuge</b><small>Nur das Nötige für den Raum</small></div></div>
+
+      {% if not readonly %}
+      <button class="rp-ai-hero" type="button" data-rp-open-vision>
+        <span>✦</span><div><b>Raum aus Fotos erkennen</b><small>AI setzt Wände, Öffnungen und erkannte Objekte als editierbaren Entwurf.</small></div><i>→</i>
+      </button>
+      {% endif %}
+
+      <details class="rp-tool-section" open>
+        <summary>Raum</summary>
+        <div class="rp-room-fields">
+          <label><span>Länge</span><div><input type="number" min="0.1" max="50" step="0.01" data-rp-room-field="length_m"><em>m</em></div></label>
+          <label><span>Breite</span><div><input type="number" min="0.1" max="50" step="0.01" data-rp-room-field="width_m"><em>m</em></div></label>
+          <label><span>Höhe</span><div><input type="number" min="0.1" max="12" step="0.01" data-rp-room-field="height_m"><em>m</em></div></label>
+          <label><span>Wandstärke</span><div><input type="number" min="0.04" max="0.6" step="0.01" data-rp-room-field="wall_thickness_m"><em>m</em></div></label>
+        </div>
+      </details>
+
+      <details class="rp-tool-section" open>
+        <summary>Türen & Fenster</summary>
+        <div class="rp-add-row">
+          <button type="button" data-rp-add-opening="door" {% if readonly %}disabled{% endif %}><span class="rp-door-icon"></span>Tür</button>
+          <button type="button" data-rp-add-opening="window" {% if readonly %}disabled{% endif %}><span class="rp-window-icon"></span>Fenster</button>
+          <button type="button" data-rp-add-opening="opening" {% if readonly %}disabled{% endif %}><span class="rp-opening-icon"></span>Durchgang</button>
+        </div>
+      </details>
+
+      {% for category in object_categories %}
+      <details class="rp-tool-section" {% if forloop.first %}open{% endif %}>
+        <summary>{{ category.label }}</summary>
+        <div class="rp-object-grid">
+          {% for item in category.items %}
+          <button type="button" data-rp-add-object="{{ item.kind }}" title="{{ item.label }}" {% if readonly %}disabled{% endif %}>
+            <span data-rp-lib-icon="{{ item.kind }}"></span><b>{{ item.label }}</b>
+          </button>
+          {% endfor %}
+        </div>
+      </details>
+      {% endfor %}
+    </aside>
+
+    <section class="rp-stage-card">
+      <div class="rp-toolbar">
+        <div class="rp-view-group">
+          <button type="button" class="is-active" data-rp-view="perspective">3D</button>
+          <button type="button" data-rp-view="top">Grundriss</button>
+          <button type="button" data-rp-view="front">Front</button>
+        </div>
+        <div class="rp-toolbar-center">
+          <button type="button" data-rp-undo title="Rückgängig">↶</button>
+          <button type="button" data-rp-redo title="Wiederholen">↷</button>
+          <button type="button" class="is-active" data-rp-toggle="snap" title="Magnetisches Ausrichten">Magnet</button>
+          <button type="button" class="is-active" data-rp-toggle="grid" title="Raster">Raster</button>
+          <button type="button" class="is-active" data-rp-toggle="transparent_near_walls" title="Nahe Wände transparent, aber volle Höhe">Wandblick</button>
+          <button type="button" data-rp-toggle="show_ceiling" title="Decke ein-/ausblenden">Decke</button>
+        </div>
+        <div class="rp-toolbar-end"><button type="button" data-rp-fit>⌗ Zentrieren</button><button type="button" data-rp-fullscreen>⛶</button></div>
+      </div>
+      <div class="rp-canvas-wrap" data-rp-canvas-wrap>
+        <canvas class="rp-canvas" data-rp-canvas aria-label="Interaktives 3D-Raummodell"></canvas>
+        <div class="rp-canvas-loading" data-rp-loading><span></span><b>3D-Raum wird aufgebaut …</b></div>
+        <div class="rp-engine-error" data-rp-engine-error hidden><b>3D-Engine konnte nicht geladen werden.</b><span>Internetverbindung prüfen und Seite neu laden. Deine Projektdaten bleiben erhalten.</span></div>
+        <div class="rp-drag-metrics" data-rp-drag-metrics hidden></div>
+        <div class="rp-scene-hint" data-rp-scene-hint>Objekt anklicken · ziehen zum Verschieben · Q/E drehen · Entf löschen</div>
+        <div class="rp-axis"><span class="x">X</span><span class="z">Z</span></div>
+      </div>
+      <div class="rp-stage-status">
+        <div data-rp-status><span class="rp-status-dot"></span><span>Bereit</span></div>
+        <div><span data-rp-selection-summary>Nichts ausgewählt</span></div>
+        <div><span data-rp-save-state>{% if readonly %}Nur Ansicht{% else %}Änderungen noch nicht gespeichert{% endif %}</span></div>
+      </div>
+    </section>
+
+    <aside class="rp-panel rp-inspector">
+      <div class="rp-panel-title"><div><b>Eigenschaften</b><small data-rp-inspector-subtitle>Raumübersicht</small></div></div>
+      <div class="rp-inspector-empty" data-rp-inspector-empty>
+        <div class="rp-room-stats">
+          <span><small>Grundfläche</small><b data-rp-calc="floor">–</b></span>
+          <span><small>Wandfläche</small><b data-rp-calc="wall">–</b></span>
+          <span><small>Öffnungen</small><b data-rp-calc="openings">–</b></span>
+          <span><small>Objekte</small><b data-rp-calc="objects">0</b></span>
+        </div>
+        <div class="rp-help-card"><b>Direkt im Raum arbeiten</b><p>Objekte und Öffnungen sind ziehbar. Während des Ziehens zeigt KAYI live die Abstände zu allen Raumseiten und zum nächsten Objekt.</p></div>
+      </div>
+      <div class="rp-inspector-form" data-rp-inspector-form hidden></div>
+
+      {% if not readonly %}
+      <div class="rp-save-card">
+        <label>Versionsnotiz<input class="nx-control" data-rp-version-label placeholder="z. B. Heizkörper versetzt"></label>
+        <button type="button" class="nx-btn nx-btn-primary" data-rp-save>Version speichern</button>
+        <small>Jede Speicherung erzeugt einen neuen, nachvollziehbaren Modellstand.</small>
+      </div>
+      {% endif %}
+
+      {% if revisions %}
+      <details class="rp-revisions">
+        <summary>Versionsverlauf</summary>
+        <div>{% for revision in revisions %}<a href="?measurement={{ measurement.pk }}&revision={{ revision.pk }}"><b>v{{ revision.revision }} · {{ revision.label|default:'Modellstand' }}</b><small>{{ revision.created_at|date:'d.m.Y H:i' }}</small></a>{% endfor %}</div>
+      </details>
+      {% endif %}
+
+      {% if native_scans %}
+      <details class="rp-revisions">
+        <summary>Scans</summary>
+        <div>{% for scan in native_scans %}<span><b>{{ scan.room_name }}</b><small>{{ scan.get_provider_display }} · {{ scan.get_status_display }}</small>{% if scan.model_file %}<a href="{{ scan.model_file.url }}" download>Originalmodell laden</a>{% endif %}</span>{% endfor %}</div>
+      </details>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if not readonly %}
+  <dialog class="rp-vision-dialog" data-rp-vision-dialog>
+    <form method="dialog" class="rp-dialog-shell" onsubmit="return false">
+      <div class="rp-dialog-head"><div><span class="rp-ai-mark">✦</span><div><div class="nx-kicker">KAYI VISION</div><h2>Raum aus Fotos aufbauen</h2><p>Mehrere Blickwinkel liefern deutlich bessere Positionen und weniger doppelte Objekte.</p></div></div><button type="button" data-rp-close-vision aria-label="Schließen">×</button></div>
+      <div class="rp-capture-guide">
+        <span><i>1</i><b>Eingang</b><small>Raum komplett</small></span>
+        <span><i>2</i><b>Gegenüber</b><small>ganze Wand</small></span>
+        <span><i>3</i><b>Links</b><small>inkl. Anschlüsse</small></span>
+        <span><i>4</i><b>Rechts</b><small>inkl. Anschlüsse</small></span>
+      </div>
+      <label class="rp-photo-drop" data-rp-photo-drop>
+        <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple data-rp-vision-files>
+        <span class="rp-photo-orb">📷</span><b>Raumfotos aufnehmen oder auswählen</b><small>4–8 Fotos empfohlen · maximal 12</small>
+      </label>
+      <div class="rp-photo-previews" data-rp-photo-previews></div>
+      <div class="rp-calibration">
+        <div><b>Optional: Maßstab absichern</b><small>Ohne Referenz platziert AI Objekte relativ korrekt, metrische Maße bleiben aber prüfpflichtig.</small></div>
+        <label>Referenz<select class="nx-control" data-rp-reference-type><option value="">Keine</option><option value="a4">A4-Blatt (21 × 29,7 cm)</option><option value="custom">Eigenes Referenzobjekt</option></select></label>
+        <label>Breite cm<input class="nx-control" type="number" min="1" max="500" step="0.1" data-rp-reference-width></label>
+        <label>Höhe cm<input class="nx-control" type="number" min="1" max="500" step="0.1" data-rp-reference-height></label>
+      </div>
+      <div class="rp-vision-feedback" data-rp-vision-feedback hidden></div>
+      <div class="rp-dialog-actions"><button class="nx-btn" type="button" data-rp-close-vision>Abbrechen</button><button class="nx-btn nx-btn-primary" type="button" data-rp-run-vision>✦ Raum erkennen & platzieren</button></div>
+    </form>
+  </dialog>
+  {% endif %}
+
+  {{ planner_state|json_script:"room-planner-state" }}
+</div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="{% static 'css/room-planner.css' %}?v=20260810-1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module" src="{% static 'js/room-planner.js' %}?v=20260810-1"></script>
+<script>window.setTimeout(function(){var root=document.querySelector('[data-room-planner]');var canvas=document.querySelector('[data-rp-canvas]');if(root&&canvas&&!canvas.dataset.ready){var box=document.querySelector('[data-rp-engine-error]');var load=document.querySelector('[data-rp-loading]');if(box)box.hidden=false;if(load)load.hidden=true;}},8000);</script>
+{% endblock %}

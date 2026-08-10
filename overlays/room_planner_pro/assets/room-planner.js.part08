@@ -1,0 +1,33 @@
+etric(d.front)}</b></span></div><p>Nächstes Objekt: <b>${d.nearest===null?'—':`${metric(d.nearest)} · ${escapeHtml(d.nearestLabel)}`}</b></p></div>
+  ${rec.source==='ai_photo'?`<div class="rp-ai-evidence"><strong>AI-Erkennung ${rec.confidence?`· ${Math.round(rec.confidence*100)} %`:''}</strong><p>${escapeHtml(rec.evidence||'Aus Fotos erkannt. Position und Maße bitte prüfen.')}</p></div>`:''}`;
+  bindInspectorInputs(rec);
+}
+function renderOpeningInspector(rec){
+  const max=wallLength(rec.wall); inspector.innerHTML=`<div class="rp-inspector-head"><div><span>${rec.kind==='window'?'Fenster':'Tür / Öffnung'}</span><strong>${escapeHtml(rec.label|| (rec.kind==='window'?'Fenster':'Tür'))}</strong></div>${readonly?'':`<button type="button" data-rp-delete>⌫</button>`}</div>
+  <label>Wand<select data-field="wall" ${readonly?'disabled':''}>${['back','front','left','right'].map(w=>`<option value="${w}" ${rec.wall===w?'selected':''}>${wallLabel(w)}</option>`).join('')}</select></label>
+  <div class="rp-form-grid"><label>Abstand vom Wandanfang<input type="number" min="0" max="${max}" step="0.01" data-field="offset_m" value="${rec.offset_m}" ${readonly?'disabled':''}></label><label>Breite<input type="number" min="0.2" step="0.01" data-field="width_m" value="${rec.width_m}" ${readonly?'disabled':''}></label><label>Höhe<input type="number" min="0.2" step="0.01" data-field="height_m" value="${rec.height_m}" ${readonly?'disabled':''}></label><label>Brüstungshöhe<input type="number" min="0" step="0.01" data-field="sill_height_m" value="${rec.sill_height_m||0}" ${readonly||rec.kind==='door'?'disabled':''}></label></div>
+  <div class="rp-distance-card"><strong>Wandposition</strong><p>Links / Anfang: <b>${metric(rec.offset_m)}</b> · Rechts / Ende: <b>${metric(Math.max(0,max-rec.offset_m-rec.width_m))}</b></p></div>
+  ${rec.source==='ai_photo'?`<div class="rp-ai-evidence"><strong>AI-Erkennung ${rec.confidence?`· ${Math.round(rec.confidence*100)} %`:''}</strong><p>${escapeHtml(rec.evidence||'Aus Fotos erkannt.')}</p></div>`:''}`;bindInspectorInputs(rec);
+}
+function bindInspectorInputs(rec){
+  $$('[data-field]',inspector).forEach((el)=>el.addEventListener('change',()=>{let value=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;rec[el.dataset.field]=value;if(rec.anchor==='wall'&&!rec.wall)rec.wall='back';if(selectedKind==='opening'){rec.offset_m=clamp(rec.offset_m,0,Math.max(0,wallLength(rec.wall)-rec.width_m));rec.sill_height_m=clamp(rec.sill_height_m||0,0,state.room.height_m);rec.height_m=clamp(rec.height_m,.2,Math.max(.2,state.room.height_m-rec.sill_height_m));} else constrainObject(rec);markDirty();pushHistory();rebuildScene();select(rec.id,selectedKind,{skipScene:true});}));
+  $('[data-rp-delete]',inspector)?.addEventListener('click',()=>{if(readonly)return;if(selectedKind==='opening')state.openings=state.openings.filter(o=>o.id!==rec.id);else state.objects=state.objects.filter(o=>o.id!==rec.id);select(null,null);markDirty();pushHistory();rebuildScene();});
+  $('[data-rp-duplicate]',inspector)?.addEventListener('click',()=>{if(readonly||selectedKind!=='object')return;const clone=deepClone(rec);clone.id=uid('obj');clone.label=`${clone.label||labelForKind(clone.kind)} Kopie`;clone.x_m+=.15;clone.z_m+=.15;clone.source='manual';clone.confidence=null;clone.evidence='';constrainObject(clone);state.objects.push(clone);markDirty();pushHistory();rebuildScene();select(clone.id,'object',{skipScene:true});});
+}
+
+function addObject(kind){if(readonly)return;const [w,d,h]=defaultSize(kind);const wall=wallOnlyKinds.has(kind);const o={id:uid('obj'),kind,label:labelForKind(kind),anchor:wall?'wall':'floor',wall:wall?'back':null,x_m:state.room.width_m/2,z_m:state.room.length_m/2,elevation_m:wall?0.8:0,width_m:w,depth_m:d,height_m:h,rotation_deg:0,color:defaultColor(kind),enabled:true,locked:false,source:'manual',confidence:null,evidence:''}; if(wall)o.elevation_m=Math.min(.9,Math.max(0,state.room.height_m-h));constrainObject(o);state.objects.push(o);markDirty();pushHistory();rebuildScene();select(o.id,'object',{skipScene:true});}
+function addOpening(kind){if(readonly)return;const width=kind==='window'?1.2:.9,height=kind==='window'?1.1:2.05;const o={id:uid('opening'),kind,label:kind==='window'?'Fenster':'Tür',wall:'back',offset_m:Math.max(0,(state.room.width_m-width)/2),width_m:width,height_m:Math.min(height,state.room.height_m),sill_height_m:kind==='window'?Math.min(.9,Math.max(0,state.room.height_m-height)):0,enabled:true,locked:false,source:'manual'};state.openings.push(o);markDirty();pushHistory();rebuildScene();select(o.id,'opening',{skipScene:true});}
+
+function syncControlsFromState(){
+  const r=state.room;
+  ['length_m','width_m','height_m','wall_thickness_m'].forEach((field)=>{const el=$(`[data-rp-room-field="${field}"]`,root);if(el)el.value=r[field];});
+  $('[data-rp-toggle="grid"]',root)?.classList.toggle('is-active',Boolean(state.view.grid));
+  $('[data-rp-toggle="snap"]',root)?.classList.toggle('is-active',Boolean(state.view.snap));
+  $('[data-rp-toggle="transparent_near_walls"]',root)?.classList.toggle('is-active',Boolean(state.view.transparent_near_walls));
+  $('[data-rp-toggle="show_ceiling"]',root)?.classList.toggle('is-active',Boolean(state.view.show_ceiling));
+  $$('[data-rp-view]',root).forEach((b)=>b.classList.toggle('is-active',b.dataset.rpView===state.view.mode));
+}
+function bindUi(){
+  $$('[data-rp-add-object]',root).forEach(b=>b.addEventListener('click',()=>addObject(b.dataset.rpAddObject)));
+  $$('[data-rp-add-opening]',root).forEach(b=>b.addEventListener('click',()=>addOpening(b.dataset.rpAddOpening)));
+  $$('[data-rp-room-field]',root).forEach(el=>el.addEventListener('change',()=>{const field=el.dataset.rpRoomField;state.room[field]=Number(el.value);state.room.width_m=clamp(state.

@@ -1,0 +1,26 @@
+submit.disabled=true;visionStatus.textContent='AI analysiert Raum, Wände und Objekte…';const fd=new FormData();files.slice(0,12).forEach(f=>fd.append('images',f));fd.append('measurement_id',root.dataset.measurementId||'');fd.append('state',JSON.stringify(state));const refType=$('[data-rp-reference-type]',visionForm)?.value||'';fd.append('reference_type',refType);fd.append('reference_width_cm',$('[data-rp-reference-width]',visionForm)?.value||'');fd.append('reference_height_cm',$('[data-rp-reference-height]',visionForm)?.value||'');fd.append('capture_sequence','entrance,opposite,left,right');try{const res=await fetch(root.dataset.visionUrl,{method:'POST',headers:{'X-CSRFToken':csrf()},body:fd});const data=await res.json();if(!res.ok)throw new Error(data.error||'AI-Analyse fehlgeschlagen');state=normalizeState(data.state);root.dataset.measurementId=String(data.measurement_id);history=[deepClone(state)];historyIndex=0;dirty=false;saveStatus.textContent='AI-Entwurf gespeichert';saveStatus.dataset.state='saved';syncControlsFromState();rebuildScene({keepCamera:false});renderInspector();visionStatus.innerHTML=`<strong>${escapeHtml(data.summary||'Analyse abgeschlossen.')}</strong>${(data.warnings||[]).length?`<ul>${data.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul>`:''}<p>${data.scale_verified?'Maßstab verifiziert.':'Positionen wurden relativ rekonstruiert. Für exakte Maße bitte Referenzmaß oder Scan verwenden.'}</p>`;toast(`${data.recognized_objects||0} Objekte und ${data.recognized_openings||0} Öffnungen erkannt.`,'success');setTimeout(()=>visionDialog?.close(),1600);}catch(err){visionStatus.textContent=err.message;toast(err.message,'error');}finally{submit.disabled=false;}}
+
+function updateStats(){
+  const area=state.room.width_m*state.room.length_m;
+  const wallArea=2*(state.room.width_m+state.room.length_m)*state.room.height_m;
+  const openings=state.openings.filter(o=>o.enabled!==false); const objects=state.objects.filter(o=>o.enabled!==false);
+  const set=(sel,text)=>{const el=$(sel,root);if(el)el.textContent=text;};
+  set('[data-rp-room-size]',`${state.room.length_m.toFixed(2)} × ${state.room.width_m.toFixed(2)} × ${state.room.height_m.toFixed(2)} m`);
+  set('[data-rp-object-count]',`${objects.length} Objekte`);
+  set('[data-rp-scale-state]',state.calibration.scale_verified?'Maßstab verifiziert':'Maßstab prüfen');
+  set('[data-rp-calc="floor"]',`${area.toFixed(2)} m²`);set('[data-rp-calc="wall"]',`${wallArea.toFixed(2)} m²`);set('[data-rp-calc="openings"]',String(openings.length));set('[data-rp-calc="objects"]',String(objects.length));
+  set('[data-rp-selection-summary]',selected?(selectedRecord()?.label||labelForKind(selectedRecord()?.kind)):'Nichts ausgewählt');
+}
+function resize(){const r=canvas.parentElement.getBoundingClientRect();const w=Math.max(320,r.width),h=Math.max(360,r.height);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();queueRender();}
+function queueRender(){renderQueued=true;}
+function animate(){requestAnimationFrame(animate);controls.update();if(renderQueued||controls.enabled){renderer.render(scene,camera);renderQueued=false;}}
+function toast(message,type='info'){let el=$('.rp-toast');if(!el){el=document.createElement('div');el.className='rp-toast';document.body.appendChild(el);}el.textContent=message;el.dataset.type=type;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3000);}
+function escapeHtml(v){return String(v??'').replace(/[&<>'"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function escapeAttr(v){return escapeHtml(v);}
+function safeColor(v){return /^#[0-9a-f]{6}$/i.test(v||'')?v:'#c7ccd3';}
+
+try {
+  bindUi();syncControlsFromState();rebuildScene({keepCamera:false});renderInspector();resize();updateUndoRedo();loading.hidden=true;engineError.hidden=true;canvas.dataset.ready='1';root.dataset.engine=KAYI_ROOM_PLANNER_PRO;animate();
+} catch (err) {
+  console.error('KAYI Room Planner Pro failed', err);loading.hidden=true;engineError.hidden=false;const msg=engineError.querySelector('span');if(msg)msg.textContent=err.message||'3D-Engine konnte nicht initialisiert werden.';
+}
