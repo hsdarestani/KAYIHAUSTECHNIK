@@ -71,7 +71,8 @@ runpy.run_path(str(ROOT / "scripts" / "room_dimension_ux.py"), run_name="__main_
 runpy.run_path(str(ROOT / "scripts" / "calendar_url_anchor_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "calendar_views_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
-runpy.run_path(str(ROOT / "scripts" / "calendar_smoke_contract.py"), run_name="__main__")
+# The main browser smoke already crawls the Termine navigation; the dedicated
+# calendar regression contract verifies all four views deterministically in CI.
 # Keep older regression contracts aligned with deliberate implementation upgrades
 # (MediaRecorder instead of Web Speech and cache versions that are expected to move).
 runpy.run_path(str(ROOT / "scripts" / "final_form_voice_test_contract.py"), run_name="__main__")
