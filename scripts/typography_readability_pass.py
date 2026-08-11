@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 CSS_PATH = Path("static/css/kayi-next.css")
@@ -181,6 +182,20 @@ def main() -> None:
     missing = [token for token in required if token not in final_css]
     if missing:
         raise SystemExit(f"Typography pass verification failed: {missing}")
+
+    prepatch = Path(__file__).with_name("prepatch_project_context.py")
+    final_quality = Path(__file__).with_name("final_readability_project_guidance.py")
+    if not prepatch.exists() or not final_quality.exists():
+        raise SystemExit("Missing final readability/recovery assembly helpers")
+    try:
+        runpy.run_path(str(prepatch), run_name="__main__")
+        runpy.run_path(str(final_quality), run_name="__main__")
+    except Exception as exc:
+        # Surface the exact assembly failure as a GitHub Actions annotation so a
+        # deterministic overlay mismatch cannot hide behind a generic exit code.
+        detail = str(exc).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=KAYI final UX assembly failed::{detail}")
+        raise
     print(f"KAYI readability typography installed; cache-busted templates: {template_count}")
 
 
