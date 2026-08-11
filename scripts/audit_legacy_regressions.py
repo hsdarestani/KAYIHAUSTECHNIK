@@ -66,6 +66,9 @@ runpy.run_path(str(ROOT / "scripts" / "android_voice_capture_hotfix.py"), run_na
 # complete day/week/month/list calendar with filtering and safe drag/drop moves.
 runpy.run_path(str(ROOT / "scripts" / "time_overview_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "room_dimension_ux.py"), run_name="__main__")
+# Older final overlays can rewrite the appointment detail route. Normalize the
+# insertion point first so the multiview calendar patch remains deterministic.
+runpy.run_path(str(ROOT / "scripts" / "calendar_url_anchor_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "calendar_views_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "calendar_smoke_contract.py"), run_name="__main__")
