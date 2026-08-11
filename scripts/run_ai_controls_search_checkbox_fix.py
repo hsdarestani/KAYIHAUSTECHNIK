@@ -12,6 +12,7 @@ if spec is None or spec.loader is None:
     raise RuntimeError("Could not load KAYI AI controls implementation")
 impl = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(impl)
+_original_patch_assistant_javascript = impl.patch_assistant_javascript
 
 
 def final_form_widget_contract() -> None:
@@ -20,7 +21,6 @@ def final_form_widget_contract() -> None:
     text = path.read_text(encoding="utf-8")
     if "nx-checkbox-input" in text and "isinstance(field.widget, forms.CheckboxInput)" in text:
         return
-    # Fallback for a future assembly that no longer includes ui_regression_hardening.
     impl.patch_form_widget_classes()
 
 
@@ -79,6 +79,19 @@ def final_checkbox_layout() -> None:
         path.write_text(css.rstrip() + addition, encoding="utf-8")
 
 
+def final_patch_assistant_javascript() -> None:
+    """The global assistant overlay is appended into kayi-next.js during assembly."""
+    bundle = ROOT / "static" / "js" / "kayi-next.js"
+    temporary = ROOT / "static" / "js" / "global-assistant.js"
+    temporary.write_text(bundle.read_text(encoding="utf-8"), encoding="utf-8")
+    try:
+        _original_patch_assistant_javascript()
+        bundle.write_text(temporary.read_text(encoding="utf-8"), encoding="utf-8")
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
 def final_regression_tests() -> None:
     test = r'''from pathlib import Path
 
@@ -129,7 +142,7 @@ class AIControlAndSearchRegressionTests(TestCase):
 
     def test_checkbox_and_date_controls_are_part_of_final_ai_contract(self):
         root = Path(__file__).resolve().parents[1]
-        js = (root / "static/js/global-assistant.js").read_text(encoding="utf-8")
+        js = (root / "static/js/kayi-next.js").read_text(encoding="utf-8")
         backend = (root / "erp/assistant_views.py").read_text(encoding="utf-8")
         form = (root / "erp/rebuild_views.py").read_text(encoding="utf-8")
         css = (root / "static/css/kayi-next.css").read_text(encoding="utf-8")
@@ -150,7 +163,7 @@ def final_guard() -> None:
         "erp/rebuild_ops.py": ["query = request.GET.get(\"q\"", "first_name__icontains=query"],
         "templates/rebuild/employees.html": ["Mitarbeiter nach Name", "Kein Mitarbeiter für"],
         "erp/assistant_views.py": ["_entity_search_context", "now_local", "navigate_record", "YYYY-MM-DDTHH:MM"],
-        "static/js/global-assistant.js": [MARKER, "normalizeControlValue", "setControlValue", "navigate_record"],
+        "static/js/kayi-next.js": [MARKER, "normalizeControlValue", "setControlValue", "navigate_record"],
         "static/css/kayi-next.css": [MARKER, "nx-checkbox-input", "justify-content: flex-start"],
         "tests/test_ai_controls_search_checkbox_fix.py": ["test_employee_query_really_filters_records"],
     }
@@ -164,9 +177,9 @@ def final_guard() -> None:
         raise RuntimeError("AI control/search final guard failed: " + "; ".join(missing))
 
 
-# Override only the pieces whose input is transformed by earlier deterministic layers.
 impl.patch_form_widget_classes = final_form_widget_contract
 impl.patch_checkbox_layout = final_checkbox_layout
+impl.patch_assistant_javascript = final_patch_assistant_javascript
 impl.install_regression_tests = final_regression_tests
 impl.guard = final_guard
 impl.main()
