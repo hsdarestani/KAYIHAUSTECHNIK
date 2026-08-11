@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 CSS_PATH = Path("static/css/kayi-next.css")
@@ -181,6 +182,11 @@ def main() -> None:
     missing = [token for token in required if token not in final_css]
     if missing:
         raise SystemExit(f"Typography pass verification failed: {missing}")
+
+    final_quality = Path(__file__).with_name("final_readability_project_guidance.py")
+    if not final_quality.exists():
+        raise SystemExit(f"Missing final readability/recovery layer: {final_quality}")
+    runpy.run_path(str(final_quality), run_name="__main__")
     print(f"KAYI readability typography installed; cache-busted templates: {template_count}")
 
 
