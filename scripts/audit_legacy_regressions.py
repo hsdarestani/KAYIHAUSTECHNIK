@@ -57,3 +57,6 @@ print("--- end legacy QA audit ---")
 # assets after every earlier UI, field and KI overlay. B&O pricing runs after the
 # rebuild and supplies the authoritative effective-price resolver it references.
 runpy.run_path(str(ROOT / "scripts" / "final_form_voice_pricing_hardening.py"), run_name="__main__")
+# Keep older regression contracts aligned with deliberate implementation upgrades
+# (MediaRecorder instead of Web Speech and cache versions that are expected to move).
+runpy.run_path(str(ROOT / "scripts" / "final_form_voice_test_contract.py"), run_name="__main__")
