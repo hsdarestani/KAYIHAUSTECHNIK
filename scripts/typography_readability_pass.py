@@ -186,7 +186,14 @@ def main() -> None:
     final_quality = Path(__file__).with_name("final_readability_project_guidance.py")
     if not final_quality.exists():
         raise SystemExit(f"Missing final readability/recovery layer: {final_quality}")
-    runpy.run_path(str(final_quality), run_name="__main__")
+    try:
+        runpy.run_path(str(final_quality), run_name="__main__")
+    except Exception as exc:
+        # Surface the exact assembly failure as a GitHub Actions annotation so a
+        # deterministic overlay mismatch cannot hide behind a generic exit code.
+        detail = str(exc).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=KAYI final UX assembly failed::{detail}")
+        raise
     print(f"KAYI readability typography installed; cache-busted templates: {template_count}")
 
 
