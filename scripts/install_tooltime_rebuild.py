@@ -149,7 +149,7 @@ runpy.run_path(str(ROOT / "scripts" / "normalize_field_handoff_anchor.py"), run_
 runpy.run_path(str(ROOT / "scripts" / "install_global_ai_field_handoff.py"), run_name="__main__")
 # The assistant-control/search hardening is deliberately after the global KI overlay:
 # typed date/time/checkbox updates and real-record search must be the final behavior.
-runpy.run_path(str(ROOT / "scripts" / "fix_ai_controls_search_checkbox.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "run_ai_controls_search_checkbox_fix.py"), run_name="__main__")
 # Readability is the final visual contract. It deliberately runs after all product
 # overlays so no earlier compact styles can shrink labels, helpers or catalog text.
 runpy.run_path(str(ROOT / "scripts" / "typography_readability_pass.py"), run_name="__main__")
