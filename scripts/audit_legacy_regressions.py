@@ -70,6 +70,9 @@ runpy.run_path(str(ROOT / "scripts" / "room_dimension_ux.py"), run_name="__main_
 # insertion point first so the multiview calendar patch remains deterministic.
 runpy.run_path(str(ROOT / "scripts" / "calendar_url_anchor_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "calendar_views_upgrade.py"), run_name="__main__")
+# Project creation is patched last because earlier workflow/recovery layers can
+# rewrite its DOM. Keep the final form balanced and mobile-safe after assembly.
+runpy.run_path(str(ROOT / "scripts" / "project_form_layout_polish.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
 # The main browser smoke already crawls the Termine navigation; the dedicated
 # calendar regression contract verifies all four views deterministically in CI.
