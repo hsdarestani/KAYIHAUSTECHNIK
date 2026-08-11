@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMPL = ROOT / "scripts" / "fix_ai_controls_search_checkbox.py"
 MARKER = "KAYI AI CONTROL + SEARCH FIX 2026-08-11"
+VERSION = "20260811-2"
 
 spec = importlib.util.spec_from_file_location("kayi_ai_controls_impl", IMPL)
 if spec is None or spec.loader is None:
@@ -92,6 +94,20 @@ def final_patch_assistant_javascript() -> None:
             temporary.unlink()
 
 
+def final_bump_cache() -> None:
+    """Force browsers to load the new assistant bundle instead of cached KI behavior."""
+    path = ROOT / "templates" / "rebuild" / "base.html"
+    text = path.read_text(encoding="utf-8")
+    updated = re.sub(
+        r"(kayi-next\.js'\s*%\}\?v=)[^\"'\s<]+",
+        rf"\g<1>{VERSION}",
+        text,
+    )
+    if updated == text and VERSION not in text:
+        raise RuntimeError("Could not bump KAYI Next JavaScript cache version")
+    path.write_text(updated, encoding="utf-8")
+
+
 def final_regression_tests() -> None:
     test = r'''from pathlib import Path
 
@@ -146,12 +162,14 @@ class AIControlAndSearchRegressionTests(TestCase):
         backend = (root / "erp/assistant_views.py").read_text(encoding="utf-8")
         form = (root / "erp/rebuild_views.py").read_text(encoding="utf-8")
         css = (root / "static/css/kayi-next.css").read_text(encoding="utf-8")
+        base = (root / "templates/rebuild/base.html").read_text(encoding="utf-8")
         for marker in ("normalizeControlValue", "datetime-local", "parseBoolean", "navigate_record"):
             self.assertIn(marker, js)
         for marker in ("now_local", "entity_matches", "value=true", "YYYY-MM-DDTHH:MM", "navigate_record"):
             self.assertIn(marker, backend)
         self.assertIn("nx-checkbox-input", form)
         self.assertIn("KAYI AI CONTROL + SEARCH FIX 2026-08-11", css)
+        self.assertIn("kayi-next.js' %}?v=20260811-2", base)
 '''
     path = ROOT / "tests" / "test_ai_controls_search_checkbox_fix.py"
     path.write_text(test, encoding="utf-8")
@@ -165,6 +183,7 @@ def final_guard() -> None:
         "erp/assistant_views.py": ["_entity_search_context", "now_local", "navigate_record", "YYYY-MM-DDTHH:MM"],
         "static/js/kayi-next.js": [MARKER, "normalizeControlValue", "setControlValue", "navigate_record"],
         "static/css/kayi-next.css": [MARKER, "nx-checkbox-input", "justify-content: flex-start"],
+        "templates/rebuild/base.html": ["20260811-2"],
         "tests/test_ai_controls_search_checkbox_fix.py": ["test_employee_query_really_filters_records"],
     }
     missing = []
@@ -180,6 +199,7 @@ def final_guard() -> None:
 impl.patch_form_widget_classes = final_form_widget_contract
 impl.patch_checkbox_layout = final_checkbox_layout
 impl.patch_assistant_javascript = final_patch_assistant_javascript
+impl.bump_cache = final_bump_cache
 impl.install_regression_tests = final_regression_tests
 impl.guard = final_guard
 impl.main()
