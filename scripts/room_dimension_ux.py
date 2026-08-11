@@ -30,4 +30,12 @@ w(p,s)
 p='static/css/room-planner.css';s=r(p)
 if M not in s:s+='''\n/* KAYI ROOM DIMENSION UX 2026-08-11 */\n.rp-calibration-intro{grid-column:1/-1}.rp-known-room{grid-column:1/-1;display:grid;grid-template-columns:1.35fr repeat(3,minmax(0,1fr));gap:10px;padding-top:12px;margin-top:4px;border-top:1px solid rgba(17,24,39,.09)}.rp-known-room>div{display:grid;align-content:center;gap:3px}.rp-known-room label{min-width:0}@media(max-width:760px){.rp-known-room{grid-template-columns:1fr 1fr}.rp-known-room>div{grid-column:1/-1}.rp-known-room label:last-child{grid-column:1/-1}}\n''';w(p,s)
 w('tests/test_room_dimension_ux.py','''from pathlib import Path\nfrom django.test import SimpleTestCase\nR=Path(__file__).resolve().parents[1]\nclass T(SimpleTestCase):\n def test_contract(self):\n  t=(R/'templates/rebuild/room_planner.html').read_text();j=(R/'static/js/room-planner.js').read_text();v=(R/'erp/room_planner_views.py').read_text();self.assertIn('sichtbaren Referenzobjekt',t);self.assertIn('Länge / Tiefe',t);self.assertIn('data-rp-known-length',t);self.assertIn('known_room_dimensions',j);self.assertIn('known_room_dimensions',v)\n''')
+
+# Keep the older polish regression focused on cache-busting presence rather than
+# pinning an obsolete literal version number every time Room Planner changes.
+p='tests/test_customer_3d_polish.py';s=r(p)
+old_test='self.assertContains(response, "20260810-7")'
+new_test='self.assertContains(response, "room-planner.css?v=")\n        self.assertContains(response, "room-planner.js?v=")'
+if old_test in s:s=s.replace(old_test,new_test,1)
+w(p,s)
 print('KAYI room dimension UX installed')
