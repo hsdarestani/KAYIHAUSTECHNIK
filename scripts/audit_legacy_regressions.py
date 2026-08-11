@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,3 +51,9 @@ if ai_path.exists():
             compact = compact[:317] + "..."
         print(f"  AI L{number}: {compact}")
 print("--- end legacy QA audit ---")
+
+# This audit is the final stage of install_tooltime_rebuild.py. Run the global
+# form/voice/pricing hardening here so it sees the real assembled templates and
+# assets after every earlier UI, field and KI overlay. B&O pricing runs after the
+# rebuild and supplies the authoritative effective-price resolver it references.
+runpy.run_path(str(ROOT / "scripts" / "final_form_voice_pricing_hardening.py"), run_name="__main__")
