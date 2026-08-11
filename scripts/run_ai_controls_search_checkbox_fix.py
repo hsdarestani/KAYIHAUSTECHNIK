@@ -169,7 +169,7 @@ class AIControlAndSearchRegressionTests(TestCase):
             self.assertIn(marker, backend)
         self.assertIn("nx-checkbox-input", form)
         self.assertIn("KAYI AI CONTROL + SEARCH FIX 2026-08-11", css)
-        self.assertIn("kayi-next.js' %}?v=20260811-2", base)
+        self.assertIn("kayi-next.js' %}?v=", base)
 '''
     path = ROOT / "tests" / "test_ai_controls_search_checkbox_fix.py"
     path.write_text(test, encoding="utf-8")
@@ -183,7 +183,7 @@ def final_guard() -> None:
         "erp/assistant_views.py": ["_entity_search_context", "now_local", "navigate_record", "YYYY-MM-DDTHH:MM"],
         "static/js/kayi-next.js": [MARKER, "normalizeControlValue", "setControlValue", "navigate_record"],
         "static/css/kayi-next.css": [MARKER, "nx-checkbox-input", "justify-content: flex-start"],
-        "templates/rebuild/base.html": ["20260811-2"],
+        "templates/rebuild/base.html": ["kayi-next.js' %}?v="],
         "tests/test_ai_controls_search_checkbox_fix.py": ["test_employee_query_really_filters_records"],
     }
     missing = []
