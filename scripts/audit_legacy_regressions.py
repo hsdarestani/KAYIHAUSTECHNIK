@@ -62,10 +62,17 @@ runpy.run_path(str(ROOT / "scripts" / "final_form_voice_pricing_hardening.py"), 
 # fallback and cache bust after every previous field/UI overlay.
 runpy.run_path(str(ROOT / "scripts" / "android_voice_capture_hotfix.py"), run_name="__main__")
 # Final operational UX: time tracking gets dashboard/filter/correction controls,
-# and photo calibration clearly separates a 2D reference from true 3D room dimensions.
+# photo calibration separates 2D scale from 3D dimensions, and dispatch gets a
+# complete day/week/month/list calendar with filtering and safe drag/drop moves.
 runpy.run_path(str(ROOT / "scripts" / "time_overview_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "room_dimension_ux.py"), run_name="__main__")
+# Older final overlays can rewrite the appointment detail route. Normalize the
+# insertion point first so the multiview calendar patch remains deterministic.
+runpy.run_path(str(ROOT / "scripts" / "calendar_url_anchor_compat.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "calendar_views_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
+# The main browser smoke already crawls the Termine navigation; the dedicated
+# calendar regression contract verifies all four views deterministically in CI.
 # Keep older regression contracts aligned with deliberate implementation upgrades
 # (MediaRecorder instead of Web Speech and cache versions that are expected to move).
 runpy.run_path(str(ROOT / "scripts" / "final_form_voice_test_contract.py"), run_name="__main__")
