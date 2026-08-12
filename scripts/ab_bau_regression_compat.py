@@ -50,6 +50,42 @@ def restore_german_labels() -> None:
         write(rel, text)
 
 
+def preserve_quote_form_contract() -> None:
+    rel = "erp/rebuild_views.py"
+    text = read(rel)
+    quote_start = text.find("class QuoteForm(StyledModelForm):")
+    invoice_start = text.find("class InvoiceForm(StyledModelForm):")
+    if quote_start < 0 or invoice_start <= quote_start:
+        raise RuntimeError("QuoteForm/InvoiceForm anchors missing")
+    block = text[quote_start:invoice_start]
+    if '"discount_percent"' not in block:
+        old = 'fields = ["project", "issue_date", "valid_until", "intro_text", "notes"]'
+        new = 'fields = ["project", "issue_date", "valid_until", "intro_text", "discount_percent", "notes"]'
+        if old not in block:
+            raise RuntimeError("A+Bau QuoteForm field contract changed")
+        block = block.replace(old, new, 1)
+        text = text[:quote_start] + block + text[invoice_start:]
+        write(rel, text)
+
+    # Keep the legacy model field posted for validation/backwards compatibility,
+    # but never show it as a second discount control in the new A+Bau editor.
+    editor_rel = "templates/rebuild/document_editor.html"
+    editor = read(editor_rel)
+    if "form.discount_percent.as_hidden" not in editor:
+        csrf_anchor = '<form class="nx-form ab-document-form" method="post" data-ab-commercial-form>{% csrf_token %}'
+        if csrf_anchor not in editor:
+            raise RuntimeError("A+Bau document form CSRF anchor changed")
+        editor = editor.replace(csrf_anchor, csrf_anchor + '{% if kind == \'quote\' %}{{ form.discount_percent.as_hidden }}{% endif %}', 1)
+
+    old_grid = '''<div class="nx-form-grid">{% for field in form %}<div class="nx-field {% if field.name == 'intro_text' or field.name == 'notes' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>'''
+    new_grid = '''<div class="nx-form-grid">{% for field in form %}{% if field.name != 'discount_percent' %}<div class="nx-field {% if field.name == 'intro_text' or field.name == 'notes' %}nx-field-full{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div>'''
+    if old_grid in editor:
+        editor = editor.replace(old_grid, new_grid, 1)
+    elif new_grid not in editor:
+        raise RuntimeError("A+Bau document metadata grid anchor changed")
+    write(editor_rel, editor)
+
+
 def preserve_cache_contract() -> None:
     rel = "templates/rebuild/base.html"
     text = read(rel)
@@ -85,8 +121,11 @@ def guard() -> None:
     base = read("templates/rebuild/base.html")
     editor = read("templates/rebuild/document_editor.html")
     tests = read("tests/test_ab_bau_tooltime_finance_upgrade.py")
+    quote_block = views[views.find("class QuoteForm(StyledModelForm):"):views.find("class InvoiceForm(StyledModelForm):")]
     if "GERMAN_FIELD_LABELS = {" not in views or '"issue_date": "Ausstellungsdatum"' not in views:
         raise RuntimeError("German form-label compatibility is missing")
+    if '"discount_percent"' not in quote_block or "form.discount_percent.as_hidden" not in editor:
+        raise RuntimeError("Legacy Rabatt field is not preserved invisibly for QuoteForm compatibility")
     if "kayi-next.js' %}?v=20260811-99" not in base:
         raise RuntimeError("Stable A+Bau JS cache contract is missing")
     if "data-add-item" not in editor or "data-ab-add-item" not in editor:
@@ -96,8 +135,9 @@ def guard() -> None:
 
 
 restore_german_labels()
+preserve_quote_form_contract()
 preserve_cache_contract()
 preserve_document_editor_contract()
 align_generated_test_with_migration_chain()
 guard()
-print("A+Bau regression compatibility installed: German labels, cache contract, editor marker and migration test aligned.")
+print("A+Bau regression compatibility installed: German labels, hidden QuoteForm Rabatt, cache contract, editor marker and migration test aligned.")
