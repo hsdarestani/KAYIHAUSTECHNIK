@@ -47,25 +47,52 @@ def patch_document_views() -> None:
             raise RuntimeError("quote catalog query contract changed")
         text = text.replace(old_quote, new_quote, 1)
 
-    old_invoice = '"catalog": m.CatalogItem.objects.filter(organization=org, active=True).order_by("name")[:500], "kind": "invoice"'
-    new_invoice = '"catalog": catalog_with_effective_prices(org, limit=500), "kind": "invoice"'
-    if new_invoice not in text:
-        if old_invoice not in text:
+    # Legacy editor kept the invoice catalogue inline in the render dict. The
+    # A+Bau editor formats the same context over multiple lines. Support both so
+    # effective VA04/B&O pricing remains the source of truth after the commercial
+    # editor upgrade instead of making the assembly order brittle.
+    old_invoice_legacy = '"catalog": m.CatalogItem.objects.filter(organization=org, active=True).order_by("name")[:500], "kind": "invoice"'
+    new_invoice_legacy = '"catalog": catalog_with_effective_prices(org, limit=500), "kind": "invoice"'
+    old_invoice_ab = '        "catalog": m.CatalogItem.objects.filter(organization=org, active=True).order_by("name")[:500],\n'
+    new_invoice_ab = '        "catalog": catalog_with_effective_prices(org, limit=500),\n'
+    if new_invoice_legacy not in text and new_invoice_ab not in text:
+        if old_invoice_legacy in text:
+            text = text.replace(old_invoice_legacy, new_invoice_legacy, 1)
+        elif old_invoice_ab in text:
+            text = text.replace(old_invoice_ab, new_invoice_ab, 1)
+        else:
             raise RuntimeError("invoice catalog query contract changed")
-        text = text.replace(old_invoice, new_invoice, 1)
     write(path, text)
 
 
 def patch_document_template() -> None:
     path = "templates/rebuild/document_editor.html"
     text = read(path)
-    if "effective_price_source_kind" not in text:
-        text = text.replace('data-price="{{ item.sales_price|stringformat:\'s\' }}"', 'data-price="{{ item.effective_sales_price|stringformat:\'s\' }}"')
-        text = text.replace('{{ item.code }} · {{ item.sales_price|floatformat:2 }} € / {{ item.unit }}', '{{ item.code }} · {{ item.effective_sales_price|floatformat:2 }} € / {{ item.unit }} · {{ item.effective_price_source_kind }}')
+
+    if "data-ab-catalog" in text:
+        # A+Bau/ToolTime editor: expose effective B&O metadata on the catalogue
+        # button and use the effective sales price for the fallback price shown
+        # and inserted when no explicit purchase price exists.
+        old_sales = 'data-sales="{{ item.sales_price|stringformat:\'s\' }}"'
+        new_sales = 'data-sales="{{ item.effective_sales_price|stringformat:\'s\' }}" data-price-source="{{ item.effective_price_source|escape }}" data-price-source-kind="{{ item.effective_price_source_kind|escape }}" data-price-reference-code="{{ item.effective_price_reference_code|escape }}" data-price-match-kind="{{ item.effective_price_match_kind|escape }}"'
+        if new_sales not in text:
+            if old_sales not in text:
+                raise RuntimeError("A+Bau catalogue effective-price data anchor changed")
+            text = text.replace(old_sales, new_sales, 1)
         text = text.replace(
-            'data-tax="{{ item.tax_rate|stringformat:\'s\' }}"',
-            'data-tax="{{ item.tax_rate|stringformat:\'s\' }}" data-price-source="{{ item.effective_price_source|escape }}" data-price-source-kind="{{ item.effective_price_source_kind|escape }}" data-price-reference-code="{{ item.effective_price_reference_code|escape }}" data-price-match-kind="{{ item.effective_price_match_kind|escape }}"',
+            '<strong>{{ item.sales_price|floatformat:2 }} €</strong>',
+            '<strong>{{ item.effective_sales_price|floatformat:2 }} €</strong>',
         )
+    else:
+        # Legacy KAYI Next editor retained for compatibility with older source
+        # assemblies and migration branches.
+        if "effective_price_source_kind" not in text:
+            text = text.replace('data-price="{{ item.sales_price|stringformat:\'s\' }}"', 'data-price="{{ item.effective_sales_price|stringformat:\'s\' }}"')
+            text = text.replace('{{ item.code }} · {{ item.sales_price|floatformat:2 }} € / {{ item.unit }}', '{{ item.code }} · {{ item.effective_sales_price|floatformat:2 }} € / {{ item.unit }} · {{ item.effective_price_source_kind }}')
+            text = text.replace(
+                'data-tax="{{ item.tax_rate|stringformat:\'s\' }}"',
+                'data-tax="{{ item.tax_rate|stringformat:\'s\' }}" data-price-source="{{ item.effective_price_source|escape }}" data-price-source-kind="{{ item.effective_price_source_kind|escape }}" data-price-reference-code="{{ item.effective_price_reference_code|escape }}" data-price-match-kind="{{ item.effective_price_match_kind|escape }}"',
+            )
     if "item.effective_sales_price" not in text:
         raise RuntimeError("document editor still does not render effective prices")
     write(path, text)
