@@ -38,4 +38,4 @@ class ProjectApprovalFlow(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        indexes = [models.Index(fields=["organization", "status"], name="erp_projapproval_org_status_idx")]
+        indexes = [models.Index(fields=["organization", "status"], name="erp_appr_org_status_idx")]
