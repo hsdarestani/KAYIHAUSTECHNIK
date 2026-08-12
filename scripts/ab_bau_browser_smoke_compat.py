@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,5 +99,9 @@ if quote_contract_found:
         raise RuntimeError("Browser smoke quote add action is not wired to a visible A+Bau control")
     if "if table.count() == 0 or add.count() == 0:" not in final:
         raise RuntimeError("Browser smoke still requires a unique quote control instead of checking presence")
+
+# Final visual identity pass: all non-semantic turquoise accents left from the
+# ToolTime-era base theme are changed to the A+Bau gold accent after assembly.
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_gold_accent_fix.py"), run_name="__main__")
 
 print("A+Bau browser smoke compatibility installed; technical KAYI_* identifiers preserved.")
