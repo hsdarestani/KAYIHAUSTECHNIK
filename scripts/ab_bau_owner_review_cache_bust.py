@@ -18,6 +18,7 @@ for script_name in (
     "project_approval_regression_compat.py",
     "install_employee_role_editor.py",
     "install_ai_role_permissions.py",
+    "harden_legacy_ai_api.py",
 ):
     script_path = ROOT / "scripts" / script_name
     if not script_path.exists():
@@ -78,4 +79,8 @@ assistant_text = (ROOT / "erp" / "assistant_views.py").read_text(encoding="utf-8
 if "A_BAU_AI_ROLE_SCOPE_HARDENING" not in assistant_text or "_ai_perm.sanitize_assistant_payload" not in assistant_text:
     raise RuntimeError("KI role permission hardening missing from final assembled source")
 
-print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions and cache version {VERSION}.")
+legacy_api_text = (ROOT / "erp" / "api.py").read_text(encoding="utf-8")
+if "A_BAU_LEGACY_AI_ADMIN_GUARD" not in legacy_api_text:
+    raise RuntimeError("Legacy KI API admin guard missing from final assembled source")
+
+print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions, legacy KI guards and cache version {VERSION}.")
