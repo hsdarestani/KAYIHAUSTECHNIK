@@ -141,9 +141,12 @@ python3 scripts/install_tooltime_rebuild.py
 python3 scripts/install_bo_pricing.py
 python3 scripts/install_bo_direct_search.py
 python3 scripts/install_manager_review.py
+# Final A+Bau agent layer: activate the uploaded PNG logo and extend the global
+# assistant with signed, one-confirmation, transaction-safe multi-step workflows.
+python3 scripts/install_ab_bau_agent_orchestrator.py
 # The legacy browser-smoke source is itself assembled and patched by the layers
 # above. Update only its visible branding expectations after every overlay has
 # finished so A+Bau is tested without renaming technical KAYI_* identifiers.
 python3 scripts/ab_bau_browser_smoke_compat.py
 
-echo "A+Bau source tree assembled and verified with ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
+echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed agent workflows, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
