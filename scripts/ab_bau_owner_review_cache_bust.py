@@ -9,15 +9,18 @@ VERSION = "20260812-owner-review-2"
 
 # This script is the final assembly stage. Install the technician project-intake
 # contract here so no older runtime/mobile layer can restore the direct-priced
-# Schnellauftrag after the approval flow has been applied.
+# Schnellauftrag after the approval flow has been applied. Employee role editing
+# is applied here as well so an older EmployeeForm can never force users back to
+# the technician role during a later deterministic assembly.
 for script_name in (
     "normalize_project_approval_handoff_anchor.py",
     "install_technician_project_approval_flow.py",
     "project_approval_regression_compat.py",
+    "install_employee_role_editor.py",
 ):
     script_path = ROOT / "scripts" / script_name
     if not script_path.exists():
-        raise RuntimeError(f"Final project-approval assembly script missing: {script_name}")
+        raise RuntimeError(f"Final A+Bau assembly script missing: {script_name}")
     runpy.run_path(str(script_path), run_name=f"__ab_bau_{script_name.replace('.', '_')}__")
 
 base_path = ROOT / "templates" / "rebuild" / "base.html"
@@ -54,4 +57,8 @@ if "Projektfreigaben" not in base_path.read_text(encoding="utf-8"):
 if VERSION not in base_path.read_text(encoding="utf-8"):
     raise RuntimeError("Owner review final asset version missing")
 
-print(f"A+Bau final assembly completed with owner review, technician project approval and cache version {VERSION}.")
+ops_text = (ROOT / "erp" / "rebuild_ops.py").read_text(encoding="utf-8")
+if "A_BAU_EMPLOYEE_ROLE_EDITOR" not in ops_text or 'role = forms.ChoiceField(label="Rolle"' not in ops_text:
+    raise RuntimeError("Employee role editor missing from final assembled source")
+
+print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management and cache version {VERSION}.")
