@@ -133,6 +133,7 @@ python3 scripts/install_ab_bau_agent_orchestrator.py
 # Final project-creation contract: technicians capture scope/photos without prices,
 # office approves authoritative EK + markup, technician sees only final VK, and
 # customer signature is the explicit gate that moves the project into execution.
+python3 scripts/normalize_project_approval_handoff_anchor.py
 python3 scripts/install_technician_project_approval_flow.py
 
 echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed AI agent, price-free technician project intake, office commercial approval, customer-signature project start, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
