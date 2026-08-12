@@ -18,12 +18,14 @@ def patch(rel: str, old: str, new: str) -> None:
         path.write_text(text, encoding="utf-8")
 
 
-# The free-logo test is generated before the final runtime layer and therefore
-# must accept the later cache bust that actually ships to browsers.
+# The free-logo test is generated before later runtime/UI layers. Verify that a
+# deliberate A+Bau cache key exists instead of pinning the test to one exact
+# version; later final layers (for example the project team picker) may need to
+# bump CSS again so browsers actually receive their new styles.
 patch(
     "tests/test_ab_bau_logo_frame.py",
     'self.assertIn("kayi-next.css\' %}?v=20260811-102", base)',
-    f'self.assertIn("kayi-next.css\' %}}?v={VERSION}", base)',
+    r'self.assertRegex(base, r"kayi-next\.css.*\?v=202608(?:11-[0-9]+|12-runtime-[0-9]+)")',
 )
 
 # Stateful assistant behavior is unchanged; only the final asset version moved
@@ -42,4 +44,4 @@ patch(
     f'self.assertTrue("20260811-7" in text or "{VERSION}" in text)',
 )
 
-print("A+Bau runtime cache regression contracts aligned with the final asset versions.")
+print("A+Bau runtime cache regression contracts aligned with final/future A+Bau asset versions.")
