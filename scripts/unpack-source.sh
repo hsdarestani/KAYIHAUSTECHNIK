@@ -158,5 +158,7 @@ python3 scripts/ab_bau_runtime_cache_contract_compat.py
 # Final operational polish: resolve owner/office users to an auditable Employee
 # before starting time and replace the native multi-select with a clear team picker.
 python3 scripts/ab_bau_time_employee_team_picker.py
+# Finalize owner-review UI and force browsers to fetch the replaced logo/new CSS.
+python3 scripts/ab_bau_owner_review_cache_bust.py
 
-echo "A+Bau source tree assembled with stable Zeiterfassung, fast Angebot loading and understandable project team selection."
+echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
