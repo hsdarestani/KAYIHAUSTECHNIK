@@ -10,18 +10,32 @@ VERSION = "20260812-owner-review-2"
 # This script is the final assembly stage. Install the technician project-intake
 # contract here so no older runtime/mobile layer can restore the direct-priced
 # Schnellauftrag after the approval flow has been applied. Employee role editing
-# is applied here as well so an older EmployeeForm can never force users back to
-# the technician role during a later deterministic assembly.
+# and KI role permissions are applied here as well, after all older AI/UI layers,
+# so deterministic assembly can never restore a broad organization-wide KI scope.
 for script_name in (
     "normalize_project_approval_handoff_anchor.py",
     "install_technician_project_approval_flow.py",
     "project_approval_regression_compat.py",
     "install_employee_role_editor.py",
+    "install_ai_role_permissions.py",
+    "harden_legacy_ai_api.py",
 ):
     script_path = ROOT / "scripts" / script_name
     if not script_path.exists():
         raise RuntimeError(f"Final A+Bau assembly script missing: {script_name}")
     runpy.run_path(str(script_path), run_name=f"__ab_bau_{script_name.replace('.', '_')}__")
+
+# Django's JsonResponse has no response.json() helper when a view is called
+# directly in a unit test. Keep the production hardening untouched and normalize
+# only that direct-view regression assertion after the installer generated it.
+role_test_path = ROOT / "tests" / "test_ai_role_permissions.py"
+if role_test_path.exists():
+    role_tests = role_test_path.read_text(encoding="utf-8")
+    role_tests = role_tests.replace(
+        "        body = response.json()\n",
+        '        body = json.loads(response.content.decode("utf-8"))\n',
+    )
+    role_test_path.write_text(role_tests, encoding="utf-8")
 
 base_path = ROOT / "templates" / "rebuild" / "base.html"
 review_path = ROOT / "templates" / "rebuild" / "review_detail.html"
@@ -61,4 +75,12 @@ ops_text = (ROOT / "erp" / "rebuild_ops.py").read_text(encoding="utf-8")
 if "A_BAU_EMPLOYEE_ROLE_EDITOR" not in ops_text or 'role = forms.ChoiceField(label="Rolle"' not in ops_text:
     raise RuntimeError("Employee role editor missing from final assembled source")
 
-print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management and cache version {VERSION}.")
+assistant_text = (ROOT / "erp" / "assistant_views.py").read_text(encoding="utf-8")
+if "A_BAU_AI_ROLE_SCOPE_HARDENING" not in assistant_text or "_ai_perm.sanitize_assistant_payload" not in assistant_text:
+    raise RuntimeError("KI role permission hardening missing from final assembled source")
+
+legacy_api_text = (ROOT / "erp" / "api.py").read_text(encoding="utf-8")
+if "A_BAU_LEGACY_AI_ADMIN_GUARD" not in legacy_api_text:
+    raise RuntimeError("Legacy KI API admin guard missing from final assembled source")
+
+print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions, legacy KI guards and cache version {VERSION}.")
