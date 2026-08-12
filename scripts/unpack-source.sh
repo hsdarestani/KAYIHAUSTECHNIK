@@ -155,5 +155,8 @@ python3 scripts/ab_bau_runtime_ux_performance_hotfix.py
 # Older regression files intentionally hard-code their cache key. Align them only
 # after the runtime layer has selected the final assets that browsers must load.
 python3 scripts/ab_bau_runtime_cache_contract_compat.py
+# Final operational polish: resolve owner/office users to an auditable Employee
+# before starting time and replace the native multi-select with a clear team picker.
+python3 scripts/ab_bau_time_employee_team_picker.py
 
-echo "A+Bau source tree assembled and verified with stable Zeiterfassung, fast Angebot loading, async catalog search, compact B&O results and free-floating PNG branding."
+echo "A+Bau source tree assembled with stable Zeiterfassung, fast Angebot loading and understandable project team selection."
