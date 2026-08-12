@@ -146,5 +146,8 @@ python3 scripts/ab_bau_browser_smoke_compat.py
 # Then activate the uploaded PNG and confirmed agent so no older mobile layer can
 # restore the legacy WebP reference or overwrite the multi-step assistant UI.
 python3 scripts/install_ab_bau_agent_orchestrator.py
+# Final branding override: keep the uploaded PNG completely free-floating in the
+# sidebar with no frame, panel, rounded crop or legacy background around it.
+python3 scripts/ab_bau_logo_frame_fix.py
 
-echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed agent workflows, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
+echo "A+Bau source tree assembled and verified with free-floating PNG branding, confirmed agent workflows, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
