@@ -8,7 +8,11 @@
   if (!input || !results || !table) return;
 
   const money = (value) => Number(value || 0).toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const recalc = () => {
+  const isABBau = () => table.matches('[data-ab-items]') || !!table.querySelector('.ab-item-row');
+  const emit = (field, type = 'input') => field?.dispatchEvent(new Event(type, {bubbles:true}));
+
+  const legacyRecalc = () => {
+    if (isABBau()) return;
     let net = 0, tax = 0;
     table.querySelectorAll('tbody tr').forEach((row) => {
       const qty = parseFloat(row.querySelector('[name="item_quantity"]')?.value || 0);
@@ -27,24 +31,84 @@
     set('net', net); set('tax', tax); set('gross', net + tax);
   };
 
-  const bindRow = (row) => {
-    row.querySelector('.nx-item-remove')?.addEventListener('click', () => { row.remove(); recalc(); });
-    row.querySelectorAll('input').forEach((field) => field.addEventListener('input', recalc));
+  const bindLegacyRow = (row) => {
+    row.querySelector('.nx-item-remove')?.addEventListener('click', () => { row.remove(); legacyRecalc(); });
+    row.querySelectorAll('input').forEach((field) => field.addEventListener('input', legacyRecalc));
   };
 
-  const blankRow = () => Array.from(table.querySelectorAll('tbody tr')).find((row) => {
+  const blankLegacyRow = () => Array.from(table.querySelectorAll('tbody tr')).find((row) => {
     const desc = row.querySelector('[name="item_description"]')?.value?.trim();
     const price = parseFloat(row.querySelector('[name="item_price"]')?.value || 0);
     return !desc && price === 0;
   });
 
-  const addPosition = (item) => {
-    let row = blankRow();
+  const blankABBauRow = () => Array.from(table.querySelectorAll('.ab-item-row')).find((row) => {
+    const desc = row.querySelector('[name="item_description"]')?.value?.trim();
+    return !desc;
+  });
+
+  const getOrCreateABBauRow = () => {
+    let row = blankABBauRow();
+    if (row) return row;
+    const before = table.querySelectorAll('.ab-item-row').length;
+    const add = document.querySelector('[data-ab-add-item]');
+    add?.click();
+    const rows = Array.from(table.querySelectorAll('.ab-item-row'));
+    if (rows.length > before) return rows[rows.length - 1];
+    return rows[rows.length - 1] || null;
+  };
+
+  const setUnit = (row, value) => {
+    const field = row.querySelector('[name="item_unit"]');
+    if (!field) return;
+    if (field.tagName === 'SELECT' && value && !Array.from(field.options).some((option) => option.value === value || option.textContent === value)) {
+      field.add(new Option(value, value));
+    }
+    field.value = value || 'Stk.';
+    emit(field, 'change');
+  };
+
+  const addABBauPosition = (item) => {
+    const row = getOrCreateABBauRow();
+    if (!row) {
+      status.textContent = 'Position konnte nicht eingefügt werden. Bitte zuerst „Position hinzufügen“ wählen.';
+      return;
+    }
+    const description = row.querySelector('[name="item_description"]');
+    const detail = row.querySelector('[name="item_detail"]');
+    const quantity = row.querySelector('[name="item_quantity"]');
+    const purchase = row.querySelector('[name="item_purchase_price"]');
+    const markup = row.querySelector('[name="item_markup_percent"]');
+    const hiddenPrice = row.querySelector('[name="item_price"]');
+    const type = row.querySelector('[name="item_type"]');
+    const serviceModel = row.nextElementSibling?.querySelector('[name="item_service_model"]');
+    const catalogId = row.querySelector('[name="item_catalog_id"]');
+
+    description.value = `${item.code ? item.code + ' · ' : ''}${item.description || ''}`;
+    if (detail && !detail.value.trim()) detail.value = item.description || '';
+    quantity.value = '1';
+    purchase.value = item.price || '0';
+    markup.value = '0';
+    if (hiddenPrice) hiddenPrice.value = item.price || '0';
+    if (type) type.value = 'other';
+    if (serviceModel) serviceModel.value = 'normal';
+    if (catalogId) catalogId.value = '';
+    setUnit(row, item.unit || 'Stk.');
+    row.dataset.boReferenceId = item.id || '';
+    row.dataset.boReferenceCode = item.code || '';
+    row.dataset.boSearchUrl = root.dataset.boSearchUrl || '';
+    [description, detail, quantity, purchase, markup, hiddenPrice].forEach((field) => emit(field));
+    emit(type, 'change'); emit(serviceModel, 'change');
+    row.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+
+  const addLegacyPosition = (item) => {
+    let row = blankLegacyRow();
     if (!row) {
       row = document.createElement('tr');
       row.innerHTML = '<td><input class="nx-control desc" name="item_description" placeholder="Leistung oder Material"></td><td><input class="nx-control" name="item_quantity" type="number" step="0.001" value="1"></td><td><input class="nx-control" name="item_unit"></td><td><input class="nx-control" name="item_price" type="number" step="0.01"></td><td><input class="nx-control" name="item_tax" type="number" step="0.01"></td><td><button type="button" class="nx-item-remove" aria-label="Position entfernen">×</button></td>';
       table.querySelector('tbody').appendChild(row);
-      bindRow(row);
+      bindLegacyRow(row);
     }
     row.querySelector('[name="item_description"]').value = `${item.code ? item.code + ' · ' : ''}${item.description}`;
     row.querySelector('[name="item_quantity"]').value = '1';
@@ -53,9 +117,12 @@
     row.querySelector('[name="item_tax"]').value = item.tax || '19';
     row.dataset.boReferenceId = item.id || '';
     row.dataset.boReferenceCode = item.code || '';
-    recalc();
+    row.dataset.boSearchUrl = root.dataset.boSearchUrl || '';
+    legacyRecalc();
     row.scrollIntoView({behavior:'smooth', block:'center'});
   };
+
+  const addPosition = (item) => isABBau() ? addABBauPosition(item) : addLegacyPosition(item);
 
   const render = (items) => {
     results.innerHTML = '';
@@ -95,8 +162,10 @@
     try {
       const url = new URL(root.dataset.boSearchUrl, window.location.origin);
       url.searchParams.set('q', query);
-      const response = await fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}, signal:controller.signal});
-      const data = await response.json();
+      const response = await fetch(url, {credentials:'same-origin', headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, signal:controller.signal});
+      const raw = await response.text();
+      let data = null;
+      try { data = raw ? JSON.parse(raw) : {}; } catch (_) { throw new Error('B&O-Suche hat keine gültige Serverantwort erhalten.'); }
       if (!response.ok || !data.ok) throw new Error(data.error || 'B&O-Suche fehlgeschlagen');
       status.textContent = `${data.results.length} bepreiste B&O-Positionen gefunden`;
       render(data.results || []);
