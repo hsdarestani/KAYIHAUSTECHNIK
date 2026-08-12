@@ -149,5 +149,8 @@ python3 scripts/install_ab_bau_agent_orchestrator.py
 # Final branding override: keep the uploaded PNG completely free-floating in the
 # sidebar with no frame, panel, rounded crop or legacy background around it.
 python3 scripts/ab_bau_logo_frame_fix.py
+# Runtime hotfix runs last so no older overlay can reintroduce the duplicate time
+# handler or the 500-item synchronous catalog pricing path.
+python3 scripts/ab_bau_runtime_ux_performance_hotfix.py
 
-echo "A+Bau source tree assembled and verified with free-floating PNG branding, confirmed agent workflows, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
+echo "A+Bau source tree assembled and verified with stable Zeiterfassung, fast Angebot loading, async catalog search, compact B&O results and free-floating PNG branding."
