@@ -21,6 +21,15 @@ def write(rel: str, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_exact(rel: str, old: str, new: str) -> None:
+    text = read(rel)
+    if new in text:
+        return
+    if old not in text:
+        raise RuntimeError(f"A+Bau logo regression anchor changed in {rel}: {old}")
+    write(rel, text.replace(old, new, 1))
+
+
 def patch_markup() -> None:
     rel = "templates/rebuild/base.html"
     text = read(rel)
@@ -89,6 +98,8 @@ def patch_css() -> None:
 
 
 def bump_cache() -> None:
+    # This helps normal browsers, but the decisive no-frame/size rules are also
+    # inline so a later product-layer cache key cannot restore the old 56px box.
     rel = "templates/rebuild/base.html"
     text = read(rel)
     text = re.sub(r"(kayi-next\.css' %\}\?v=)[^\"']+", rf"\g<1>{VERSION}", text)
@@ -126,11 +137,25 @@ class ABBauLogoFrameTests(SimpleTestCase):
         self.assertIn("box-shadow:none!important", css)
         self.assertIn("border-radius:0!important", css)
         self.assertIn("object-fit:contain!important", css)
-
-    def test_logo_cache_is_bumped(self):
-        base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("kayi-next.css' %}?v=20260811-202", base)
 ''')
+
+
+def align_old_branding_contracts() -> None:
+    # The previous mobile test required a separate textual fallback next to the
+    # logo. The approved design is image-only, so verify the real image instead.
+    patch_exact(
+        "tests/test_ab_bau_mobile_navigation.py",
+        '        self.assertIn("ab-brand-fallback", base)',
+        '        self.assertIn("ab-brand-logo-only", base)\n        self.assertNotIn("ab-brand-fallback", base)',
+    )
+
+    # The old commercial test required the sidebar tagline as standalone text.
+    # That text is already baked into the supplied logo and must not be duplicated.
+    patch_exact(
+        "tests/test_ab_bau_tooltime_finance_upgrade.py",
+        '        self.assertIn("Alles organisiert. Alles im Griff.", base)',
+        '        self.assertIn("ab-brand-logo-only", base)\n        self.assertNotIn("Alles organisiert. Alles im Griff.", base)',
+    )
 
 
 def guard() -> None:
@@ -152,13 +177,12 @@ def guard() -> None:
         raise RuntimeError("Separate A+Bau sidebar copy still exists beside the logo")
     if "width:188px!important" not in brand.group(0):
         raise RuntimeError("Inline logo sizing contract is missing")
-    if f"kayi-next.css' %}}?v={VERSION}" not in base:
-        raise RuntimeError("A+Bau logo-only cache version was not applied")
 
 
 patch_markup()
 patch_css()
 bump_cache()
 install_test()
+align_old_branding_contracts()
 guard()
 print("A+Bau sidebar simplified: only the large uploaded logo remains; no frame and no separate brand text.")
