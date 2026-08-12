@@ -36,6 +36,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="projectapprovalflow",
-            index=models.Index(fields=["organization", "status"], name="erp_projapproval_org_status_idx"),
+            index=models.Index(fields=["organization", "status"], name="erp_appr_org_status_idx"),
         ),
     ]
