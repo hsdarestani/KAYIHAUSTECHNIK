@@ -12,8 +12,8 @@ text = TARGET.read_text(encoding="utf-8")
 original = text
 
 # production_browser_smoke.py contains a generated/escaped runtime smoke block.
-# Update brand expectations line-by-line so escaped quotes do not matter. Keep
-# technical KAYI_* environment names, fixture identifiers and routes untouched.
+# Update visible brand expectations line-by-line so escaped quotes do not matter.
+# Keep technical KAYI_* environment names, fixture identifiers and routes untouched.
 patched_lines: list[str] = []
 for line in text.splitlines(keepends=True):
     low = line.lower()
@@ -28,23 +28,39 @@ for line in text.splitlines(keepends=True):
         line = line.replace("KAYI Next", "A+Bau")
         line = line.replace("KAYI", "A+Bau")
         line = line.replace(".nx-brandmark", ".ab-brand img")
+
+    # The legacy quote smoke clicks [data-add-item]. In A+Bau that selector is
+    # intentionally retained only as a hidden compatibility marker, while the
+    # real visible controls use [data-ab-add-item]. Point the browser interaction
+    # at the actual A+Bau button without re-activating the old tax-per-row builder.
+    if "data-add-item" in line and ("locator" in line or ".click" in line or "query_selector" in line):
+        line = line.replace("data-add-item", "data-ab-add-item")
+
     patched_lines.append(line)
 
 text = "".join(patched_lines)
 if text != original:
     TARGET.write_text(text, encoding="utf-8")
-    print("A+Bau browser smoke: generated visible brand contract updated.")
+    print("A+Bau browser smoke: generated brand and quote interaction contracts updated.")
 else:
-    print("A+Bau browser smoke: no legacy visible brand assertion required patching.")
+    print("A+Bau browser smoke: no legacy visible brand or quote selector required patching.")
 
 final = TARGET.read_text(encoding="utf-8")
 legacy_brand_lines = []
+legacy_add_lines = []
 for number, line in enumerate(final.splitlines(), 1):
     low = line.lower()
     if "KAYI" in line and ("body_text" in line or "brand markers" in low or "nx-brand" in low or "brandmark" in low):
         legacy_brand_lines.append((number, line.strip()))
+    if "data-add-item" in line and ("locator" in line or ".click" in line or "query_selector" in line):
+        legacy_add_lines.append((number, line.strip()))
 if legacy_brand_lines:
     sample = "; ".join(f"L{n}: {line[:180]}" for n, line in legacy_brand_lines[:4])
     raise RuntimeError(f"Legacy KAYI visible brand contract survived final assembly: {sample}")
+if legacy_add_lines:
+    sample = "; ".join(f"L{n}: {line[:180]}" for n, line in legacy_add_lines[:4])
+    raise RuntimeError(f"Legacy hidden quote add-position selector survived final assembly: {sample}")
+if "data-ab-add-item" not in final:
+    raise RuntimeError("A+Bau browser smoke is not wired to the visible add-position control")
 
 print("A+Bau browser smoke compatibility installed; technical KAYI_* identifiers preserved.")
