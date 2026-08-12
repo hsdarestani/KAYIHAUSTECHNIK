@@ -1,0 +1,132 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Einsatz prüfen · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-pagehead nx-review-detail-head">
+  <div>
+    <div class="nx-kicker">Büro · Einsatzprüfung</div>
+    <h1>{% if completion.project %}{{ completion.project.number }} · {{ completion.project.title }}{% else %}Einsatz #{{ completion.metadata.event_id }}{% endif %}</h1>
+    <p>{% if completion.project %}{{ completion.project.customer.display_name }} · {% endif %}Du kannst die Abrechnungsdaten direkt korrigieren und danach freigeben.</p>
+  </div>
+  <div class="nx-actions"><a class="nx-btn" href="{% url 'field-review-queue' %}">← Zur Übersicht</a></div>
+</div>
+
+<div class="nx-review-lock-note"><b>Original bleibt revisionssicher:</b> Die unterschriebene Kundenfreigabe und der ursprüngliche Monteur-Abschluss werden nicht überschrieben. Deine Änderungen werden als separate Büro-/Abrechnungsprüfung protokolliert.</div>
+
+<form method="post" class="nx-review-editor" data-review-editor>{% csrf_token %}
+  <div class="nx-review-layout">
+    <div class="nx-review-workspace">
+      <section class="nx-card nx-review-card">
+        <div class="nx-card-head"><div><h2>Abrechnungspositionen</h2><p>Preise, Menge, Einheit und Art prüfen. Positionen können hinzugefügt, gelöscht und sortiert werden.</p></div><button class="nx-btn" type="button" data-add-row>＋ Position</button></div>
+        <div class="nx-review-position-list" data-position-list>
+          {% for item in review.items %}
+          <div class="nx-review-position" data-position-row draggable="true">
+            <button class="nx-review-drag" type="button" title="Ziehen">⋮⋮</button>
+            <div class="nx-review-field nx-review-field-wide"><label>Beschreibung</label><input class="nx-control" name="item_description" value="{{ item.description }}" required></div>
+            <div class="nx-review-field"><label>Menge</label><input class="nx-control" type="number" step="0.01" min="0" name="item_quantity" value="{{ item.quantity }}" data-qty></div>
+            <div class="nx-review-field"><label>Einheit</label><select class="nx-control" name="item_unit"><option {% if item.unit == 'Stk.' %}selected{% endif %}>Stk.</option><option {% if item.unit == 'Std.' %}selected{% endif %}>Std.</option><option {% if item.unit == 'm' %}selected{% endif %}>m</option><option {% if item.unit == 'm²' %}selected{% endif %}>m²</option><option {% if item.unit == 'm³' %}selected{% endif %}>m³</option><option {% if item.unit == 'kg' %}selected{% endif %}>kg</option><option {% if item.unit == 'l' %}selected{% endif %}>l</option><option {% if item.unit == 'Psch.' %}selected{% endif %}>Psch.</option><option {% if item.unit == 'Tag' %}selected{% endif %}>Tag</option></select></div>
+            <div class="nx-review-field"><label>Positionsart</label><select class="nx-control" name="item_position_type"><option value="material" {% if item.position_type == 'material' %}selected{% endif %}>Material</option><option value="labour" {% if item.position_type == 'labour' %}selected{% endif %}>Arbeitsleistung</option><option value="mixed" {% if item.position_type == 'mixed' %}selected{% endif %}>Gemischt</option><option value="other" {% if item.position_type == 'other' %}selected{% endif %}>Sonstiges</option></select></div>
+            <div class="nx-review-field"><label>Einkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_purchase_price" value="{{ item.purchase_price }}" data-purchase></div>
+            <div class="nx-review-field"><label>Aufschlag %</label><input class="nx-control" type="number" step="0.01" name="item_markup_percent" value="{{ item.markup_percent }}" data-markup></div>
+            <div class="nx-review-field"><label>Verkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_price" value="{{ item.unit_price }}" data-price></div>
+            <div class="nx-review-field"><label>USt. %</label><select class="nx-control" name="item_tax" data-tax><option value="19" {% if item.tax_rate == '19.00' or item.tax_rate == '19' %}selected{% endif %}>19 %</option><option value="7" {% if item.tax_rate == '7.00' or item.tax_rate == '7' %}selected{% endif %}>7 %</option><option value="0" {% if item.tax_rate == '0.00' or item.tax_rate == '0' %}selected{% endif %}>0 %</option></select></div>
+            <div class="nx-review-line-total"><span>Netto</span><b data-line-total>{{ item.net }} €</b></div>
+            <button class="nx-review-remove" type="button" data-remove-row title="Position löschen">×</button>
+          </div>
+          {% empty %}
+          <div class="nx-review-position" data-position-row draggable="true">
+            <button class="nx-review-drag" type="button">⋮⋮</button>
+            <div class="nx-review-field nx-review-field-wide"><label>Beschreibung</label><input class="nx-control" name="item_description" required></div>
+            <div class="nx-review-field"><label>Menge</label><input class="nx-control" type="number" step="0.01" min="0" name="item_quantity" value="1" data-qty></div>
+            <div class="nx-review-field"><label>Einheit</label><select class="nx-control" name="item_unit"><option>Stk.</option><option>Std.</option><option>m</option><option>m²</option><option>m³</option><option>kg</option><option>l</option><option>Psch.</option><option>Tag</option></select></div>
+            <div class="nx-review-field"><label>Positionsart</label><select class="nx-control" name="item_position_type"><option value="material">Material</option><option value="labour">Arbeitsleistung</option><option value="mixed">Gemischt</option><option value="other" selected>Sonstiges</option></select></div>
+            <div class="nx-review-field"><label>Einkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_purchase_price" value="0" data-purchase></div>
+            <div class="nx-review-field"><label>Aufschlag %</label><input class="nx-control" type="number" step="0.01" name="item_markup_percent" value="0" data-markup></div>
+            <div class="nx-review-field"><label>Verkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_price" value="0" data-price></div>
+            <div class="nx-review-field"><label>USt. %</label><select class="nx-control" name="item_tax" data-tax><option value="19">19 %</option><option value="7">7 %</option><option value="0">0 %</option></select></div>
+            <div class="nx-review-line-total"><span>Netto</span><b data-line-total>0.00 €</b></div>
+            <button class="nx-review-remove" type="button" data-remove-row>×</button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="nx-review-totalbar">
+          <div><span>Einkauf</span><b data-total-cost>{{ review.totals.cost }} €</b></div>
+          <div><span>Netto</span><b data-total-net>{{ review.totals.net }} €</b></div>
+          <div><span>Marge</span><b data-total-margin>{{ review.totals.margin }} €</b></div>
+          <div><span>USt.</span><b data-total-tax>{{ review.totals.tax }} €</b></div>
+          <div class="is-gross"><span>Brutto</span><b data-total-gross>{{ review.totals.gross }} €</b></div>
+        </div>
+      </section>
+
+      <section class="nx-card nx-review-card">
+        <div class="nx-card-head"><div><h2>Bericht & ausgeführte Arbeiten</h2><p>Die Büroversion für die Abrechnung kann hier präzisiert werden.</p></div></div>
+        <div class="nx-review-text-grid">
+          <label><span>Arbeitsbericht</span><textarea class="nx-control" rows="5" name="report">{{ review.report }}</textarea></label>
+          <label><span>Ausgeführte Leistungen</span><textarea class="nx-control" rows="5" name="services">{{ review.services }}</textarea></label>
+          <label class="is-full"><span>Material / Hinweise</span><textarea class="nx-control" rows="4" name="material">{{ review.material }}</textarea></label>
+        </div>
+      </section>
+
+      {% if authorization %}
+      <section class="nx-card nx-review-card nx-review-original">
+        <div class="nx-card-head"><div><h2>Unterschriebene Kundenfreigabe</h2><p>Nur zur Kontrolle – dieser Snapshot wird niemals verändert.</p></div><a class="nx-btn" href="/appointments/{{ completion.metadata.event_id }}/authorization/pdf/" target="_blank">Freigabe-PDF</a></div>
+        <div class="nx-review-original-grid"><div><span>Preisart</span><b>{{ authorization_data.pricing_mode|default:'—' }}</b></div><div><span>Freigegeben brutto</span><b>{{ authorization_data.totals.gross|default:'0.00' }} €</b></div><div><span>Zustand</span><p>{{ authorization_data.issue|default:'—' }}</p></div><div><span>Leistungsumfang</span><p>{{ authorization_data.scope|default:'—' }}</p></div></div>
+      </section>
+      {% endif %}
+    </div>
+
+    <aside class="nx-review-evidence">
+      <section class="nx-card nx-review-card nx-review-sticky">
+        <div class="nx-card-head"><div><h2>Nachweise & Fotos</h2><p>Vorher/Nachher direkt hier prüfen.</p></div></div>
+        <h3>Vorher</h3>
+        <div class="nx-review-photo-grid">
+          {% for doc in before_docs %}<a class="nx-review-photo" href="{{ doc.file.url }}" target="_blank"><img src="{{ doc.file.url }}" alt="Vorher-Foto"><span>{{ doc.title }}</span></a>{% empty %}<p class="nx-muted">Keine Vorher-Fotos.</p>{% endfor %}
+        </div>
+        <h3>Nachher</h3>
+        <div class="nx-review-photo-grid">
+          {% for doc in after_docs %}<a class="nx-review-photo" href="{{ doc.file.url }}" target="_blank"><img src="{{ doc.file.url }}" alt="Nachher-Foto"><span>{{ doc.title }}</span></a>{% empty %}<p class="nx-muted">Keine Nachher-Fotos.</p>{% endfor %}
+        </div>
+        <div class="nx-review-doc-links"><a class="nx-btn" href="/appointments/{{ completion.metadata.event_id }}/completion/pdf/" target="_blank">Original Abschluss-PDF</a>{% if event %}<a class="nx-btn" href="/appointments/{{ completion.metadata.event_id }}/room-plan.svg" target="_blank">Raumplan</a>{% endif %}</div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="nx-card nx-review-actions-card">
+    <label><span>Interne Prüfnotiz / Rückfrage</span><textarea class="nx-control" rows="3" name="note" placeholder="Optional bei Freigabe; erforderlich, wenn der Monteur etwas ergänzen soll.">{{ review.note }}</textarea></label>
+    <div class="nx-review-final-actions">
+      <button class="nx-btn" type="submit" name="action" value="save">Zwischenspeichern</button>
+      <button class="nx-btn" type="submit" name="action" value="return">↺ An Monteur zurückgeben</button>
+      <button class="nx-btn nx-btn-primary" type="submit" name="action" value="approve">✓ Änderungen übernehmen & freigeben</button>
+    </div>
+  </section>
+</form>
+
+<template id="review-position-template">
+  <div class="nx-review-position" data-position-row draggable="true">
+    <button class="nx-review-drag" type="button">⋮⋮</button>
+    <div class="nx-review-field nx-review-field-wide"><label>Beschreibung</label><input class="nx-control" name="item_description" required></div>
+    <div class="nx-review-field"><label>Menge</label><input class="nx-control" type="number" step="0.01" min="0" name="item_quantity" value="1" data-qty></div>
+    <div class="nx-review-field"><label>Einheit</label><select class="nx-control" name="item_unit"><option>Stk.</option><option>Std.</option><option>m</option><option>m²</option><option>m³</option><option>kg</option><option>l</option><option>Psch.</option><option>Tag</option></select></div>
+    <div class="nx-review-field"><label>Positionsart</label><select class="nx-control" name="item_position_type"><option value="material">Material</option><option value="labour">Arbeitsleistung</option><option value="mixed">Gemischt</option><option value="other" selected>Sonstiges</option></select></div>
+    <div class="nx-review-field"><label>Einkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_purchase_price" value="0" data-purchase></div>
+    <div class="nx-review-field"><label>Aufschlag %</label><input class="nx-control" type="number" step="0.01" name="item_markup_percent" value="0" data-markup></div>
+    <div class="nx-review-field"><label>Verkauf €</label><input class="nx-control" type="number" step="0.01" min="0" name="item_price" value="0" data-price></div>
+    <div class="nx-review-field"><label>USt. %</label><select class="nx-control" name="item_tax" data-tax><option value="19">19 %</option><option value="7">7 %</option><option value="0">0 %</option></select></div>
+    <div class="nx-review-line-total"><span>Netto</span><b data-line-total>0.00 €</b></div>
+    <button class="nx-review-remove" type="button" data-remove-row>×</button>
+  </div>
+</template>
+<script>
+(() => {
+  const root = document.querySelector('[data-review-editor]'); if (!root) return;
+  const list = root.querySelector('[data-position-list]');
+  const tpl = document.getElementById('review-position-template');
+  const num = el => Number(String(el?.value || '0').replace(',', '.')) || 0;
+  function refresh(){let net=0,tax=0,cost=0; list.querySelectorAll('[data-position-row]').forEach(row=>{const q=num(row.querySelector('[data-qty]'));const p=num(row.querySelector('[data-price]'));const t=num(row.querySelector('[data-tax]'));const c=num(row.querySelector('[data-purchase]'));const n=q*p; net+=n; tax+=n*t/100; cost+=q*c; const out=row.querySelector('[data-line-total]'); if(out) out.textContent=n.toFixed(2)+' €';}); const margin=net-cost; root.querySelector('[data-total-cost]').textContent=cost.toFixed(2)+' €'; root.querySelector('[data-total-net]').textContent=net.toFixed(2)+' €'; root.querySelector('[data-total-margin]').textContent=margin.toFixed(2)+' €'; root.querySelector('[data-total-tax]').textContent=tax.toFixed(2)+' €'; root.querySelector('[data-total-gross]').textContent=(net+tax).toFixed(2)+' €';}
+  root.addEventListener('input', e=>{if(e.target.matches('[data-purchase],[data-markup]')){const row=e.target.closest('[data-position-row]');const purchase=num(row.querySelector('[data-purchase]'));const markup=num(row.querySelector('[data-markup]'));if(e.target.matches('[data-markup]') && purchase>0){row.querySelector('[data-price]').value=(purchase*(1+markup/100)).toFixed(2);}} refresh();});
+  root.addEventListener('change', refresh);
+  root.addEventListener('click', e=>{const remove=e.target.closest('[data-remove-row]'); if(remove){remove.closest('[data-position-row]').remove();refresh();return;} if(e.target.closest('[data-add-row]')){list.appendChild(tpl.content.cloneNode(true));refresh();}});
+  let dragged=null; list.addEventListener('dragstart',e=>{const row=e.target.closest('[data-position-row]');if(row){dragged=row;row.classList.add('is-dragging');}}); list.addEventListener('dragend',()=>{if(dragged)dragged.classList.remove('is-dragging');dragged=null;}); list.addEventListener('dragover',e=>{e.preventDefault();if(!dragged)return;const over=e.target.closest('[data-position-row]');if(over&&over!==dragged){const r=over.getBoundingClientRect();list.insertBefore(dragged,e.clientY<r.top+r.height/2?over:over.nextSibling);}});
+  refresh();
+})();
+</script>
+{% endblock %}

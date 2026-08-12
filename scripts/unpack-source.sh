@@ -74,12 +74,26 @@ for part_id, spec in expected.items():
     if len(text) > spec["length"]:
         text = text[: spec["length"]]
 
-    actual_hashes = [hashlib.sha256(text[offset : offset + block_size].encode()).hexdigest() for offset in range(0, len(text), block_size)]
-    mismatches = [index for index, expected_hash in enumerate(spec["hashes"]) if index >= len(actual_hashes) or actual_hashes[index] != expected_hash]
+    actual_hashes = [
+        hashlib.sha256(text[offset : offset + block_size].encode()).hexdigest()
+        for offset in range(0, len(text), block_size)
+    ]
+    mismatches = [
+        index
+        for index, expected_hash in enumerate(spec["hashes"])
+        if index >= len(actual_hashes) or actual_hashes[index] != expected_hash
+    ]
     if len(actual_hashes) > len(spec["hashes"]):
         mismatches.extend(range(len(spec["hashes"]), len(actual_hashes)))
     if len(text) != spec["length"] or mismatches:
-        errors.append({"part": part_id, "expected_length": spec["length"], "actual_length": len(text), "mismatched_blocks": mismatches})
+        errors.append(
+            {
+                "part": part_id,
+                "expected_length": spec["length"],
+                "actual_length": len(text),
+                "mismatched_blocks": mismatches,
+            }
+        )
     (repaired_dir / f"source.part-{part_id}").write_text(text, encoding="utf-8")
 
 if errors:
@@ -98,7 +112,9 @@ except ValueError as exc:
     raise SystemExit(f"Source archive base64 verification failed: {exc}") from exc
 actual_archive_sha = hashlib.sha256(archive_bytes).hexdigest()
 if actual_archive_sha != expected_archive_sha:
-    raise SystemExit(f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}")
+    raise SystemExit(
+        f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}"
+    )
 archive.write_bytes(archive_bytes)
 print(f"{archive}: OK")
 PY
@@ -130,13 +146,19 @@ python3 scripts/ab_bau_browser_smoke_compat.py
 # Then activate the uploaded PNG and confirmed agent so no older mobile layer can
 # restore the legacy WebP reference or overwrite the multi-step assistant UI.
 python3 scripts/install_ab_bau_agent_orchestrator.py
-# Final project-creation contract: technicians capture scope/photos without prices,
-# office approves authoritative EK + markup, technician sees only final VK, and
-# customer signature is the explicit gate that moves the project into execution.
-python3 scripts/normalize_project_approval_handoff_anchor.py
-python3 scripts/install_technician_project_approval_flow.py
-# Legacy regression suites used to require the direct-priced Schnellauftrag. Keep
-# their coverage, but align their expected lifecycle to the new approval gate.
-python3 scripts/project_approval_regression_compat.py
+# Final branding override: keep the uploaded PNG completely free-floating in the
+# sidebar with no frame, panel, rounded crop or legacy background around it.
+python3 scripts/ab_bau_logo_frame_fix.py
+# Runtime hotfix runs last so no older overlay can reintroduce the duplicate time
+# handler or the 500-item synchronous catalog pricing path.
+python3 scripts/ab_bau_runtime_ux_performance_hotfix.py
+# Older regression files intentionally hard-code their cache key. Align them only
+# after the runtime layer has selected the final assets that browsers must load.
+python3 scripts/ab_bau_runtime_cache_contract_compat.py
+# Final operational polish: resolve owner/office users to an auditable Employee
+# before starting time and replace the native multi-select with a clear team picker.
+python3 scripts/ab_bau_time_employee_team_picker.py
+# Finalize owner-review UI and force browsers to fetch the replaced logo/new CSS.
+python3 scripts/ab_bau_owner_review_cache_bust.py
 
-echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed AI agent, price-free technician project intake, office commercial approval, customer-signature project start, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
+echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
