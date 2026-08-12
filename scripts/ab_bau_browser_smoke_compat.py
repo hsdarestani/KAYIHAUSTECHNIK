@@ -31,9 +31,6 @@ for line in text.splitlines(keepends=True):
         line = line.replace("KAYI", "A+Bau")
         line = line.replace(".nx-brandmark", ".ab-brand img")
 
-    # The active A+Bau commercial editor owns [data-ab-items]. A legacy hidden
-    # [data-add-item] marker exists only for static regression compatibility and
-    # must never be used as the live browser control.
     if "table = page.locator" in line and "data-document-items" in line:
         line = line.replace("[data-document-items]", "[data-ab-items]")
         if ".first" not in line:
@@ -45,15 +42,9 @@ for line in text.splitlines(keepends=True):
     elif "data-add-item" in line and ("locator" in line or ".click" in line or "query_selector" in line):
         line = line.replace("data-add-item", "data-ab-add-item")
 
-    # Multiple visual add controls are valid (header + footer). The smoke should
-    # assert presence, not uniqueness, because both operate on the same editor.
     if "if table.count() != 1 or add.count() != 1:" in line:
         line = line.replace("if table.count() != 1 or add.count() != 1:", "if table.count() == 0 or add.count() == 0:")
 
-    # A+Bau renders every commercial position as a main .ab-item-row followed by
-    # an auxiliary .ab-item-subrow for price-model controls. Legacy smoke counted
-    # every tbody <tr>, so one logical +Position appeared as +2 rows. Count only
-    # real commercial positions for the before/after interaction assertion.
     if ("before =" in line or "after =" in line) and "table.locator" in line and "tbody tr" in line:
         line = line.replace("tbody tr", ".ab-item-row")
 
@@ -100,8 +91,12 @@ if quote_contract_found:
     if "if table.count() == 0 or add.count() == 0:" not in final:
         raise RuntimeError("Browser smoke still requires a unique quote control instead of checking presence")
 
-# Final visual identity pass: all non-semantic turquoise accents left from the
-# ToolTime-era base theme are changed to the A+Bau gold accent after assembly.
+# Final visual identity and mobile-navigation passes must run after every legacy
+# layer so the production assembly cannot restore turquoise accents or the old
+# fixed-width drawer behavior. Keep the historical cache-version contract while
+# still bumping the asset URL beyond the previous release.
 runpy.run_path(str(ROOT / "scripts" / "ab_bau_gold_accent_fix.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_mobile_nav_polish.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_mobile_cache_compat.py"), run_name="__main__")
 
 print("A+Bau browser smoke compatibility installed; technical KAYI_* identifiers preserved.")
