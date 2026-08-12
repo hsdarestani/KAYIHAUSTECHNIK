@@ -55,8 +55,15 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
         self.org = m.Organization.objects.create(name="A+Bau Approval Test")
         self.office_user = User.objects.create_user(username="owner", password="testpass", email="owner@example.com")
         self.tech_user = User.objects.create_user(username="monteur", password="testpass", email="tech@example.com")
-        m.UserProfile.objects.create(user=self.office_user, organization=self.org, role="admin")
-        m.UserProfile.objects.create(user=self.tech_user, organization=self.org, role="technician", is_mobile_worker=True)
+        # User creation already provisions UserProfile via the application's signal.
+        self.office_user.profile.organization = self.org
+        self.office_user.profile.role = "admin"
+        self.office_user.profile.is_mobile_worker = False
+        self.office_user.profile.save()
+        self.tech_user.profile.organization = self.org
+        self.tech_user.profile.role = "technician"
+        self.tech_user.profile.is_mobile_worker = True
+        self.tech_user.profile.save()
         self.employee = m.Employee.objects.create(
             organization=self.org,
             employee_number="M-100",
@@ -121,8 +128,7 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        project = m.Project.objects.get(title="Bad Waschtisch")
-        return project
+        return m.Project.objects.get(title="Bad Waschtisch")
 
     def test_full_technician_owner_customer_flow(self):
         project = self._submit_intake()
@@ -131,7 +137,6 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
         item = quote.items.get()
         meta = m.CommercialItemMeta.objects.get(quote_item=item)
 
-        # Technician submission is technical only: no financial values are accepted/stored.
         self.assertEqual(project.status, "review")
         self.assertEqual(flow.status, "submitted")
         self.assertEqual(quote.status, "review")
@@ -142,7 +147,6 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
         self.assertTrue(m.Document.objects.filter(project=project, metadata__kind="project_intake_photo").exists())
         self.assertTrue(m.Notification.objects.filter(user=self.office_user, title="Neue Projektfreigabe").exists())
 
-        # Technician cannot enter the office/EK review surface.
         denied = self.tech.get(reverse("project-approval-review", args=[project.pk]))
         self.assertEqual(denied.status_code, 403)
         waiting = self.tech.get(reverse("field-project-approval", args=[project.pk]))
@@ -151,7 +155,6 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
         self.assertIn("Wartet auf Freigabe", waiting_html)
         self.assertNotIn("100,00 €", waiting_html)
 
-        # Owner chooses authoritative B&O price and 25% per-row markup.
         confirm = self.office.post(
             reverse("project-approval-review", args=[project.pk]),
             {
@@ -184,17 +187,15 @@ class TechnicianProjectApprovalDatabaseTests(TestCase):
         self.assertTrue(item.approved)
         self.assertTrue(m.Notification.objects.filter(user=self.tech_user, title="Projekt freigegeben").exists())
 
-        # Technician/customer surface exposes only final VK and total, never EK/margin internals.
         approved = self.tech.get(reverse("field-project-approval", args=[project.pk]))
         self.assertEqual(approved.status_code, 200)
         approved_html = approved.content.decode("utf-8")
         self.assertIn("Finale Kundenpreise", approved_html)
         self.assertIn("125,00", approved_html)
-        self.assertIn("297,50", approved_html)  # 2 * 125 plus 19% VAT
+        self.assertIn("297,50", approved_html)
         self.assertNotIn("25,00 %", approved_html)
         self.assertNotIn("VA04-WT-001", approved_html)
 
-        # Customer signature is the gate that officially starts the project.
         signature = "data:image/png;base64," + base64.b64encode(b"signed-png").decode("ascii")
         signed = self.tech.post(
             reverse("field-project-approval", args=[project.pk]),
