@@ -77,6 +77,10 @@ runpy.run_path(str(ROOT / "scripts" / "project_form_layout_polish.py"), run_name
 # project location options are scoped to the selected customer, and duplicate
 # customer-page actions are removed without rewriting intentionally stored names.
 runpy.run_path(str(ROOT / "scripts" / "customer_object_project_ux.py"), run_name="__main__")
+# A+Bau branding and the ToolTime-style commercial/finance flow must be applied
+# after the final customer/project overlays so its document editor, margin logic,
+# finance dashboard and time-toggle JSON hardening remain authoritative.
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_tooltime_finance_upgrade.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
 # The main browser smoke already crawls the Termine navigation; the dedicated
 # calendar regression contract verifies all four views deterministically in CI.
