@@ -84,6 +84,9 @@ runpy.run_path(str(ROOT / "scripts" / "ab_bau_tooltime_finance_upgrade.py"), run
 # The assembled source already owns migration 0009 for B&O/site-report fields.
 # Chain the A+Bau commercial schema as 0010 so Django has one deterministic leaf.
 runpy.run_path(str(ROOT / "scripts" / "ab_bau_migration_compat.py"), run_name="__main__")
+# Preserve stable regression contracts that predate the A+Bau commercial editor
+# without re-introducing per-position tax or the old row builder.
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_regression_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_name="__main__")
 # The main browser smoke already crawls the Termine navigation; the dedicated
 # calendar regression contract verifies all four views deterministically in CI.
