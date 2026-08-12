@@ -33,8 +33,8 @@ def patch_markup() -> None:
         raise RuntimeError("Could not locate A+Bau sidebar brand anchor")
     href = match.group("href")
     replacement = (
-        f'<a class="nx-brand ab-brand" href="{href}">'
-        '<img class="ab-brand-logo-only" src="{% static \'brand/ab-bau-logo.png\' %}" alt="A+Bau">'
+        f'<a class="nx-brand ab-brand" href="{href}" style="display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:126px!important;margin:0!important;padding:8px 12px 18px!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;text-decoration:none!important;overflow:visible!important">'
+        '<img class="ab-brand-logo-only" src="{% static \'brand/ab-bau-logo.png\' %}" alt="A+Bau" style="display:block!important;width:188px!important;height:auto!important;max-width:100%!important;max-height:120px!important;margin:0 auto!important;padding:0!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;object-fit:contain!important;object-position:center!important">'
         '</a>'
     )
     text = pattern.sub(replacement, text, count=1)
@@ -112,6 +112,7 @@ class ABBauLogoFrameTests(SimpleTestCase):
         brand = match.group(0)
         self.assertIn("ab-brand-logo-only", brand)
         self.assertIn("brand/ab-bau-logo.png", brand)
+        self.assertIn("width:188px!important", brand)
         self.assertNotIn("<strong>", brand)
         self.assertNotIn("<small>", brand)
         self.assertEqual(brand.count("<img"), 1)
@@ -149,6 +150,8 @@ def guard() -> None:
         raise RuntimeError("A+Bau logo-only sidebar markup was not applied")
     if "<strong>" in brand.group(0) or "<small>" in brand.group(0):
         raise RuntimeError("Separate A+Bau sidebar copy still exists beside the logo")
+    if "width:188px!important" not in brand.group(0):
+        raise RuntimeError("Inline logo sizing contract is missing")
     if f"kayi-next.css' %}}?v={VERSION}" not in base:
         raise RuntimeError("A+Bau logo-only cache version was not applied")
 
