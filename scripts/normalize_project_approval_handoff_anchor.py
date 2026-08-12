@@ -15,14 +15,15 @@ if marker not in text:
     text = text.replace(anchor, block, 1)
     path.write_text(text, encoding="utf-8")
 
-# Keep the final browser-smoke phrase deterministic while preserving the intended
-# German copy: the technician is explicitly told that no prices are exposed.
+# Keep final smoke/cache contracts deterministic. The new intake owns its voice UI,
+# while the shared field-authorization asset remains on the Android-tested version.
 quick = ROOT / "overlays" / "technician_project_approval" / "templates" / "rebuild" / "field_quick_job.html"
 quick_text = quick.read_text(encoding="utf-8")
 quick_text = quick_text.replace(
     "Keine Preise werden an den Mitarbeiter ausgegeben.",
     "Dabei werden keine Preise an den Mitarbeiter ausgegeben.",
 )
+quick_text = quick_text.replace("20260812-project-intake-1", "20260811-7")
 quick.write_text(quick_text, encoding="utf-8")
 
-print("A+Bau project approval handoff and price-free intake contract normalized on final source.")
+print("A+Bau project approval handoff, price-free copy and Android voice cache contract normalized on final source.")
