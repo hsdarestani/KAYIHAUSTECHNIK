@@ -10,13 +10,14 @@ VERSION = "20260812-owner-review-2"
 # This script is the final assembly stage. Install the technician project-intake
 # contract here so no older runtime/mobile layer can restore the direct-priced
 # Schnellauftrag after the approval flow has been applied. Employee role editing
-# is applied here as well so an older EmployeeForm can never force users back to
-# the technician role during a later deterministic assembly.
+# and KI role permissions are applied here as well, after all older AI/UI layers,
+# so deterministic assembly can never restore a broad organization-wide KI scope.
 for script_name in (
     "normalize_project_approval_handoff_anchor.py",
     "install_technician_project_approval_flow.py",
     "project_approval_regression_compat.py",
     "install_employee_role_editor.py",
+    "install_ai_role_permissions.py",
 ):
     script_path = ROOT / "scripts" / script_name
     if not script_path.exists():
@@ -61,4 +62,8 @@ ops_text = (ROOT / "erp" / "rebuild_ops.py").read_text(encoding="utf-8")
 if "A_BAU_EMPLOYEE_ROLE_EDITOR" not in ops_text or 'role = forms.ChoiceField(label="Rolle"' not in ops_text:
     raise RuntimeError("Employee role editor missing from final assembled source")
 
-print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management and cache version {VERSION}.")
+assistant_text = (ROOT / "erp" / "assistant_views.py").read_text(encoding="utf-8")
+if "A_BAU_AI_ROLE_SCOPE_HARDENING" not in assistant_text or "_ai_perm.sanitize_assistant_payload" not in assistant_text:
+    raise RuntimeError("KI role permission hardening missing from final assembled source")
+
+print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions and cache version {VERSION}.")
