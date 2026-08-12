@@ -18,14 +18,6 @@ def patch(rel: str, old: str, new: str) -> None:
         path.write_text(text, encoding="utf-8")
 
 
-# The logo-only test is generated before the final runtime layer and therefore
-# must accept the later cache bust that actually ships to browsers.
-patch(
-    "tests/test_ab_bau_logo_frame.py",
-    'self.assertIn("kayi-next.css\' %}?v=20260811-202", base)',
-    f'self.assertIn("kayi-next.css\' %}}?v={VERSION}", base)',
-)
-
 # Stateful assistant behavior is unchanged; only the final asset version moved
 # from the 20260811 numeric family to the runtime hotfix family.
 patch(
