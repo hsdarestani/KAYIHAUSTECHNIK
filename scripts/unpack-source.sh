@@ -135,5 +135,8 @@ python3 scripts/install_ab_bau_agent_orchestrator.py
 # customer signature is the explicit gate that moves the project into execution.
 python3 scripts/normalize_project_approval_handoff_anchor.py
 python3 scripts/install_technician_project_approval_flow.py
+# Legacy regression suites used to require the direct-priced Schnellauftrag. Keep
+# their coverage, but align their expected lifecycle to the new approval gate.
+python3 scripts/project_approval_regression_compat.py
 
 echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed AI agent, price-free technician project intake, office commercial approval, customer-signature project start, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
