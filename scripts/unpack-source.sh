@@ -74,26 +74,12 @@ for part_id, spec in expected.items():
     if len(text) > spec["length"]:
         text = text[: spec["length"]]
 
-    actual_hashes = [
-        hashlib.sha256(text[offset : offset + block_size].encode()).hexdigest()
-        for offset in range(0, len(text), block_size)
-    ]
-    mismatches = [
-        index
-        for index, expected_hash in enumerate(spec["hashes"])
-        if index >= len(actual_hashes) or actual_hashes[index] != expected_hash
-    ]
+    actual_hashes = [hashlib.sha256(text[offset : offset + block_size].encode()).hexdigest() for offset in range(0, len(text), block_size)]
+    mismatches = [index for index, expected_hash in enumerate(spec["hashes"]) if index >= len(actual_hashes) or actual_hashes[index] != expected_hash]
     if len(actual_hashes) > len(spec["hashes"]):
         mismatches.extend(range(len(spec["hashes"]), len(actual_hashes)))
     if len(text) != spec["length"] or mismatches:
-        errors.append(
-            {
-                "part": part_id,
-                "expected_length": spec["length"],
-                "actual_length": len(text),
-                "mismatched_blocks": mismatches,
-            }
-        )
+        errors.append({"part": part_id, "expected_length": spec["length"], "actual_length": len(text), "mismatched_blocks": mismatches})
     (repaired_dir / f"source.part-{part_id}").write_text(text, encoding="utf-8")
 
 if errors:
@@ -112,9 +98,7 @@ except ValueError as exc:
     raise SystemExit(f"Source archive base64 verification failed: {exc}") from exc
 actual_archive_sha = hashlib.sha256(archive_bytes).hexdigest()
 if actual_archive_sha != expected_archive_sha:
-    raise SystemExit(
-        f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}"
-    )
+    raise SystemExit(f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}")
 archive.write_bytes(archive_bytes)
 print(f"{archive}: OK")
 PY
@@ -146,5 +130,9 @@ python3 scripts/ab_bau_browser_smoke_compat.py
 # Then activate the uploaded PNG and confirmed agent so no older mobile layer can
 # restore the legacy WebP reference or overwrite the multi-step assistant UI.
 python3 scripts/install_ab_bau_agent_orchestrator.py
+# Final project-creation contract: technicians capture scope/photos without prices,
+# office approves authoritative EK + markup, technician sees only final VK, and
+# customer signature is the explicit gate that moves the project into execution.
+python3 scripts/install_technician_project_approval_flow.py
 
-echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed agent workflows, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
+echo "A+Bau source tree assembled and verified with uploaded PNG branding, confirmed AI agent, price-free technician project intake, office commercial approval, customer-signature project start, ToolTime-style commercial workflow, direct B&O VA04 search and office Einsatzprüfung."
