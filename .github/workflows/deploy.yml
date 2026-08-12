@@ -59,7 +59,7 @@ jobs:
             cd /opt/kayi
             git fetch origin main
             git reset --hard origin/main
-            OPENAI_API_KEY="$OPENAI_API_KEY" sh deploy/server-deploy.sh
+            OPENAI_API_KEY="$OPENAI_API_KEY" sh deploy/server-deploy-ab-bau.sh
 
       - name: Audit effective B&O pricing coverage
         uses: appleboy/ssh-action@v1.2.5
@@ -76,8 +76,8 @@ jobs:
             $DC run --rm web python manage.py shell -c "
             from erp.models import CatalogItem, Organization
             from erp.services.effective_pricing import apply_effective_prices
-            org = Organization.objects.filter(name='KAYI Haustechnik').first()
-            assert org is not None, 'KAYI organization missing'
+            org = Organization.objects.filter(name='A+Bau').first()
+            assert org is not None, 'A+Bau organization missing'
             items = list(CatalogItem.objects.filter(organization=org, active=True).order_by('code'))
             apply_effective_prices(org, items)
             missing = [item for item in items if getattr(item, 'effective_price_source_kind', '') == 'Fehlt']
