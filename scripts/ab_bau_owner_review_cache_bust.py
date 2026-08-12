@@ -24,6 +24,18 @@ for script_name in (
         raise RuntimeError(f"Final A+Bau assembly script missing: {script_name}")
     runpy.run_path(str(script_path), run_name=f"__ab_bau_{script_name.replace('.', '_')}__")
 
+# Django's JsonResponse has no response.json() helper when a view is called
+# directly in a unit test. Keep the production hardening untouched and normalize
+# only that direct-view regression assertion after the installer generated it.
+role_test_path = ROOT / "tests" / "test_ai_role_permissions.py"
+if role_test_path.exists():
+    role_tests = role_test_path.read_text(encoding="utf-8")
+    role_tests = role_tests.replace(
+        "        body = response.json()\n",
+        '        body = json.loads(response.content.decode("utf-8"))\n',
+    )
+    role_test_path.write_text(role_tests, encoding="utf-8")
+
 base_path = ROOT / "templates" / "rebuild" / "base.html"
 review_path = ROOT / "templates" / "rebuild" / "review_detail.html"
 css_path = ROOT / "static" / "css" / "kayi-next.css"
