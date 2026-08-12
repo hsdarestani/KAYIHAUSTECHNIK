@@ -47,6 +47,7 @@ def patch_urls() -> None:
         raise RuntimeError("Manager review route anchor changed")
     routes = [
         '    path("einsatzpruefung/", manager_review.review_queue, name="field-review-queue"),',
+        '    path("einsatzpruefung/<int:pk>/", manager_review.review_detail, name="field-review-detail"),',
         '    path("einsatzpruefung/<int:pk>/freigeben/", manager_review.approve_completion, name="field-review-approve"),',
         '    path("einsatzpruefung/<int:pk>/aenderung/", manager_review.request_changes, name="field-review-changes"),',
     ]
@@ -130,7 +131,7 @@ def guard() -> None:
     base = read("templates/rebuild/base.html")
     appointment = read("templates/rebuild/appointment_detail.html")
     css = read("static/css/kayi-next.css")
-    for needle in ("field-review-queue", "field-review-approve", "field-review-changes"):
+    for needle in ("field-review-queue", "field-review-detail", "field-review-approve", "field-review-changes"):
         if needle not in urls:
             raise RuntimeError(f"Manager review route missing: {needle}")
     for needle in ('"status": "pending_review"', '"billing_ready": False', "KAYI_MANAGER_REVIEW_PROJECT_STATE"):
@@ -147,6 +148,8 @@ def guard() -> None:
         raise RuntimeError("Manager review styles missing")
     if not (ROOT / "tests" / "test_manager_review.py").exists():
         raise RuntimeError("Manager review tests missing")
+    if not (ROOT / "templates" / "rebuild" / "review_detail.html").exists():
+        raise RuntimeError("Owner review detail template missing")
 
 
 copy_tree(OVERLAY / "erp", ROOT / "erp")
@@ -159,4 +162,4 @@ patch_field_home()
 patch_appointment_template()
 patch_css()
 guard()
-print("KAYI manager review installed: field completions require office approval before billing and can be returned to the technician.")
+print("A+Bau manager review installed: office can edit billing/report details and evidence before approval while signed originals stay immutable.")
