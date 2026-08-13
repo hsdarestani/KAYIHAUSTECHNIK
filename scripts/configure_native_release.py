@@ -46,8 +46,17 @@ def android(version: str, build: str) -> None:
         }
     }
 '''
+        build_types_anchor = "    buildTypes {\n        release {"
+        if build_types_anchor not in text:
+            raise RuntimeError("Android Gradle buildTypes.release anchor changed")
         text = text.replace("    buildTypes {", signing + "    buildTypes {", 1)
-        text = text.replace("        release {", "        release {\n            signingConfig signingConfigs.release", 1)
+        # Scope the signingConfig assignment specifically to buildTypes.release.
+        # A generic `release {` replacement would hit signingConfigs.release first.
+        text = text.replace(
+            build_types_anchor,
+            "    buildTypes {\n        release {\n            signingConfig signingConfigs.release",
+            1,
+        )
     app_gradle.write_text(text, encoding="utf-8")
 
     mtext = manifest.read_text(encoding="utf-8")
