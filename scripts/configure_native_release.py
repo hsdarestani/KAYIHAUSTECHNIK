@@ -9,6 +9,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / "native"
+APP_NAME = "A+Bau"
+APP_ID = "de.kayihaustechnik.app"
+
+
+def _patch_android_app_name() -> None:
+    strings = NATIVE / "android" / "app" / "src" / "main" / "res" / "values" / "strings.xml"
+    if not strings.exists():
+        return
+    text = strings.read_text(encoding="utf-8")
+    text = re.sub(r'(<string name="app_name">).*?(</string>)', rf'\1{APP_NAME}\2', text, count=1)
+    text = re.sub(r'(<string name="title_activity_main">).*?(</string>)', rf'\1{APP_NAME}\2', text, count=1)
+    strings.write_text(text, encoding="utf-8")
 
 
 def android(version: str, build: str) -> None:
@@ -24,7 +36,7 @@ def android(version: str, build: str) -> None:
     keystore = os.environ.get("KAYI_ANDROID_KEYSTORE", "").strip()
     if keystore and Path(keystore).exists() and "KAYI_RELEASE_SIGNING" not in text:
         signing = '''
-    // KAYI_RELEASE_SIGNING - values are supplied only by the protected CI environment.
+    // KAYI_RELEASE_SIGNING - values are supplied only by the protected release environment.
     signingConfigs {
         release {
             storeFile file(System.getenv("KAYI_ANDROID_KEYSTORE"))
@@ -50,7 +62,8 @@ def android(version: str, build: str) -> None:
     if "android:usesCleartextTraffic" not in mtext:
         mtext = mtext.replace("<application", '<application android:usesCleartextTraffic="false"', 1)
     manifest.write_text(mtext, encoding="utf-8")
-    print(f"Android release configured: {version} ({build}); cleartext disabled and optional microphone declared")
+    _patch_android_app_name()
+    print(f"A+Bau Android release configured: {version} ({build}); launcher name set and cleartext disabled")
 
 
 def _add_privacy_manifest_to_xcode(project: Path) -> None:
@@ -102,8 +115,10 @@ def ios(version: str, build: str) -> None:
     with plist.open("rb") as fh:
         info = plistlib.load(fh)
     info.update({
-        "NSCameraUsageDescription": "KAYI benötigt die Kamera nur, wenn du Fotos aufnimmst oder einen Raumscan aktiv startest.",
-        "NSMicrophoneUsageDescription": "KAYI benötigt das Mikrofon nur, wenn du eine Sprachnotiz oder einen Arbeitsbericht aktiv aufnimmst.",
+        "CFBundleDisplayName": APP_NAME,
+        "CFBundleName": APP_NAME,
+        "NSCameraUsageDescription": "A+Bau benötigt die Kamera nur, wenn du Fotos aufnimmst oder einen Raumscan aktiv startest.",
+        "NSMicrophoneUsageDescription": "A+Bau benötigt das Mikrofon nur, wenn du eine Sprachnotiz oder einen Arbeitsbericht aktiv aufnimmst.",
         "ITSAppUsesNonExemptEncryption": False,
     })
     with plist.open("wb") as fh:
@@ -145,14 +160,14 @@ def ios(version: str, build: str) -> None:
         ptext = package.read_text(encoding="utf-8")
         ptext = re.sub(r"\.iOS\(\.v\d+\)", ".iOS(.v16)", ptext)
         package.write_text(ptext, encoding="utf-8")
-    print(f"iOS release configured: {version} ({build}), minimum iOS 16.0")
+    print(f"A+Bau iOS release configured: {version} ({build}), bundle {APP_ID}, minimum iOS 16.0")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("platform", choices=("android", "ios"))
-    parser.add_argument("--version", default=os.environ.get("KAYI_APP_VERSION", "2.2.0"))
-    parser.add_argument("--build", default=os.environ.get("KAYI_BUILD_NUMBER", "22001"))
+    parser.add_argument("--version", default=os.environ.get("KAYI_APP_VERSION", os.environ.get("APP_VERSION_NAME", "2.2.0")))
+    parser.add_argument("--build", default=os.environ.get("KAYI_BUILD_NUMBER", os.environ.get("APP_BUILD_NUMBER", "22001")))
     args = parser.parse_args()
     if args.platform == "android":
         android(args.version, args.build)
