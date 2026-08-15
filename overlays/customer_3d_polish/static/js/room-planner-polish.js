@@ -1,6 +1,25 @@
 
 // KAYI 3D KI assistant polish 20260810
 (() => {
+  // The 3D room must stay readable from every camera angle. Keep every wall
+  // translucent in every view and remove the old on/off control so saved
+  // state, KI drafts and photo reconstructions cannot make walls opaque again.
+  const forceAlwaysTransparentWalls = () => {
+    state.view ||= {};
+    state.view.transparent_near_walls = true;
+    wallMeshes.forEach((wall) => {
+      if (!wall?.material) return;
+      wall.material.transparent = true;
+      wall.material.opacity = 0.22;
+      wall.material.depthWrite = false;
+      wall.material.needsUpdate = true;
+    });
+  };
+  updateWallTransparency = forceAlwaysTransparentWalls;
+  $('[data-rp-toggle="transparent_near_walls"]', root)?.remove();
+  forceAlwaysTransparentWalls();
+  queueRender();
+
   const commandInput = $('[data-rp-ai-command]', root);
   const runButton = $('[data-rp-run-ai]', root);
   const feedback = $('[data-rp-ai-feedback]', root);
