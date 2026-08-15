@@ -1,0 +1,2 @@
+2026-08-15
+Deploy Room Planner wall visibility change: all four walls remain translucent in every view so room objects stay visible from any camera angle.
