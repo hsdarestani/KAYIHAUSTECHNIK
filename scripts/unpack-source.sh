@@ -163,5 +163,8 @@ python3 scripts/ab_bau_owner_review_cache_bust.py
 # Final Room Planner runtime rule: every wall stays nearly transparent in every
 # camera mode, after all older overlays and generated assets have finished.
 python3 scripts/room_planner_wall_transparency_hotfix.py
+# Premium Room Planner visuals run last so generated/legacy object meshes cannot
+# overwrite the rounded sanitary geometry, physical materials or soft lighting.
+python3 scripts/room_planner_visual_upgrade.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
