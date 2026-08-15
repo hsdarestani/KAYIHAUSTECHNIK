@@ -160,5 +160,8 @@ python3 scripts/ab_bau_runtime_cache_contract_compat.py
 python3 scripts/ab_bau_time_employee_team_picker.py
 # Finalize owner-review UI and force browsers to fetch the replaced logo/new CSS.
 python3 scripts/ab_bau_owner_review_cache_bust.py
+# Final Room Planner runtime rule: every wall stays nearly transparent in every
+# camera mode, after all older overlays and generated assets have finished.
+python3 scripts/room_planner_wall_transparency_hotfix.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
