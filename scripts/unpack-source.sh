@@ -169,5 +169,8 @@ python3 scripts/room_planner_visual_upgrade.py
 # Persist and visibly render KI renovation finishes after every older Room Planner
 # overlay so tile formats/heights and Q3-painted zones survive save/reload.
 python3 scripts/room_planner_surface_visuals.py
+# Final brand sweep runs after every legacy/room overlay so login copy, AI prompts
+# and any remaining visible old product name cannot be reintroduced downstream.
+python3 scripts/ab_bau_branding_cleanup.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
