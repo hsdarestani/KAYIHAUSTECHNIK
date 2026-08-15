@@ -164,5 +164,8 @@ def _guard() -> None:
 _touched = _patch_runtime_branding()
 _patch_login_fallbacks()
 _install_regression_test()
+seed_patch = ROOT / "scripts" / "ab_bau_seed_demo_idempotency.py"
+if seed_patch.exists():
+    exec(compile(seed_patch.read_text(encoding="utf-8"), str(seed_patch), "exec"), {"__name__": "__ab_bau_seed_demo_idempotency__", "__file__": str(seed_patch)})
 _guard()
 print(f"A+Bau branding cleanup complete; updated {len(_touched)} runtime files and removed visible KAYI naming from login, AI prompts and UI copy.")
