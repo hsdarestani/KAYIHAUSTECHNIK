@@ -83,4 +83,12 @@ legacy_api_text = (ROOT / "erp" / "api.py").read_text(encoding="utf-8")
 if "A_BAU_LEGACY_AI_ADMIN_GUARD" not in legacy_api_text:
     raise RuntimeError("Legacy KI API admin guard missing from final assembled source")
 
-print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions, legacy KI guards and cache version {VERSION}.")
+# Finalize the office/review document contract after every older field and owner
+# overlay. This adds a separate Büro-Prüf-PDF with both photo phases without ever
+# rewriting the signed customer authorization or original technician completion.
+review_pdf_upgrade = ROOT / "scripts" / "review_pdf_photo_documentation.py"
+if not review_pdf_upgrade.exists():
+    raise RuntimeError("Review PDF photo documentation installer missing")
+runpy.run_path(str(review_pdf_upgrade), run_name="__ab_bau_review_pdf_photo_documentation__")
+
+print(f"A+Bau final assembly completed with owner review, technician project approval, employee role management, KI role permissions, legacy KI guards, photo-complete review PDF and cache version {VERSION}.")
