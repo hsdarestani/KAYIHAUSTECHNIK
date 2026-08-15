@@ -166,5 +166,8 @@ python3 scripts/room_planner_wall_transparency_hotfix.py
 # Premium Room Planner visuals run last so generated/legacy object meshes cannot
 # overwrite the rounded sanitary geometry, physical materials or soft lighting.
 python3 scripts/room_planner_visual_upgrade.py
+# Persist and visibly render KI renovation finishes after every older Room Planner
+# overlay so tile formats/heights and Q3-painted zones survive save/reload.
+python3 scripts/room_planner_surface_visuals.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
