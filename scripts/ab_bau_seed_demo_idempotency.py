@@ -59,4 +59,11 @@ painting_fix = ROOT / "scripts" / "fix_owner_workflow_regressions.py"
 if painting_fix.exists():
     exec(compile(painting_fix.read_text(encoding="utf-8"), str(painting_fix), "exec"), {"__name__": "__main__", "__file__": str(painting_fix)})
 
+# Final cross-layer contract repair. This deliberately runs after every legacy and
+# current owner/AI overlay so both generations of set_field handling preserve user
+# text and current A+Bau / tenant-price-list regression expectations remain aligned.
+final_contract = ROOT / "scripts" / "final_pr106_contract_repair.py"
+if final_contract.exists():
+    exec(compile(final_contract.read_text(encoding="utf-8"), str(final_contract), "exec"), {"__name__": "__main__", "__file__": str(final_contract)})
+
 print("A+Bau production seed and final owner/commercial/AI safeguards installed.")
