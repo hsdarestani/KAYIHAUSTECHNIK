@@ -53,4 +53,10 @@ normalizer = ROOT / "scripts" / "normalize_owner_commercial_models.py"
 if normalizer.exists():
     exec(compile(normalizer.read_text(encoding="utf-8"), str(normalizer), "exec"), {"__name__": "__main__", "__file__": str(normalizer)})
 
+# Last scope rule: explicit dimensions must win over historical 2.5 assumptions.
+# This is after all AI and owner layers so no legacy installer can replace it.
+painting_fix = ROOT / "scripts" / "fix_owner_workflow_regressions.py"
+if painting_fix.exists():
+    exec(compile(painting_fix.read_text(encoding="utf-8"), str(painting_fix), "exec"), {"__name__": "__main__", "__file__": str(painting_fix)})
+
 print("A+Bau production seed and final owner/commercial/AI safeguards installed.")
