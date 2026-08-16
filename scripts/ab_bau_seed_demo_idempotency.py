@@ -35,7 +35,6 @@ verify = TARGET.read_text(encoding="utf-8")
 if MARKER not in verify or "existing_employee_for_user" not in verify:
     raise RuntimeError("Idempotent employee/user seed guard was not installed")
 
-# Final AI scope layers.
 scope_installer = ROOT / "scripts" / "install_ai_scope_planner.py"
 if scope_installer.exists():
     exec(compile(scope_installer.read_text(encoding="utf-8"), str(scope_installer), "exec"), {"__name__": "__main__", "__file__": str(scope_installer)})
@@ -44,10 +43,9 @@ catalog_installer = ROOT / "scripts" / "install_ai_scope_authoritative_catalog.p
 if catalog_installer.exists():
     exec(compile(catalog_installer.read_text(encoding="utf-8"), str(catalog_installer), "exec"), {"__name__": "__main__", "__file__": str(catalog_installer)})
 
-# This is intentionally the last operational layer. It makes pricing tenant-owned,
-# upgrades project→Termin commercial planning, extends painting dimension math and
-# prevents any KI action from silently destroying text the user typed.
-owner_workflow = ROOT / "scripts" / "install_owner_pricing_commercial_ai_safety.py"
+# Final operational layer. The wrapper adapts the non-destructive text contract to
+# whichever final assistant control bundle the source assembly produced.
+owner_workflow = ROOT / "scripts" / "run_owner_pricing_commercial_ai_safety.py"
 if owner_workflow.exists():
     exec(compile(owner_workflow.read_text(encoding="utf-8"), str(owner_workflow), "exec"), {"__name__": "__main__", "__file__": str(owner_workflow)})
 
