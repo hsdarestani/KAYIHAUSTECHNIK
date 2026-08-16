@@ -48,4 +48,15 @@ if scope_installer.exists():
         {"__name__": "__main__", "__file__": str(scope_installer)},
     )
 
+# Resolve calculated scope concepts against the authoritative imported B&O rows
+# only after the deterministic planner has been installed. This keeps global AI
+# usable outside an editor while allowing office users to insert real priced draft
+# positions when an Angebot/Rechnung editor is open.
+catalog_installer = ROOT / "scripts" / "install_ai_scope_authoritative_catalog.py"
+if catalog_installer.exists():
+    exec(
+        compile(catalog_installer.read_text(encoding="utf-8"), str(catalog_installer), "exec"),
+        {"__name__": "__main__", "__file__": str(catalog_installer)},
+    )
+
 print("A+Bau production seed is idempotent for already-linked Employee users.")
