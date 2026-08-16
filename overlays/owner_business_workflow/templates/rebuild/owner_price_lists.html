@@ -1,0 +1,31 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Preislisten · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Unternehmen</div><h1>Eigene Preislisten</h1><p>Jedes Unternehmen verwaltet hier ausschließlich seine eigenen Einkaufs- und Verkaufspreise. Diese Positionen stehen Kalkulation, Angebot/Rechnung und der KI zur Verfügung.</p></div><a class="nx-btn" href="{% url 'next-settings' %}">← Einstellungen</a></div>
+<div class="nx-grid nx-grid-2">
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 14px"><div><h2>Preisliste hochladen</h2><p>CSV, TSV oder XLSX · bis 20 MB · bis 20.000 Positionen.</p></div></div>
+    <form method="post" enctype="multipart/form-data" action="{% url 'next-price-list-upload' %}" class="nx-form">{% csrf_token %}
+      <div class="nx-field"><label for="price_list_name">Name der Preisliste</label><input class="nx-control" id="price_list_name" name="price_list_name" placeholder="z. B. Eigene Verkaufspreise 2026" required></div>
+      <div class="nx-field"><label for="price_file">Datei</label><input class="nx-control" id="price_file" type="file" name="price_file" accept=".csv,.tsv,.txt,.xlsx,.xlsm" required><small class="nx-muted">Erkannte Spalten u. a.: Artikelnummer/Code, Bezeichnung/Beschreibung, Einheit, VK/Verkaufspreis/Preis, EK/Einkaufspreis und MwSt.</small></div>
+      <label class="nx-check"><input type="checkbox" name="replace_previous" value="1" checked><span>Ältere aktive Preisliste mit demselben Namen deaktivieren</span></label>
+      <div class="nx-form-actions"><button class="nx-btn nx-btn-primary" type="submit">Preisliste importieren</button></div>
+    </form>
+  </section>
+  <section class="nx-card nx-card-pad">
+    <div class="nx-card-head" style="padding:0 0 14px"><div><h2>So wird sie verwendet</h2><p>Mandantenfähig statt A+Bau-spezifisch.</p></div></div>
+    <div class="nx-quick-grid">
+      <div class="nx-quick"><span class="nx-quick-icon">€</span><span><b>Kalkulation</b><small>Aktive Listen werden nur im aktuellen Unternehmen durchsucht.</small></span></div>
+      <div class="nx-quick"><span class="nx-quick-icon">✦</span><span><b>KI</b><small>Leistungsansätze werden gegen echte Positionen der eigenen Preislisten abgeglichen.</small></span></div>
+      <div class="nx-quick"><span class="nx-quick-icon">◇</span><span><b>Angebot / Rechnung</b><small>Preislistenpositionen können direkt als bearbeitbarer Entwurf übernommen werden.</small></span></div>
+      <div class="nx-quick"><span class="nx-quick-icon">✓</span><span><b>Versionierung</b><small>Alte Listen können deaktiviert werden; vorhandene Dokumente bleiben unverändert.</small></span></div>
+    </div>
+  </section>
+</div>
+<section class="nx-card" style="margin-top:16px">
+  <div class="nx-card-head"><div><h2>Importierte Preislisten</h2><p>{{ organization.name }}</p></div></div>
+  <div class="nx-table-wrap"><table class="nx-table"><thead><tr><th>Preisliste</th><th>Datei</th><th>Positionen</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for source in price_sources %}<tr><td><strong>{{ source.name }}</strong></td><td>{{ source.original_filename|default:'–' }}</td><td>{{ source.position_count }}</td><td>{% if source.active %}<span class="nx-badge nx-badge-success">Aktiv</span>{% else %}<span class="nx-badge">Inaktiv</span>{% endif %}</td><td><form method="post" action="{% url 'next-price-list-toggle' source.pk %}">{% csrf_token %}<button class="nx-btn nx-btn-ghost" type="submit">{% if source.active %}Deaktivieren{% else %}Aktivieren{% endif %}</button></form></td></tr>{% empty %}<tr><td colspan="5"><div class="nx-empty"><b>Noch keine eigene Preisliste.</b>Lade die erste CSV/XLSX-Datei hoch.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
