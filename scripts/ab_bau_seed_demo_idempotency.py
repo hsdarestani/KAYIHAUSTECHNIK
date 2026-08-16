@@ -66,4 +66,10 @@ final_contract = ROOT / "scripts" / "final_pr106_contract_repair.py"
 if final_contract.exists():
     exec(compile(final_contract.read_text(encoding="utf-8"), str(final_contract), "exec"), {"__name__": "__main__", "__file__": str(final_contract)})
 
+# Keep CI assertions aligned with current runtime asset versions and protect the
+# backward-compatible inbound integration protocol independently of display branding.
+ci_alignment = ROOT / "scripts" / "final_pr106_ci_alignment.py"
+if ci_alignment.exists():
+    exec(compile(ci_alignment.read_text(encoding="utf-8"), str(ci_alignment), "exec"), {"__name__": "__main__", "__file__": str(ci_alignment)})
+
 print("A+Bau production seed and final owner/commercial/AI safeguards installed.")
