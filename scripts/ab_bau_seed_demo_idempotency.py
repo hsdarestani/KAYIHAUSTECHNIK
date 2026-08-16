@@ -38,4 +38,14 @@ verify = TARGET.read_text(encoding="utf-8")
 if MARKER not in verify or "existing_employee_for_user" not in verify:
     raise RuntimeError("Idempotent employee/user seed guard was not installed")
 
+# This script is intentionally invoked by the final branding stage, after all
+# product/Room Planner overlays. Run the trade-scope planner here so no earlier
+# assistant overlay can overwrite its deterministic rules or UI integration.
+scope_installer = ROOT / "scripts" / "install_ai_scope_planner.py"
+if scope_installer.exists():
+    exec(
+        compile(scope_installer.read_text(encoding="utf-8"), str(scope_installer), "exec"),
+        {"__name__": "__main__", "__file__": str(scope_installer)},
+    )
+
 print("A+Bau production seed is idempotent for already-linked Employee users.")
