@@ -43,10 +43,14 @@ catalog_installer = ROOT / "scripts" / "install_ai_scope_authoritative_catalog.p
 if catalog_installer.exists():
     exec(compile(catalog_installer.read_text(encoding="utf-8"), str(catalog_installer), "exec"), {"__name__": "__main__", "__file__": str(catalog_installer)})
 
-# Final operational layer. The wrapper adapts the non-destructive text contract to
-# whichever final assistant control bundle the source assembly produced.
 owner_workflow = ROOT / "scripts" / "run_owner_pricing_commercial_ai_safety.py"
 if owner_workflow.exists():
     exec(compile(owner_workflow.read_text(encoding="utf-8"), str(owner_workflow), "exec"), {"__name__": "__main__", "__file__": str(owner_workflow)})
+
+# Make the assembled model state identical to its generated migration so CI does
+# not synthesize a meaningless follow-up AlterModelOptions migration.
+normalizer = ROOT / "scripts" / "normalize_owner_commercial_models.py"
+if normalizer.exists():
+    exec(compile(normalizer.read_text(encoding="utf-8"), str(normalizer), "exec"), {"__name__": "__main__", "__file__": str(normalizer)})
 
 print("A+Bau production seed and final owner/commercial/AI safeguards installed.")
