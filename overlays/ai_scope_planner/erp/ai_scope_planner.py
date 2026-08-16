@@ -493,12 +493,61 @@ def _summary(state: dict[str, Any], items: list[dict[str, Any]], question: str) 
         parts.append("Der Leistungsansatz ist mit den bisher bekannten Angaben vollständig. Mengen mit „offen“ müssen vor Preisfreigabe noch aufgemessen werden.")
     return " ".join(parts)
 
+def _looks_like_pending_answer(pending: str, text: str) -> bool:
+    """Only keep a scope conversation when the new message can answer its question.
+
+    This prevents an unfinished scope from hijacking unrelated assistant commands
+    such as customer/project search. Users can still provide several relevant facts
+    in one natural-language reply.
+    """
+    n = _norm(text)
+    if not pending:
+        return False
+    if pending in {"floor_area", "bath_floor_area", "bath_wall_area", "furniture_count", "moving_hours", "door_count", "window_count", "water_line_length"}:
+        return bool(re.search(r"\d", n)) or n in {"offen", "unbekannt", "noch offen", "keine angabe"}
+    if pending == "paint_surfaces":
+        return _contains(n, WALL_WORDS) or _contains(n, CEILING_WORDS) or _contains(n, ("beides", "beide"))
+    if pending == "water_lines_change":
+        return _answer_yes_no(text) is not None or _contains(n, ("leitung", "wasser", "bestand", "bleiben", "erhalten", "umbauen", "versetzen", "neu"))
+    if pending == "bath_shower_replace":
+        return _answer_yes_no(text) is not None or _contains(n, ("badewanne", "wanne", "dusche"))
+    if pending in {"substrate_suitable", "wallpaper", "occupied", "damage_present", "sink_replace", "wc_replace"}:
+        if _answer_yes_no(text) is not None:
+            return True
+        relevant = {
+            "substrate_suitable": ("untergrund", "tragfähig", "tragfahig", "glatt", "spachteln", "ungeeignet"),
+            "wallpaper": ("tapete", "tapeten"),
+            "occupied": ("bewohnt", "unbewohnt", "möbliert", "mobliert", "leer"),
+            "damage_present": ("schaden", "schäden", "mangel", "mängel", "vorschaden"),
+            "sink_replace": ("waschbecken", "waschtisch"),
+            "wc_replace": ("wc", "toilette"),
+        }
+        return _contains(n, relevant[pending])
+    return False
+
+
+def _starts_new_scope(state: dict[str, Any], detected: str, text: str) -> bool:
+    if not detected or detected != state.get("kind") or state.get("pending"):
+        return False
+    n = _norm(text)
+    if _contains(n, ("neue wohnung", "andere wohnung", "anderes objekt", "neues objekt", "neuer auftrag", "neues projekt")):
+        return True
+    incoming = _extract_general_area(text)
+    existing = _area(state.get("facts") or {}, "floor_area")
+    return incoming is not None and existing is not None and incoming != existing
+
 def plan_scope_message(message: str, session: Any, catalog: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
-    """Build an editable trade scope using deterministic rules instead of phrase-specific prompting."""
+    """Return a deterministic trade-scope plan or None when the message is unrelated.
+
+    The planner intentionally does not price or submit anything. It derives quantities,
+    expands mandatory work dependencies, asks exactly one missing technical question at
+    a time, and may select matching visible catalog positions as editable draft rows.
+    """
     raw = str(message or "").strip()
     normalized = _norm(raw)
     if not raw:
         return None
+
     if any(cancel in normalized for cancel in CANCEL):
         try:
             session.pop(STATE_KEY, None)
@@ -506,10 +555,20 @@ def plan_scope_message(message: str, session: Any, catalog: list[dict[str, Any]]
         except Exception:
             pass
         return {"ok": True, "reply": "Leistungsplanung zurückgesetzt.", "actions": [], "results": [], "scope_items": [], "scope_complete": True}
+
     detected = _detect_kind(raw)
     state = deepcopy(session.get(STATE_KEY) or {}) if hasattr(session, "get") else {}
     active_kind = str(state.get("kind") or "")
-    if detected and detected != active_kind:
+
+    # Do not let a previous scope swallow unrelated assistant requests. A message
+    # without a fresh trade intent is treated as a continuation only when it can
+    # plausibly answer the one currently pending question.
+    if active_kind and not detected:
+        pending = str(state.get("pending") or "")
+        if not pending or not _looks_like_pending_answer(pending, raw):
+            return None
+
+    if detected and (detected != active_kind or _starts_new_scope(state, detected, raw)):
         state = _new_state(detected)
         state["seed"] = raw[:1200]
     elif not active_kind:
@@ -517,24 +576,41 @@ def plan_scope_message(message: str, session: Any, catalog: list[dict[str, Any]]
             return None
         state = _new_state(detected)
         state["seed"] = raw[:1200]
+
     state["turn"] = int(state.get("turn") or 0) + 1
+    # A pending answer is consumed first; then the same message is also scanned for
+    # additional explicit facts, so users may answer several questions at once.
     _apply_pending_answer(state, raw)
     _read_explicit_facts(state, raw)
+
     if state["kind"] == "painting":
         items = _painting_items(state)
     elif state["kind"] == "bathroom":
         items = _bathroom_items(state)
     else:
         return None
+
     question = _next_question(state)
     state["pending"] = question
+
     visible_catalog = [item for item in (catalog or []) if isinstance(item, dict)]
     already = set(state.get("catalog_applied") or [])
     items, actions, applied = _match_catalog(items, visible_catalog, already)
     state["catalog_applied"] = sorted(applied)
+
     try:
         session[STATE_KEY] = state
         session.modified = True
     except Exception:
         pass
-    return {"ok": True, "reply": _summary(state, items, question), "actions": actions, "results": [], "scope_items": items, "scope_question": QUESTION_TEXT.get(question, ""), "scope_complete": not bool(question), "scope_kind": state["kind"]}
+
+    return {
+        "ok": True,
+        "reply": _summary(state, items, question),
+        "actions": actions,
+        "results": [],
+        "scope_items": items,
+        "scope_question": QUESTION_TEXT.get(question, ""),
+        "scope_complete": not bool(question),
+        "scope_kind": state["kind"],
+    }
