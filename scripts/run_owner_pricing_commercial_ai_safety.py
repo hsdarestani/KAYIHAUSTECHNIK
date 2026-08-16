@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +12,22 @@ if spec is None or spec.loader is None:
     raise RuntimeError("Could not load owner workflow installer")
 impl = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(impl)
+_original_patch_commercial_templates = impl.patch_commercial_templates
+
+
+def final_commercial_templates() -> None:
+    """Keep prior ToolTime commercial UI, but guarantee the project→Termin handoff."""
+    _original_patch_commercial_templates()
+    rel = "templates/rebuild/project_form.html"
+    text = impl.read(rel)
+    if 'name="create_and_schedule"' not in text:
+        pattern = re.compile(r'(<div class="nx-form-actions">.*?)(</div>)', re.S)
+        match = pattern.search(text)
+        if not match:
+            raise RuntimeError("Project form has no final action bar for project→Termin handoff")
+        button = '<button class="nx-btn nx-btn-accent" type="submit" name="create_and_schedule" value="1">Projekt anlegen & Termin planen →</button>'
+        text = text[:match.start()] + match.group(1) + button + match.group(2) + text[match.end():]
+        impl.write(rel, text)
 
 
 def final_non_destructive_ai_forms() -> None:
@@ -81,8 +98,8 @@ def final_non_destructive_ai_forms() -> None:
         else:
             raise RuntimeError("Final assistant set_field contract changed; refusing a destructive fallback")
 
-    # Field voice/AI report extraction is another KI write path. Keep already typed
-    # report/services/material visible and surface the new text as a suggestion.
+    # Voice/report KI is also a form-writing path. Never silently overwrite text
+    # already entered by a user or loaded from a saved record.
     direct_assignments = {
         "        if (report) report.value = result.report || result.transcript || '';\n": "        if (report && !window.ABBauPreserveTypedText?.(report, result.report || result.transcript || '')) report.value = result.report || result.transcript || '';\n",
         "        if (services && result.services) services.value = result.services;\n": "        if (services && result.services && !window.ABBauPreserveTypedText?.(services, result.services)) services.value = result.services;\n",
@@ -110,5 +127,36 @@ def final_non_destructive_ai_forms() -> None:
         impl.write(rel, css)
 
 
+def final_guard() -> None:
+    checks = {
+        "erp/models.py": ["ProjectCommercialSettings", "AppointmentCommercialSettings"],
+        "erp/owner_business_views.py": ["price_list_upload", "organization_price_search", "organization=org"],
+        "erp/services/org_price_search.py": ["search_org_prices", "source__active=True"],
+        "erp/rebuild_urls.py": ["next-price-lists", "next-price-list-upload", "next-org-price-search"],
+        "templates/rebuild/owner_price_lists.html": ["Preisliste hochladen", "price_file", "next-price-list-upload"],
+        "templates/rebuild/project_form.html": ["commercial_markup_percent", "create_and_schedule", "Termin planen"],
+        "templates/rebuild/appointment_form.html": ["commercial_markup_percent"],
+        "erp/rebuild_views.py": ["ProjectCommercialSettings.objects.update_or_create", "AppointmentCommercialSettings.objects.update_or_create"],
+        "erp/ai_scope_planner.py": ["_extract_room_height", "Kalkulationsfaktor", "Standardfaktor"],
+        "static/js/kayi-next.js": ["window.ABBauPreserveTypedText", "deine Eingabe bleibt erhalten"],
+        "static/css/kayi-next.css": [".nx-ai-text-original", ".nx-ai-text-proposal"],
+        "tests/test_owner_pricing_commercial_ai_safety.py": ["test_search_never_crosses_tenants", "test_painting_uses_explicit_height"],
+        "templates/rebuild/base.html": [impl.VERSION],
+    }
+    missing = []
+    for rel, needles in checks.items():
+        text = impl.read(rel)
+        for needle in needles:
+            if needle not in text:
+                missing.append(f"{rel}: {needle}")
+    migration = ROOT / "erp" / "migrations" / "0999_ab_bau_commercial_workflow.py"
+    if not migration.exists():
+        missing.append("commercial migration")
+    if missing:
+        raise RuntimeError("Final owner/commercial/KI guard failed: " + "; ".join(missing))
+
+
+impl.patch_commercial_templates = final_commercial_templates
 impl.patch_non_destructive_ai_forms = final_non_destructive_ai_forms
+impl.guard = final_guard
 impl.main()
