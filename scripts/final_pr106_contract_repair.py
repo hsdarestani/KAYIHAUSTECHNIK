@@ -22,10 +22,7 @@ def patch_non_destructive_ai_paths() -> None:
     rel = "static/js/kayi-next.js"
     text = read(rel)
 
-    # The assistant has two generations of set_field handling in the assembled app.
-    # Both must obey the same non-destructive contract independently. The previous
-    # installer used an either/or condition, which left the legacy path destructive
-    # whenever the advanced path had already been patched.
+    # Current advanced set_field path: always preserve existing user-owned text.
     advanced_old = "        if (!setControlValue(field, action.value)) continue;\n"
     advanced_new = "        if (window.ABBauPreserveTypedText?.(field, action.value)) continue;\n        if (!setControlValue(field, action.value)) continue;\n"
     if "window.ABBauPreserveTypedText?.(field, action.value)" not in text:
@@ -33,12 +30,16 @@ def patch_non_destructive_ai_paths() -> None:
             raise RuntimeError("Advanced assistant set_field path changed; refusing destructive fallback")
         text = text.replace(advanced_old, advanced_new, 1)
 
+    # Older assembled variants had a separate direct field.value path. Patch it when
+    # present, but do not manufacture an obsolete handler when that code no longer exists.
     legacy_old = "        if (field.type === 'checkbox') field.checked = /^(1|true|ja|yes)$/i.test(action.value || '');\n        else field.value = action.value ?? '';\n"
     legacy_new = "        if (field.type === 'checkbox') field.checked = /^(1|true|ja|yes)$/i.test(action.value || '');\n        else { const proposed = action.value ?? ''; if (window.ABBauPreserveTypedText?.(field, proposed)) continue; field.value = proposed; }\n"
-    if "ABBAuPreserveTypedText?.(field, proposed)" not in text:
-        if legacy_old not in text:
-            raise RuntimeError("Legacy assistant set_field path changed; refusing destructive fallback")
+    if legacy_old in text and "ABBAuPreserveTypedText?.(field, proposed)" not in text:
         text = text.replace(legacy_old, legacy_new, 1)
+
+    # Explicitly refuse the destructive legacy signature if any overlay reintroduces it.
+    if legacy_old in text:
+        raise RuntimeError("Destructive legacy assistant field assignment is still present")
 
     if MARKER not in text:
         text += f"\n// {MARKER}\n"
@@ -85,6 +86,9 @@ def align_stale_regression_expectations() -> None:
         "KAYI GLOBAL FORM VALIDATION 2026-08-11": "A+Bau GLOBAL FORM VALIDATION 2026-08-11",
         "KAYI PROJECT PAGE LAYOUT 2026-08-08": "A+Bau PROJECT PAGE LAYOUT 2026-08-08",
         "B&O-Position suchen": "Preislisten-Position suchen",
+        # The current assistant has only the advanced set_field path. The prior test
+        # asserted an obsolete legacy implementation detail rather than the behavior.
+        "ABBAuPreserveTypedText?.(field, proposed)": "window.ABBauPreserveTypedText?.(field, action.value)",
     }
     tests_dir = ROOT / "tests"
     if not tests_dir.exists():
@@ -103,7 +107,7 @@ def guard() -> None:
     planner = read("erp/ai_scope_planner.py")
     required_js = (
         "window.ABBauPreserveTypedText?.(field, action.value)",
-        "ABBAuPreserveTypedText?.(field, proposed)",
+        "window.ABBauPreserveTypedText",
         "KI-Vorschlag",
         "Deine Eingabe",
     )
@@ -122,4 +126,4 @@ patch_non_destructive_ai_paths()
 patch_scope_wording_and_visible_math()
 align_stale_regression_expectations()
 guard()
-print("A+Bau PR106 final contracts repaired: all KI form paths preserve typed text, scope math is visible, bathroom questions are generic, and regression tests follow current branding/pricing UI.")
+print("A+Bau PR106 final contracts repaired: active KI form-writing paths preserve typed text, scope math is visible, bathroom questions are generic, and regression tests follow current branding/pricing UI.")
