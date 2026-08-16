@@ -12,9 +12,6 @@ if not TARGET.exists():
 
 text = TARGET.read_text(encoding="utf-8")
 if MARKER not in text:
-    # Older seed code blindly linked the first demo employee to the bootstrap user.
-    # On a real production database that user can already belong to another Employee,
-    # and Employee.user is unique, so every deployment after that state crashed.
     pattern = re.compile(
         r'(?P<indent>^[ \t]*)employees\[0\]\.user\s*=\s*user\s*\n'
         r'(?P=indent)employees\[0\]\.save\(update_fields=\[\s*["\']user["\']\s*,\s*["\']updated_at["\']\s*\]\)',
@@ -38,25 +35,20 @@ verify = TARGET.read_text(encoding="utf-8")
 if MARKER not in verify or "existing_employee_for_user" not in verify:
     raise RuntimeError("Idempotent employee/user seed guard was not installed")
 
-# This script is intentionally invoked by the final branding stage, after all
-# product/Room Planner overlays. Run the trade-scope planner here so no earlier
-# assistant overlay can overwrite its deterministic rules or UI integration.
+# Final AI scope layers.
 scope_installer = ROOT / "scripts" / "install_ai_scope_planner.py"
 if scope_installer.exists():
-    exec(
-        compile(scope_installer.read_text(encoding="utf-8"), str(scope_installer), "exec"),
-        {"__name__": "__main__", "__file__": str(scope_installer)},
-    )
+    exec(compile(scope_installer.read_text(encoding="utf-8"), str(scope_installer), "exec"), {"__name__": "__main__", "__file__": str(scope_installer)})
 
-# Resolve calculated scope concepts against the authoritative imported B&O rows
-# only after the deterministic planner has been installed. This keeps global AI
-# usable outside an editor while allowing office users to insert real priced draft
-# positions when an Angebot/Rechnung editor is open.
 catalog_installer = ROOT / "scripts" / "install_ai_scope_authoritative_catalog.py"
 if catalog_installer.exists():
-    exec(
-        compile(catalog_installer.read_text(encoding="utf-8"), str(catalog_installer), "exec"),
-        {"__name__": "__main__", "__file__": str(catalog_installer)},
-    )
+    exec(compile(catalog_installer.read_text(encoding="utf-8"), str(catalog_installer), "exec"), {"__name__": "__main__", "__file__": str(catalog_installer)})
 
-print("A+Bau production seed is idempotent for already-linked Employee users.")
+# This is intentionally the last operational layer. It makes pricing tenant-owned,
+# upgrades project→Termin commercial planning, extends painting dimension math and
+# prevents any KI action from silently destroying text the user typed.
+owner_workflow = ROOT / "scripts" / "install_owner_pricing_commercial_ai_safety.py"
+if owner_workflow.exists():
+    exec(compile(owner_workflow.read_text(encoding="utf-8"), str(owner_workflow), "exec"), {"__name__": "__main__", "__file__": str(owner_workflow)})
+
+print("A+Bau production seed and final owner/commercial/AI safeguards installed.")
