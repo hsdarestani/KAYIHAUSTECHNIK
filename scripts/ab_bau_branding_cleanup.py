@@ -14,6 +14,14 @@ OLD_BRAND_TOKEN = re.compile(r"(?<![A-Za-z0-9_])KAYI(?![A-Za-z0-9_])")
 OLD_BRAND_TOKEN_TITLE = re.compile(r"(?<![A-Za-z0-9_])Kayi(?![A-Za-z0-9_])")
 OLD_BRAND_HTML_ANY_CASE = re.compile(r"(?<![A-Za-z0-9_])kayi(?![A-Za-z0-9_])", re.IGNORECASE)
 
+# Public/integration protocol names are compatibility contracts, not visible brand
+# copy. Keep the legacy header stable so existing GMX/inbound integrations do not
+# break when the UI brand changes from KAYI to A+Bau.
+TECHNICAL_PROTOCOL_LITERALS = {
+    "X-KAYI-Inbound-Token": "__ABBAU_TECH_INBOUND_HEADER__",
+    "X-KAYI-INBOUND-TOKEN": "__ABBAU_TECH_INBOUND_HEADER_UPPER__",
+}
+
 RUNTIME_TEXT_ROOTS = (
     ROOT / "templates",
     ROOT / "erp",
@@ -24,6 +32,12 @@ TEXT_SUFFIXES = {".html", ".htm", ".py", ".js", ".css", ".json", ".txt"}
 
 
 def _brand_text(text: str, *, any_case: bool = False) -> str:
+    protected: dict[str, str] = {}
+    for literal, placeholder in TECHNICAL_PROTOCOL_LITERALS.items():
+        if literal in text:
+            text = text.replace(literal, placeholder)
+            protected[placeholder] = literal
+
     # Clean common legacy product labels first, then the standalone brand token.
     replacements = {
         "KAYI Haustechnik": BRAND,
@@ -41,6 +55,9 @@ def _brand_text(text: str, *, any_case: bool = False) -> str:
     text = OLD_BRAND_TOKEN_TITLE.sub(BRAND, text)
     if any_case:
         text = OLD_BRAND_HTML_ANY_CASE.sub(BRAND, text)
+
+    for placeholder, literal in protected.items():
+        text = text.replace(placeholder, literal)
     return text
 
 
@@ -88,10 +105,6 @@ def _patch_runtime_branding() -> list[str]:
                 if path.suffix.lower() == ".py":
                     changed = _patch_python_strings_and_comments(path)
                 elif path.suffix.lower() in {".html", ".htm"}:
-                    # Templates contain display copy by definition; catch accidental
-                    # lower-case branding there as well, while technical kayi-* asset
-                    # names stay protected because '-' is attached to the token and is
-                    # explicitly normalized below only when it is a visible label.
                     changed = _patch_plain_text(path, any_case=False)
                 else:
                     changed = _patch_plain_text(path, any_case=False)
@@ -103,9 +116,6 @@ def _patch_runtime_branding() -> list[str]:
 
 
 def _patch_login_fallbacks() -> None:
-    # Some deployments use Django's registration template while others use the
-    # rebuilt auth shell. Both are covered by the general pass; these phrases are
-    # kept as an explicit second guard because login is the first brand touchpoint.
     for path in (ROOT / "templates").rglob("*.html"):
         try:
             text = path.read_text(encoding="utf-8")
@@ -123,7 +133,7 @@ def _install_regression_test() -> None:
     test_path = ROOT / "tests" / "test_ab_bau_branding.py"
     test_path.parent.mkdir(parents=True, exist_ok=True)
     test_path.write_text(
-        '''from pathlib import Path\nimport io\nimport re\nimport tokenize\n\nfrom django.test import SimpleTestCase\n\nROOT = Path(__file__).resolve().parents[1]\nOLD = re.compile(r"(?<![A-Za-z0-9_])KAYI(?![A-Za-z0-9_])")\n\n\nclass ABauBrandingTests(SimpleTestCase):\n    def test_templates_have_no_visible_old_brand(self):\n        offenders = []\n        for path in (ROOT / "templates").rglob("*.html"):\n            text = path.read_text(encoding="utf-8")\n            if OLD.search(text):\n                offenders.append(str(path.relative_to(ROOT)))\n        self.assertEqual(offenders, [])\n\n    def test_python_user_facing_strings_have_no_old_brand(self):\n        offenders = []\n        for path in (ROOT / "erp").rglob("*.py"):\n            text = path.read_text(encoding="utf-8")\n            try:\n                tokens = tokenize.generate_tokens(io.StringIO(text).readline)\n                for token in tokens:\n                    if token.type == tokenize.STRING and OLD.search(token.string):\n                        offenders.append(str(path.relative_to(ROOT)))\n                        break\n            except tokenize.TokenError:\n                continue\n        self.assertEqual(offenders, [])\n\n    def test_room_ai_uses_ab_bau_brand(self):\n        path = ROOT / "erp" / "services" / "room_ai.py"\n        if path.exists():\n            text = path.read_text(encoding="utf-8")\n            self.assertNotIn("KAYI-Renovierungsplaner", text)\n            self.assertIn("A+Bau-Renovierungsplaner", text)\n''',
+        '''from pathlib import Path\nimport io\nimport re\nimport tokenize\n\nfrom django.test import SimpleTestCase\n\nROOT = Path(__file__).resolve().parents[1]\nOLD = re.compile(r"(?<![A-Za-z0-9_])KAYI(?![A-Za-z0-9_])")\n\n\nclass ABauBrandingTests(SimpleTestCase):\n    def test_templates_have_no_visible_old_brand(self):\n        offenders = []\n        for path in (ROOT / "templates").rglob("*.html"):\n            text = path.read_text(encoding="utf-8")\n            if OLD.search(text):\n                offenders.append(str(path.relative_to(ROOT)))\n        self.assertEqual(offenders, [])\n\n    def test_python_user_facing_strings_have_no_old_brand(self):\n        offenders = []\n        for path in (ROOT / "erp").rglob("*.py"):\n            text = path.read_text(encoding="utf-8")\n            try:\n                tokens = tokenize.generate_tokens(io.StringIO(text).readline)\n                for token in tokens:\n                    if token.type == tokenize.STRING and OLD.search(token.string) and "X-KAYI-Inbound-Token" not in token.string and "X-KAYI-INBOUND-TOKEN" not in token.string:\n                        offenders.append(str(path.relative_to(ROOT)))\n                        break\n            except tokenize.TokenError:\n                continue\n        self.assertEqual(offenders, [])\n\n    def test_room_ai_uses_ab_bau_brand(self):\n        path = ROOT / "erp" / "services" / "room_ai.py"\n        if path.exists():\n            text = path.read_text(encoding="utf-8")\n            self.assertNotIn("KAYI-Renovierungsplaner", text)\n            self.assertIn("A+Bau-Renovierungsplaner", text)\n''',
         encoding="utf-8",
     )
 
@@ -146,7 +156,7 @@ def _guard() -> None:
             else:
                 try:
                     for token in tokenize.generate_tokens(io.StringIO(text).readline):
-                        if token.type == tokenize.STRING and OLD_BRAND_TOKEN.search(token.string):
+                        if token.type == tokenize.STRING and OLD_BRAND_TOKEN.search(token.string) and "X-KAYI-Inbound-Token" not in token.string and "X-KAYI-INBOUND-TOKEN" not in token.string:
                             offenders.append(str(path.relative_to(ROOT)))
                             break
                 except tokenize.TokenError:
