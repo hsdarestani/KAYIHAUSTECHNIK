@@ -178,5 +178,8 @@ python3 scripts/ab_bau_branding_cleanup.py
 # Shared scope engine must be the final runtime patch: natural German instructions,
 # semantic-safe catalog selection and the Termin KI all use one deterministic flow.
 python3 scripts/ab_bau_scope_engine_completion.py
+# Keep legacy regression contracts and browser cache keys aligned with the final
+# shared scope engine after every generated/owner overlay has finished.
+python3 scripts/ab_bau_scope_engine_ci_alignment.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
