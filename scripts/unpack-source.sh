@@ -178,6 +178,9 @@ python3 scripts/ab_bau_branding_cleanup.py
 # Shared scope engine must be the final runtime patch: natural German instructions,
 # semantic-safe catalog selection and the Termin KI all use one deterministic flow.
 python3 scripts/ab_bau_scope_engine_completion.py
+# Catalog matching must run after the shared scope engine because it replaces the
+# assembled runtime catalog service with the hardened authoritative matcher.
+python3 scripts/ab_bau_catalog_context_hardening.py
 # Keep legacy regression contracts and browser cache keys aligned with the final
 # shared scope engine after every generated/owner overlay has finished.
 python3 scripts/ab_bau_scope_engine_ci_alignment.py
