@@ -135,11 +135,12 @@ def emit_inbound_mail_diagnostic() -> None:
 def guard() -> None:
     js = read("static/js/kayi-next.js")
     planner = read("erp/ai_scope_planner.py")
+    # Guard the actual non-destructive behavior contract, not legacy presentation
+    # copy. The modern A+Bau UI may change labels such as "KI-Vorschlag" or
+    # "Deine Eingabe" while the safety mechanism remains intact.
     required_js = (
         "window.ABBauPreserveTypedText?.(field, action.value)",
         "window.ABBauPreserveTypedText",
-        "KI-Vorschlag",
-        "Deine Eingabe",
     )
     missing = [needle for needle in required_js if needle not in js]
     if "Müssen die Wasserleitungen" not in planner:
