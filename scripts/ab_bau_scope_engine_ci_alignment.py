@@ -59,15 +59,21 @@ def align_regression_contracts() -> None:
         'self.assertIn("Preislisten-Position suchen", template)',
         'self.assertIn("B&O-Position suchen", template)',
     )
+    text = text.replace(
+        'self.assertIn("Schnellpositionen mit Preis", template)',
+        'self.assertIn("A+Bau-Vorlagen mit Preis", template)',
+    )
     if 'self.assertIn("B&O-Position suchen", template)' not in text:
-        raise RuntimeError("Direct B&O search regression copy contract changed")
+        raise RuntimeError("Direct B&O search regression heading contract changed")
+    if 'self.assertIn("A+Bau-Vorlagen mit Preis", template)' not in text:
+        raise RuntimeError("Direct B&O search quick-template contract changed")
     write(rel, text)
 
 
 def install_contract_test() -> None:
     write(
         "tests/test_ab_bau_scope_engine_final_alignment.py",
-        f'''from pathlib import Path\nfrom django.test import SimpleTestCase\n\n\nclass ScopeEngineFinalAlignmentTests(SimpleTestCase):\n    def test_global_scope_assets_are_cache_busted_to_final_version(self):\n        base = Path("templates/rebuild/base.html").read_text(encoding="utf-8")\n        self.assertIn("kayi-next.css' %}}?v={VERSION}", base)\n        self.assertIn("kayi-next.js' %}}?v={VERSION}", base)\n\n    def test_direct_bo_search_contract_matches_current_specialized_ui(self):\n        editor = Path("templates/rebuild/document_editor.html").read_text(encoding="utf-8")\n        self.assertIn("B&O-Position suchen", editor)\n        self.assertIn("data-bo-direct-search", editor)\n\n    def test_scope_completion_behavior_tests_are_still_present(self):\n        test = Path("tests/test_ab_bau_scope_engine_completion.py").read_text(encoding="utf-8")\n        for needle in ("test_abgedeckt_triggers_floor_cover", "test_furniture_number_never_becomes_door_number", "test_bad_catalog_examples_are_rejected", "test_appointment_ui_uses_shared_scope_engine"):\n            self.assertIn(needle, test)\n''',
+        f'''from pathlib import Path\nfrom django.test import SimpleTestCase\n\n\nclass ScopeEngineFinalAlignmentTests(SimpleTestCase):\n    def test_global_scope_assets_are_cache_busted_to_final_version(self):\n        base = Path("templates/rebuild/base.html").read_text(encoding="utf-8")\n        self.assertIn("kayi-next.css' %}}?v={VERSION}", base)\n        self.assertIn("kayi-next.js' %}}?v={VERSION}", base)\n\n    def test_direct_bo_search_contract_matches_current_specialized_ui(self):\n        editor = Path("templates/rebuild/document_editor.html").read_text(encoding="utf-8")\n        self.assertIn("B&O-Position suchen", editor)\n        self.assertIn("A+Bau-Vorlagen mit Preis", editor)\n        self.assertIn("data-bo-direct-search", editor)\n\n    def test_scope_completion_behavior_tests_are_still_present(self):\n        test = Path("tests/test_ab_bau_scope_engine_completion.py").read_text(encoding="utf-8")\n        for needle in ("test_abgedeckt_triggers_floor_cover", "test_furniture_number_never_becomes_door_number", "test_bad_catalog_examples_are_rejected", "test_appointment_ui_uses_shared_scope_engine"):\n            self.assertIn(needle, test)\n''',
     )
 
 
@@ -76,8 +82,11 @@ def guard() -> None:
         "templates/rebuild/base.html": [VERSION],
         "tests/test_ai_stateful_entity_chat.py": [VERSION],
         "tests/test_android_voice_capture_hotfix.py": [VERSION],
-        "tests/test_bo_direct_search.py": ['self.assertIn("B&O-Position suchen", template)'],
-        "tests/test_ab_bau_scope_engine_final_alignment.py": ["ScopeEngineFinalAlignmentTests"],
+        "tests/test_bo_direct_search.py": [
+            'self.assertIn("B&O-Position suchen", template)',
+            'self.assertIn("A+Bau-Vorlagen mit Preis", template)',
+        ],
+        "tests/test_ab_bau_scope_engine_final_alignment.py": ["ScopeEngineFinalAlignmentTests", "A+Bau-Vorlagen mit Preis"],
     }
     missing = []
     for rel, needles in checks.items():
