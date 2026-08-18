@@ -3,6 +3,7 @@ from django.urls import path
 from . import store_views
 
 urlpatterns = [
+    path("", store_views.landing_page, name="store-landing"),
     path("datenschutz/", store_views.privacy_policy, name="store-privacy"),
     path("support/", store_views.support_page, name="store-support"),
     path("konto-loeschen/", store_views.account_deletion_page, name="store-account-deletion"),

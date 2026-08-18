@@ -7,7 +7,7 @@ from django.urls import resolve, reverse
 class ToolTimeParityRebuildTests(SimpleTestCase):
     def test_rebuild_routes_take_over_primary_product_flow(self):
         expected = {
-            "/": "next-dashboard",
+            "/": "store-landing",
             "/customers/": "next-customers",
             "/projects/": "next-projects",
             "/appointments/": "next-appointments",
