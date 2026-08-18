@@ -175,5 +175,8 @@ python3 scripts/run_owner_pricing_commercial_ai_safety.py
 # Final brand sweep runs after every legacy/room/owner overlay so login copy, AI prompts
 # and any remaining visible old product name cannot be reintroduced downstream.
 python3 scripts/ab_bau_branding_cleanup.py
+# Shared scope engine must be the final runtime patch: natural German instructions,
+# semantic-safe catalog selection and the Termin KI all use one deterministic flow.
+python3 scripts/ab_bau_scope_engine_completion.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
