@@ -97,3 +97,31 @@ class CatalogContextHardeningTests(SimpleTestCase):
         )
         with patch("erp.ai_scope_catalog.search_bo_prices", return_value=[candidate]):
             self.assertIs(_best_bo_row(SimpleNamespace(), scope), candidate)
+
+    def test_generic_wall_paint_rejects_mold_spore_remediation_position(self):
+        scope = {
+            "key": "paint.wall.coat",
+            "label": "Dispersionsfarbanstrich Wände",
+            "unit": "m²",
+            "catalog_terms": ["Dispersionsfarbe Wände", "Wandanstrich Dispersionsfarbe", "Wände streichen"],
+        }
+        candidate = self.row(
+            "Demobilisieren von Schimmelpilzsporen Abschotten des sichtbaren Befalls mit Folie oder Einstreichen mit Sporenbinder zur Verhinderung weiterer Verbreitung von Gefahrstoffen",
+            code="SCHIMMEL-SPOR-01",
+        )
+        self.assertLess(_candidate_score(candidate, scope), 0)
+        with patch("erp.ai_scope_catalog.search_bo_prices", return_value=[candidate]):
+            self.assertIsNone(_best_bo_row(SimpleNamespace(), scope))
+
+    def test_floor_cover_still_accepts_normal_baufolie_position(self):
+        scope = {
+            "key": "protect.floor",
+            "label": "Boden / Untergrund abdecken",
+            "unit": "m²",
+            "catalog_terms": ["Boden abdecken", "Abdeckarbeiten Boden", "Untergrund abdecken"],
+        }
+        candidate = self.row(
+            "Abdecken von Belägen (Fußboden) mit Baufolie abdecken und nach Abschluss der Arbeiten aufnehmen",
+            code="ABDECK-BODEN-01",
+        )
+        self.assertGreater(_candidate_score(candidate, scope), 0)
