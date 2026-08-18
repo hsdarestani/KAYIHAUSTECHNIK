@@ -184,5 +184,8 @@ python3 scripts/ab_bau_catalog_context_hardening.py
 # Keep legacy regression contracts and browser cache keys aligned with the final
 # shared scope engine after every generated/owner overlay has finished.
 python3 scripts/ab_bau_scope_engine_ci_alignment.py
+# Voice assets have their own cache lifecycle. Verify they remain cache-busted
+# without coupling their regression test to the unrelated global KI asset version.
+python3 scripts/ab_bau_voice_cache_contract_fix.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
