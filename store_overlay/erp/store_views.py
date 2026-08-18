@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, resolve_url
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -26,6 +27,21 @@ def has_ai_consent(user) -> bool:
         preferences.get("ai_third_party_consent_at")
         and preferences.get("ai_third_party_consent_version") == AI_CONSENT_VERSION
         and not preferences.get("ai_third_party_consent_revoked_at")
+    )
+
+
+def landing_page(request):
+    """Public product presentation while preserving the authenticated dashboard at /."""
+    if request.user.is_authenticated:
+        from . import rebuild_views
+
+        return rebuild_views.dashboard(request)
+    return render(
+        request,
+        "store/landing.html",
+        {
+            "login_url": resolve_url(settings.LOGIN_URL),
+        },
     )
 
 
