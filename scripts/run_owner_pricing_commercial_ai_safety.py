@@ -54,17 +54,29 @@ def _current_runtime_price_library() -> None:
         raise RuntimeError("Rebuild Settings template is missing")
     settings = settings_template.read_text(encoding="utf-8")
     marker = "CURRENT_PRICE_LIBRARY_SETTINGS_BRIDGE_20260818"
-    if marker not in settings:
-        card = f'''\n<!-- {marker} -->\n<section class="nx-card nx-card-pad" style="margin-top:16px">\n  <div class="nx-card-head" style="padding:0">\n    <div>\n      <div class="nx-kicker">Kalkulation</div>\n      <h2>Eigene Preislisten</h2>\n      <p>Firmenpreislisten importieren, durchsuchen und für Kalkulation, Angebote und Rechnungen verwenden.</p>\n    </div>\n    <a class="nx-btn nx-btn-primary" href="{{% url 'price-library' %}}">Preislisten verwalten →</a>\n  </div>\n</section>\n'''
-        if "{% endblock %}" not in settings:
-            raise RuntimeError("Rebuild Settings endblock anchor changed")
-        settings = settings.replace("{% endblock %}", card + "{% endblock %}", 1)
-        settings_template.write_text(settings, encoding="utf-8")
+    card = f'''\n<!-- {marker} -->\n<section class="nx-card nx-card-pad" style="margin-top:16px">\n  <div class="nx-card-head" style="padding:0">\n    <div>\n      <div class="nx-kicker">Kalkulation</div>\n      <h2>Eigene Preislisten</h2>\n      <p>Firmenpreislisten importieren, durchsuchen und für Kalkulation, Angebote und Rechnungen verwenden.</p>\n    </div>\n    <a class="nx-btn nx-btn-primary" href="{{% url 'price-library' %}}">Preislisten verwalten →</a>\n  </div>\n</section>\n'''
+
+    # Always normalize placement. The previous implementation inserted before the
+    # first {% endblock %}, which belongs to the page-title block, so the card was
+    # present in the template but never rendered in the visible content area.
+    settings = settings.replace(card, "")
+    before_content_end, endblock, after_content_end = settings.rpartition("{% endblock %}")
+    if not endblock or "{% block content %}" not in before_content_end:
+        raise RuntimeError("Rebuild Settings content endblock anchor changed")
+    settings = before_content_end + card + endblock + after_content_end
+    settings_template.write_text(settings, encoding="utf-8")
 
     verify = settings_template.read_text(encoding="utf-8")
-    if marker not in verify or "{% url 'price-library' %}" not in verify:
-        raise RuntimeError("Price Library Settings bridge was not installed")
-    print("A+Bau current Price Library exposed in rebuild Settings; existing import workflow reused.")
+    content_start = verify.find("{% block content %}")
+    marker_pos = verify.find(marker)
+    content_end = verify.rfind("{% endblock %}")
+    if (
+        marker_pos < 0
+        or "{% url 'price-library' %}" not in verify
+        or not (content_start >= 0 and content_start < marker_pos < content_end)
+    ):
+        raise RuntimeError("Price Library Settings bridge was not installed inside the visible content block")
+    print("A+Bau current Price Library exposed in visible rebuild Settings content; existing import workflow reused.")
 
 
 def _legacy_owner_workflow() -> None:
