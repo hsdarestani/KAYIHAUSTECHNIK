@@ -9,6 +9,16 @@ LEGACY_SCOPE_FILES = (
     ROOT / "erp" / "ai_scope_catalog.py",
     ROOT / "erp" / "ai_scope_planner.py",
 )
+CURRENT_PRICE_TEMPLATE = ROOT / "templates" / "erp" / "price_library.html"
+
+
+def _has_current_price_library() -> bool:
+    if not CURRENT_PRICE_TEMPLATE.exists():
+        return False
+    try:
+        return "Preisliste importieren" in CURRENT_PRICE_TEMPLATE.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return False
 
 
 def _current_runtime_price_library() -> None:
@@ -19,7 +29,7 @@ def _current_runtime_price_library() -> None:
     so on this runtime we only bridge the existing Price Library into the newer
     Settings surface instead of replaying obsolete source patches.
     """
-    price_template = ROOT / "templates" / "erp" / "price_library.html"
+    price_template = CURRENT_PRICE_TEMPLATE
     settings_template = ROOT / "templates" / "rebuild" / "settings.html"
 
     if not price_template.exists():
@@ -66,7 +76,12 @@ def _legacy_owner_workflow() -> None:
     impl.main()
 
 
-if all(path.exists() for path in LEGACY_SCOPE_FILES):
+# Prefer the current Price Library whenever it is present. Some later assembly
+# steps generate legacy-named scope files for compatibility; those files must not
+# make a second invocation switch back to the obsolete PR106 patch path.
+if _has_current_price_library():
+    _current_runtime_price_library()
+elif all(path.exists() for path in LEGACY_SCOPE_FILES):
     _legacy_owner_workflow()
 else:
     _current_runtime_price_library()
