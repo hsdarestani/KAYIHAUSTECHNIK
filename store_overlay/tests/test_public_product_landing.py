@@ -9,10 +9,10 @@ class PublicProductLandingTests(TestCase):
         response = self.client.get(reverse("store-landing"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "store/landing.html")
-        self.assertContains(response, "Betriebssoftware für Bau &amp; Handwerk")
+        self.assertContains(response, "Betriebssoftware für Bau & Handwerk")
         self.assertContains(response, "Vom ersten Termin")
         self.assertContains(response, "Ein System statt fünf einzelner Tools")
-        self.assertContains(response, "KI &amp; 3D Room Planner")
+        self.assertContains(response, "KI & 3D Room Planner")
         self.assertContains(response, "Zum Login")
 
     def test_landing_keeps_public_store_links(self):
