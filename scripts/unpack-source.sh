@@ -169,7 +169,10 @@ python3 scripts/room_planner_visual_upgrade.py
 # Persist and visibly render KI renovation finishes after every older Room Planner
 # overlay so tile formats/heights and Q3-painted zones survive save/reload.
 python3 scripts/room_planner_surface_visuals.py
-# Final brand sweep runs after every legacy/room overlay so login copy, AI prompts
+# Owner pricing/commercial workflow must be an explicit production assembly step.
+# Do not rely only on the nested branding-cleanup hook to activate Preislisten UI/routes.
+python3 scripts/run_owner_pricing_commercial_ai_safety.py
+# Final brand sweep runs after every legacy/room/owner overlay so login copy, AI prompts
 # and any remaining visible old product name cannot be reintroduced downstream.
 python3 scripts/ab_bau_branding_cleanup.py
 
