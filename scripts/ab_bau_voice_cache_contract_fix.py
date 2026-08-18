@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,3 +36,7 @@ if "field-authorization\\.css.*\\?v=" not in verify or "MediaRecorder" not in ve
     raise RuntimeError("Semantic field voice cache contract was not installed")
 
 print(f"{MARKER}: field voice styles stay cache-busted and each page must provide either the shared JS asset or its intentional inline MediaRecorder runtime.")
+
+# This file is the final deterministic assembly hook. Apply the page-scoped
+# time-correction layout only after every older runtime/branding layer has run.
+runpy.run_path(str(ROOT / "scripts" / "time_entry_edit_layout_polish.py"), run_name="__main__")
