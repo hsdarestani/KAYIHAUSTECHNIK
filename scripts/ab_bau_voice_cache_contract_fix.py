@@ -40,3 +40,8 @@ print(f"{MARKER}: field voice styles stay cache-busted and each page must provid
 # This file is the final deterministic assembly hook. Apply the page-scoped
 # time-correction layout only after every older runtime/branding layer has run.
 runpy.run_path(str(ROOT / "scripts" / "time_entry_edit_layout_polish.py"), run_name="__main__")
+
+# Anonymous visitors must see the product presentation at /. Run this after every
+# legacy/Next overlay so no late regression contract can restore next-dashboard
+# as the public root while authenticated users still receive the existing dashboard.
+runpy.run_path(str(ROOT / "scripts" / "public_landing_route_contract.py"), run_name="__main__")
