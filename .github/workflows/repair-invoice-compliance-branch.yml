@@ -1,0 +1,44 @@
+name: Repair invoice compliance branch
+
+on:
+  push:
+    branches:
+      - feature/invoice-germany-compliance-20260820
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[invoice-compliance-repaired]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/invoice-germany-compliance-20260820
+          fetch-depth: 0
+      - name: Repair installer source and migration chain
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/invoice_germany_compliance_upgrade.py')
+          text = p.read_text(encoding='utf-8')
+          replacements = [
+              ("body = f'''<!doctype html>", 'body = f"""<!doctype html>'),
+              ("</body></html>'''\n    return inject_business_pdf_identity(body, org=org, document_kind=title)", '</body></html>"""\n    return inject_business_pdf_identity(body, org=org, document_kind=title)'),
+              ('("erp", "0009_ab_bau_commercial")', '("erp", "0010_ab_bau_commercial")'),
+              ('erp/migrations/0010_invoice_germany_compliance.py', 'erp/migrations/0011_invoice_germany_compliance.py'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected repair anchor missing: {old[:80]}')
+              text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
+          Path('.github/workflows/repair-invoice-compliance-branch.yml').unlink()
+          PY
+          python3 -m py_compile scripts/invoice_germany_compliance_upgrade.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/invoice_germany_compliance_upgrade.py .github/workflows/repair-invoice-compliance-branch.yml
+          git commit -m "Fix invoice compliance installer syntax and migration chain [invoice-compliance-repaired]"
+          git push origin HEAD:feature/invoice-germany-compliance-20260820
