@@ -38,9 +38,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install native dependencies
-        working-directory: native
-        run: npm install --no-audit --no-fund
+      - name: Install and bundle native web application
+        run: |
+          python3 scripts/prepare_native_store_shell.py
+          cd native
+          npm install --no-audit --no-fund
+          npm run build
+          if grep -RInE "from[[:space:]]+['\"]@capacitor/core['\"]" www; then
+            echo 'Native web bundle contains an unresolved @capacitor/core import' >&2
+            exit 1
+          fi
+          if grep -RInE 'KAYI Haustechnik|Natives Baustellen-Aufmaß' www; then
+            echo 'Native web bundle contains the rejected legacy splash' >&2
+            exit 1
+          fi
+          grep -RIn 'A+Bau' www >/dev/null
       - name: Audit Capacitor release configuration
         working-directory: native
         run: |
@@ -48,11 +60,18 @@ jobs:
           cat package.json
           echo '=== capacitor config ==='
           for f in capacitor.config.*; do [ -f "$f" ] && { echo "--- $f"; cat "$f"; }; done
+          echo '=== build script ==='
+          cat scripts/build.mjs
       - name: Generate and synchronize Android project
         working-directory: native
         run: |
           npx cap add android
           npx cap sync android
+          grep -F '"appName": "A+Bau"' android/app/src/main/assets/capacitor.config.json
+          if grep -RInE "from[[:space:]]+['\"]@capacitor/core['\"]|KAYI Haustechnik|Natives Baustellen-Aufmaß" android/app/src/main/assets/public; then
+            echo 'Generated Android assets are not startup-safe' >&2
+            exit 1
+          fi
       - name: Audit generated Android configuration
         working-directory: native
         run: |
@@ -65,7 +84,7 @@ jobs:
         run: ./gradlew assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: kayi-native-room-scanner-android-${{ github.run_id }}
+          name: a-bau-native-startup-android-${{ github.run_id }}
           path: native/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
@@ -80,9 +99,20 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Install native dependencies
-        working-directory: native
-        run: npm install --no-audit --no-fund
+      - name: Install and bundle native web application
+        run: |
+          python3 scripts/prepare_native_store_shell.py
+          cd native
+          npm install --no-audit --no-fund
+          npm run build
+          if grep -RInE "from[[:space:]]+['\"]@capacitor/core['\"]" www; then
+            echo 'Native web bundle contains an unresolved @capacitor/core import' >&2
+            exit 1
+          fi
+          if grep -RInE 'KAYI Haustechnik|Natives Baustellen-Aufmaß' www; then
+            echo 'Native web bundle contains the rejected legacy splash' >&2
+            exit 1
+          fi
       - name: Audit Xcode version and Capacitor release configuration
         working-directory: native
         run: |
@@ -96,9 +126,13 @@ jobs:
         run: |
           npx cap add ios
           npx cap sync ios
+          if grep -RInE "from[[:space:]]+['\"]@capacitor/core['\"]|KAYI Haustechnik|Natives Baustellen-Aufmaß" ios/App/App/public; then
+            echo 'Generated iOS assets are not startup-safe' >&2
+            exit 1
+          fi
           sed -i '' 's/\.iOS(.v15)/.iOS(.v16)/g' ios/App/CapApp-SPM/Package.swift
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
-            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription KAYI benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string A+Bau benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist || \
+            /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription A+Bau benötigt die Kamera für die präzise Raumvermessung." ios/App/App/Info.plist
       - name: Audit generated iOS configuration
         working-directory: native
         run: |
