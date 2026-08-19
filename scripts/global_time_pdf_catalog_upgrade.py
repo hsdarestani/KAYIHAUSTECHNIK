@@ -364,7 +364,7 @@ def business_identity(org):
     city = _first(org, "city", "address_city")
     country = _first(org, "country", "address_country", default="Deutschland")
     return {
-        "name": _first(org, "legal_name", "company_name", "name", default="KAYI Haustechnik"),
+        "name": _first(org, "legal_name", "company_name", "name", default="A+Bau"),
         "street": " ".join(part for part in (street, house) if part),
         "city_line": " ".join(part for part in (postal, city) if part),
         "country": country,
