@@ -30,8 +30,8 @@ expected = {
             "e46b32f0ad1916011e43a5de13f0ba94ac01c2e75757eeb267ab31e1f930f752",
             "ddf69e84d190a248aaa41d2ae216ab77986dece30cf04bda2c123aef60ca2fce",
             "6d22f3a47a67d9876eb338a5006d7e19b0a30c6f380511dcf209e767269015cf",
-            "6f8e8b3398ca5c652d0460f8f0f6c84af6d57609e49dbba4f34cb72007ecdfde",
-        ],
+            "6f8e8b3398ca5c652d0460f8f0f6c84af6d57609e49dbba4f34cb72007ecdfde"
+        ]
     },
     "03": {
         "length": 14000,
@@ -42,8 +42,8 @@ expected = {
             "7a4405b7a30d0a8bd9da335380ea66125c02c9ed0290e1af0736a421006fc68b",
             "a1ee50dd256d1512987bc24408437d2d7752c8d12dc56f60e346339a57d3af24",
             "a6d06c5aacb34f36ad382c14fe5df5f7f318115e4ecbbba7bd075d54e5f09171",
-            "125ef3aa426d4d992187d3e8d08ffff87e3f0df79e31fedbc8d993fa32f277b9",
-        ],
+            "125ef3aa426d4d992187d3e8d08ffff87e3f0df79e31fedbc8d993fa32f277b9"
+        ]
     },
     "04": {
         "length": 14000,
@@ -54,9 +54,9 @@ expected = {
             "32db1946fc112519ffef3f4582660410d413f3cf1ceb0877dc0d43e7b4ba4d83",
             "3ca8370db3ada3bfe421ac1bd0bddae9fb08cad5e551edf1a23b16f848eed3c6",
             "441088067cf367ab16b3c7e94bb1aed9ecda5b8a293c8387071f84713d42c8a2",
-            "1c6aa3d2793a74a263e74a407e280ab337dba9fb4ca54a31d73d507ab5d3183b",
-        ],
-    },
+            "1c6aa3d2793a74a263e74a407e280ab337dba9fb4ca54a31d73d507ab5d3183b"
+        ]
+    }
 }
 
 errors: list[dict[str, object]] = []
@@ -86,14 +86,12 @@ for part_id, spec in expected.items():
     if len(actual_hashes) > len(spec["hashes"]):
         mismatches.extend(range(len(spec["hashes"]), len(actual_hashes)))
     if len(text) != spec["length"] or mismatches:
-        errors.append(
-            {
-                "part": part_id,
-                "expected_length": spec["length"],
-                "actual_length": len(text),
-                "mismatched_blocks": mismatches,
-            }
-        )
+        errors.append({
+            "part": part_id,
+            "expected_length": spec["length"],
+            "actual_length": len(text),
+            "mismatched_blocks": mismatches,
+        })
     (repaired_dir / f"source.part-{part_id}").write_text(text, encoding="utf-8")
 
 if errors:
@@ -112,9 +110,7 @@ except ValueError as exc:
     raise SystemExit(f"Source archive base64 verification failed: {exc}") from exc
 actual_archive_sha = hashlib.sha256(archive_bytes).hexdigest()
 if actual_archive_sha != expected_archive_sha:
-    raise SystemExit(
-        f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}"
-    )
+    raise SystemExit(f"Source archive checksum mismatch: expected {expected_archive_sha}, got {actual_archive_sha}")
 archive.write_bytes(archive_bytes)
 print(f"{archive}: OK")
 PY
@@ -190,5 +186,12 @@ python3 scripts/ab_bau_voice_cache_contract_fix.py
 # Final cross-app UX/business-document layer: 10-minute time grid, legal business
 # identity on PDFs and three-source live pricing directly in position fields.
 python3 scripts/global_time_pdf_catalog_upgrade.py
+# German fiscal hardening runs last so no older commercial layer can reintroduce
+# draft numbering, mutable finalized invoices or unvalidated E-Invoice claims.
+python3 scripts/invoice_germany_compliance_upgrade.py
+python3 scripts/invoice_compliance_post_fix.py
+# Compliance rewrites the invoice editor after the runtime performance layer, so
+# restore the same lazy catalog first-paint contract for both invoice render paths.
+python3 scripts/invoice_compliance_catalog_performance_fix.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
