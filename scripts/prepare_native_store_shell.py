@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,6 +9,7 @@ CONFIG = NATIVE / "capacitor.config.ts"
 PACKAGE = NATIVE / "package.json"
 INDEX = NATIVE / "www" / "index.html"
 APP_JS = NATIVE / "www" / "app.js"
+BUILD_SCRIPT = NATIVE / "scripts" / "build.mjs"
 
 
 def replace_required(path: Path, old: str, new: str) -> None:
@@ -30,6 +30,10 @@ def main() -> None:
     replace_required(CONFIG, "appName: 'KAYI Haustechnik'", "appName: 'A+Bau'")
     replace_required(INDEX, "<title>KAYI Haustechnik</title>", "<title>A+Bau</title>")
     replace_required(INDEX, '<div class="logo">K</div><h1>KAYI Haustechnik</h1><p>Natives Baustellen-Aufmaß</p>', '<div class="logo">A+</div><h1>A+Bau</h1><p>Baustellenmanagement wird geladen …</p>')
+
+    # The original native build guard was itself pinned to the legacy visible brand.
+    # Keep the integrity check, but make A+Bau the required release-shell marker.
+    replace_required(BUILD_SCRIPT, "KAYI Haustechnik", "A+Bau")
 
     if APP_JS.exists():
         text = APP_JS.read_text(encoding="utf-8")
@@ -54,7 +58,7 @@ def main() -> None:
     if "KAYI Haustechnik" in visible_sources or "Natives Baustellen-Aufmaß" in visible_sources:
         raise RuntimeError("Legacy KAYI splash/visible product name remains in the native store shell")
 
-    print("A+Bau native store shell prepared: source branding updated before the web bundle is built.")
+    print("A+Bau native store shell prepared: source branding and native build guard updated before bundling.")
 
 
 if __name__ == "__main__":
