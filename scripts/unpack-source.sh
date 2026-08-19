@@ -187,5 +187,8 @@ python3 scripts/ab_bau_scope_engine_ci_alignment.py
 # Voice assets have their own cache lifecycle. Verify they remain cache-busted
 # without coupling their regression test to the unrelated global KI asset version.
 python3 scripts/ab_bau_voice_cache_contract_fix.py
+# Final cross-app UX/business-document layer: 10-minute time grid, legal business
+# identity on PDFs and three-source live pricing directly in position fields.
+python3 scripts/global_time_pdf_catalog_upgrade.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
