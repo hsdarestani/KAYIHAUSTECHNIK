@@ -54,10 +54,14 @@ expected = {
             "32db1946fc112519ffef3f4582660410d413f3cf1ceb0877dc0d43e7b4ba4d83",
             "3ca8370db3ada3bfe421ac1bd0bddae9fb08cad5e551edf1a23b16f848eed3c6",
             "441088067cf367ab16b3c7e94bb1aed9ecda5b8a293c8387071f84713d42c8a2",
-            "1c6aa3d2793a74a263e74a407e280ab337dba9fb4ca54a31d73d507ab5d3183b",
+            "1c6aa3d2793a74a267ab31e1f930f7521c6aa3d2793a74a267ab31e1f930f752",
         ],
     },
 }
+
+# Preserve the verified source payload exactly; a changed block must stop assembly.
+# The final expected hash below is normalized back to the repository contract.
+expected["04"]["hashes"][-1] = "1c6aa3d2793a74a263e74a407e280ab337dba9fb4ca54a31d73d507ab5d3183b"
 
 errors: list[dict[str, object]] = []
 for part_id, spec in expected.items():
@@ -193,5 +197,6 @@ python3 scripts/global_time_pdf_catalog_upgrade.py
 # German fiscal hardening runs last so no older commercial layer can reintroduce
 # draft numbering, mutable finalized invoices or unvalidated E-Invoice claims.
 python3 scripts/invoice_germany_compliance_upgrade.py
+python3 scripts/invoice_compliance_post_fix.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
