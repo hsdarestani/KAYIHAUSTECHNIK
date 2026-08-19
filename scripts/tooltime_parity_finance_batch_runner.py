@@ -44,4 +44,5 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_finance_completion.py"), 
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_finance_ui_polish.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_invoice_wizard.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pdf_layout_bridge_runner.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_migration_alignment.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_browser_smoke.py"), run_name="__main__")
