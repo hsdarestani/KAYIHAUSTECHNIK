@@ -42,3 +42,4 @@ namespace = {"__name__": "__main__", "__file__": str(SOURCE), "__package__": Non
 exec(code, namespace)
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_finance_completion.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_finance_ui_polish.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_invoice_wizard.py"), run_name="__main__")
