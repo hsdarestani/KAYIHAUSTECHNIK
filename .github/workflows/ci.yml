@@ -23,6 +23,20 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Diagnose exact pending migration
+        run: |
+          mkdir -p /tmp/migration-diagnostic
+          touch /tmp/migration-marker
+          python manage.py makemigrations erp --noinput --verbosity 3 2>&1 | tee /tmp/migration-diagnostic/output.txt || true
+          find erp/migrations -type f -name '*.py' -newer /tmp/migration-marker -print -exec cp {} /tmp/migration-diagnostic/ \;
+          find erp/migrations -type f -name '*.py' -newer /tmp/migration-marker -delete
+      - name: Upload migration diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-diagnostic-${{ github.run_id }}
+          path: /tmp/migration-diagnostic
+          if-no-files-found: error
+          retention-days: 1
       - name: Validate committed migrations
         run: python manage.py makemigrations --check --dry-run
       - name: Migrate test database
