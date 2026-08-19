@@ -49,7 +49,7 @@ expected = {
         "length": 14000,
         "hashes": [
             "9ee0df5d866250177b6de367cecdc67fe9b4074acb8db5d4ddfd595b19c18398",
-            "de8c6ab855c8fb0063fb1b9d4d9e050e9c43eff0f6d582f8c8a29f5cefd28e1f",
+            "de8c6ab855c8f0063fb1b9d4d9e050e9c43eff0f6d582f8c8a29f5cefd28e1f",
             "eba9d03aeeb981b65ff4276d14024174e475468cfd41bd60e5c102dbc8684d3f",
             "32db1946fc112519ffef3f4582660410d413f3cf1ceb0877dc0d43e7b4ba4d83",
             "3ca8370db3ada3bfe421ac1bd0bddae9fb08cad5e551edf1a23b16f848eed3c6",
@@ -190,5 +190,8 @@ python3 scripts/ab_bau_voice_cache_contract_fix.py
 # Final cross-app UX/business-document layer: 10-minute time grid, legal business
 # identity on PDFs and three-source live pricing directly in position fields.
 python3 scripts/global_time_pdf_catalog_upgrade.py
+# German fiscal hardening runs last so no older commercial layer can reintroduce
+# draft numbering, mutable finalized invoices or unvalidated E-Invoice claims.
+python3 scripts/invoice_germany_compliance_upgrade.py
 
 echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
