@@ -23,6 +23,19 @@ text, count = pattern.subn("\n" + replacement + "\n", text, count=1)
 if count != 1:
     raise RuntimeError("ToolTime-Parität: Mahnungs-HTML-Reparaturanker wurde nicht gefunden.")
 
+# Das generierte View-Modul benutzt ein echtes datetime.timedelta und verlässt
+# sich nicht auf einen nicht garantierten Alias im Django-timezone-Modul.
+text = text.replace(
+    "from decimal import Decimal\n\nfrom django.contrib import messages",
+    "from decimal import Decimal\nfrom datetime import timedelta\n\nfrom django.contrib import messages",
+    1,
+)
+text = text.replace(
+    "due = timezone.localdate() + timezone.timedelta(days=due_days)",
+    "due = timezone.localdate() + timedelta(days=due_days)",
+    1,
+)
+
 code = compile(text, str(SOURCE), "exec")
 namespace = {"__name__": "__main__", "__file__": str(SOURCE), "__package__": None}
 exec(code, namespace)
