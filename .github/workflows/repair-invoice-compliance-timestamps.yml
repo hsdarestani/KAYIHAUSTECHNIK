@@ -1,0 +1,43 @@
+name: Repair invoice compliance timestamps
+
+on:
+  push:
+    branches:
+      - feature/invoice-germany-compliance-20260820
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[invoice-timestamps-repaired]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/invoice-germany-compliance-20260820
+          fetch-depth: 0
+      - name: Align compliance migration timestamps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/invoice_germany_compliance_upgrade.py')
+          text = p.read_text(encoding='utf-8')
+          old = '''                ("validation_errors", models.JSONField(blank=True, default=list)),
+                ("cancellation_of", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="cancellations", to="erp.invoice")),'''
+          new = '''                ("validation_errors", models.JSONField(blank=True, default=list)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("cancellation_of", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="cancellations", to="erp.invoice")),'''
+          if old not in text:
+              raise SystemExit('Expected InvoiceComplianceRecord migration anchor missing')
+          text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
+          Path('.github/workflows/repair-invoice-compliance-timestamps.yml').unlink()
+          PY
+          python3 -m py_compile scripts/invoice_germany_compliance_upgrade.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/invoice_germany_compliance_upgrade.py .github/workflows/repair-invoice-compliance-timestamps.yml
+          git commit -m "Align invoice compliance migration timestamps [invoice-timestamps-repaired]"
+          git push origin HEAD:feature/invoice-germany-compliance-20260820
