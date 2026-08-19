@@ -1,0 +1,42 @@
+name: Repair invoice compliance migration chain
+
+on:
+  push:
+    branches:
+      - feature/invoice-germany-compliance-20260820
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[invoice-migration-repaired]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/invoice-germany-compliance-20260820
+          fetch-depth: 0
+      - name: Chain compliance after project approval migration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/invoice_germany_compliance_upgrade.py')
+          text = p.read_text(encoding='utf-8')
+          replacements = [
+              ('("erp", "0010_ab_bau_commercial")', '("erp", "0011_project_approval_flow")'),
+              ('erp/migrations/0011_invoice_germany_compliance.py', 'erp/migrations/0012_invoice_germany_compliance.py'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected migration anchor missing: {old}')
+              text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
+          Path('.github/workflows/repair-invoice-compliance-migration.yml').unlink()
+          PY
+          python3 -m py_compile scripts/invoice_germany_compliance_upgrade.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/invoice_germany_compliance_upgrade.py .github/workflows/repair-invoice-compliance-migration.yml
+          git commit -m "Chain invoice compliance migration after project approval [invoice-migration-repaired]"
+          git push origin HEAD:feature/invoice-germany-compliance-20260820
