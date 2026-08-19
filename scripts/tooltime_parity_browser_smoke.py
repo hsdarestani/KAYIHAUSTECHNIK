@@ -7,21 +7,24 @@ REL = "scripts/production_browser_smoke.py"
 path = ROOT / REL
 text = path.read_text(encoding="utf-8")
 
-old = '''                ("/quotes/", ("Angebote", "Neues Angebot")),
-                ("/invoices/", ("Rechnungen", "Neue Rechnung")),
-                ("/migration/tooltime/", ("Von ToolTime zu KAYI", "Import starten")),
-'''
-new = '''                ("/quotes/", ("Angebote", "Neues Angebot")),
-                ("/quotes/new/", ("Kunde und Projekt", "Leistungsgruppe hinzufügen", "Artikel durchsuchen", "Zahlungsbedingungen", "Fertigstellen")),
-                ("/invoices/", ("Rechnungen", "Neue Rechnung")),
-                ("/invoices/new/", ("Kunde und Projekt", "Rechnungsart", "Abschlagsrechnung", "Kalkulationsübersicht", "Fertigstellen")),
-                ("/settings/next/", ("Texte & Layout", "Angaben auf Ihren Dokumenten", "Nummernkreise für Dokumente", "Zahlungen & Mahnwesen", "Kommunikation")),
-                ("/migration/tooltime/", ("Von ToolTime zu A+Bau", "Import starten")),
-'''
-if old in text:
-    text = text.replace(old, new, 1)
-elif '"/quotes/new/"' not in text:
-    raise RuntimeError("ToolTime-Browser-Smoke: Office-Checks-Anker fehlt.")
+if '"/quotes/new/"' not in text:
+    quote_line = '                ("/quotes/", ("Angebote", "Neues Angebot")),\n'
+    if quote_line not in text:
+        raise RuntimeError("ToolTime-Browser-Smoke: Angebotslisten-Anker fehlt.")
+    text = text.replace(
+        quote_line,
+        quote_line + '                ("/quotes/new/", ("Kunde und Projekt", "Leistungsgruppe hinzufügen", "Artikel durchsuchen", "Zahlungsbedingungen", "Fertigstellen")),\n',
+        1,
+    )
+if '"/invoices/new/"' not in text:
+    invoice_line = '                ("/invoices/", ("Rechnungen", "Neue Rechnung")),\n'
+    if invoice_line not in text:
+        raise RuntimeError("ToolTime-Browser-Smoke: Rechnungsliste-Anker fehlt.")
+    text = text.replace(
+        invoice_line,
+        invoice_line + '                ("/invoices/new/", ("Kunde und Projekt", "Rechnungsart", "Abschlagsrechnung", "Kalkulationsübersicht", "Fertigstellen")),\n                ("/settings/next/", ("Texte & Layout", "Angaben auf Ihren Dokumenten", "Nummernkreise für Dokumente", "Zahlungen & Mahnwesen", "Kommunikation")),\n',
+        1,
+    )
 
 anchor = '''            visible_controls = page.locator('form input:not([type="hidden"]), form select, form textarea')
             if visible_controls.count() < 4:
@@ -31,37 +34,37 @@ interaction = '''            visible_controls = page.locator('form input:not([ty
             if visible_controls.count() < 4:
                 fail("new project flow has too few controls and appears broken")
 
-            # Commercial document interactions are exercised, not only rendered.
+            # Die kaufmännische Oberfläche wird nicht nur gerendert, sondern geklickt.
             page.goto(urljoin(base_url, "quotes/new/"), wait_until="domcontentloaded", timeout=30_000)
             initial_groups = page.locator("[data-service-group]").count()
             page.click("[data-add-group]")
             if page.locator("[data-service-group]").count() != initial_groups + 1:
-                fail("Leistungsgruppe hinzufügen does not add a group")
+                fail("Leistungsgruppe hinzufügen funktioniert nicht")
             last_group = page.locator("[data-service-group]").last
             before_positions = last_group.locator("[data-position]").count()
             last_group.locator("[data-add-position]").click()
             if last_group.locator("[data-position]").count() != before_positions + 1:
-                fail("Position hinzufügen does not add a position")
+                fail("Position hinzufügen funktioniert nicht")
             last_group.locator("[data-browse-articles]").first.click()
             if not page.locator("[data-article-modal]").is_visible():
-                fail("Artikel durchsuchen does not open the advanced search")
+                fail("Artikel durchsuchen öffnet die erweiterte Suche nicht")
             page.locator("[data-article-modal] [data-close-modal]").click()
             if page.locator("[data-margin-modal]").count() != 1:
-                fail("Margen-Dialog is missing")
+                fail("Margen-Dialog fehlt")
             if page.locator("[data-new-customer]").count() != 1 or page.locator("[data-new-project]").count() != 1:
-                fail("quick customer/project creation controls are missing")
+                fail("Schnellanlage für Kunde/Projekt fehlt")
 
             page.goto(urljoin(base_url, "invoices/new/"), wait_until="domcontentloaded", timeout=30_000)
             invoice_types = page.locator('select[name="invoice_type"] option')
             labels = [invoice_types.nth(i).inner_text() for i in range(invoice_types.count())]
             for required in ("Standardrechnung", "Abschlagsrechnung", "Teilrechnung", "Schlussrechnung"):
                 if required not in labels:
-                    fail(f"invoice type {required!r} is missing")
+                    fail(f"Rechnungsart {required!r} fehlt")
 
             page.goto(urljoin(base_url, "settings/next/"), wait_until="domcontentloaded", timeout=30_000)
             for selector in ('input[name="logo_file"]', 'input[name="tax_number"]', 'input[name="invoice_prefix"]', 'textarea[name="invoice_body"]'):
                 if page.locator(selector).count() != 1:
-                    fail(f"commercial setting {selector!r} is missing")
+                    fail(f"Kaufmännische Einstellung {selector!r} fehlt")
 '''
 if interaction not in text:
     if anchor not in text:
