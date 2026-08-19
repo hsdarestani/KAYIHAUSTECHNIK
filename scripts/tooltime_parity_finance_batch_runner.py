@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,3 +40,4 @@ text = text.replace(
 code = compile(text, str(SOURCE), "exec")
 namespace = {"__name__": "__main__", "__file__": str(SOURCE), "__package__": None}
 exec(code, namespace)
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_finance_completion.py"), run_name="__main__")
