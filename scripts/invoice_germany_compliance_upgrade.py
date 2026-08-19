@@ -126,7 +126,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("erp", "0009_ab_bau_commercial"),
+        ("erp", "0010_ab_bau_commercial"),
     ]
     operations = [
         migrations.CreateModel(
@@ -210,7 +210,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(model_name="invoicecompliancerecord", constraint=models.UniqueConstraint(condition=models.Q(("final_number", ""), _negated=True), fields=("organization", "final_number"), name="uniq_final_invoice_number_per_org")),
     ]
 '''
-    write("erp/migrations/0010_invoice_germany_compliance.py", migration)
+    write("erp/migrations/0011_invoice_germany_compliance.py", migration)
 
 
 def install_service() -> None:
@@ -705,7 +705,7 @@ def invoice_pdf_html(core: dict, org) -> str:
     for label, key in (("Bestellreferenz", "order"), ("Vertragsreferenz", "contract"), ("Projektreferenz", "project"), ("Korrektur zu", "correction_of"), ("Storno zu", "cancellation_of")):
         if core["references"].get(key): refs.append(f"<span><small>{label}</small><b>{e(core['references'][key])}</b></span>")
     tax_note = f'<div class="notice">{e(core["tax_reason"])}</div>' if core.get("tax_reason") else ""
-    body = f'''<!doctype html><html lang="de"><head><meta charset="utf-8"><title>{e(title)} {e(core['invoice_number'])}</title><style>
+    body = f"""<!doctype html><html lang="de"><head><meta charset="utf-8"><title>{e(title)} {e(core['invoice_number'])}</title><style>
     @page{{size:A4;margin:16mm 14mm 18mm}}*{{box-sizing:border-box}}body{{font-family:Arial,Helvetica,sans-serif;color:#182126;font-size:10px;line-height:1.45;margin:0}}.dochead{{display:flex;justify-content:space-between;align-items:flex-start;margin:24px 0 18px}}h1{{font-size:30px;margin:0}}.number{{text-align:right;font-size:11px}}.number b{{display:block;font-size:17px}}.addresses{{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:10px 0 18px}}.box{{border:1px solid #e1e6e8;border-radius:10px;padding:11px}}small{{color:#6e777d;font-size:8px;display:block}}.meta{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}}.meta>div{{border:1px solid #e4e8ea;border-radius:9px;padding:8px}}table{{width:100%;border-collapse:collapse}}th,td{{padding:7px 5px;border-bottom:1px solid #e5e8e9;text-align:left}}th{{background:#f6f8f8;color:#59656c}}.r{{text-align:right}}.totals{{margin:14px 0 0 auto;max-width:320px;display:grid;gap:6px}}.totals>div{{display:flex;justify-content:space-between}}.grand{{font-size:16px;border-top:2px solid #222;padding-top:8px}}.notice{{margin-top:14px;padding:9px 11px;background:#f7f8f8;border-radius:8px}}.refs{{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}}.payment{{margin-top:18px;border-top:1px solid #ddd;padding-top:10px}}</style></head><body>
     <div class="dochead"><div><h1>{e(title)}</h1><div>{e(core['seller']['name'])}</div></div><div class="number"><small>Rechnungsnummer</small><b>{e(core['invoice_number'])}</b><span>{e(core['issue_date'])}</span></div></div>
     <div class="addresses"><div class="box"><small>Leistungsempfänger</small><b>{e(core['buyer']['name'])}</b><br>{e(core['buyer']['address'])}</div><div class="box"><small>Leistungserbringer</small><b>{e(core['seller']['name'])}</b><br>{e(core['seller']['address'])}<br>{'USt-IdNr. ' + e(core['seller']['vat_id']) if core['seller']['vat_id'] else 'Steuernr. ' + e(core['seller']['tax_number'])}</div></div>
@@ -715,7 +715,7 @@ def invoice_pdf_html(core: dict, org) -> str:
     <div class="totals"><div><span>Netto</span><b>{_fmt(core['net_total'])} €</b></div>{tax_rows}<div class="grand"><span>Gesamt</span><b>{_fmt(core['gross_total'])} €</b></div></div>
     {tax_note}
     <div class="payment"><b>Zahlungsinformationen</b><p>{e(core['payment']['terms'])}<br>{e(core['payment']['bank'])} · IBAN {e(core['payment']['iban'])}{' · BIC ' + e(core['payment']['bic']) if core['payment']['bic'] else ''}</p></div>
-    </body></html>'''
+    </body></html>"""
     return inject_business_pdf_identity(body, org=org, document_kind=title)
 
 
