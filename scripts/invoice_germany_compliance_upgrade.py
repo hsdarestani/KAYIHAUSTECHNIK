@@ -126,7 +126,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("erp", "0010_ab_bau_commercial"),
+        ("erp", "0011_project_approval_flow"),
     ]
     operations = [
         migrations.CreateModel(
@@ -210,7 +210,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(model_name="invoicecompliancerecord", constraint=models.UniqueConstraint(condition=models.Q(("final_number", ""), _negated=True), fields=("organization", "final_number"), name="uniq_final_invoice_number_per_org")),
     ]
 '''
-    write("erp/migrations/0011_invoice_germany_compliance.py", migration)
+    write("erp/migrations/0012_invoice_germany_compliance.py", migration)
 
 
 def install_service() -> None:
