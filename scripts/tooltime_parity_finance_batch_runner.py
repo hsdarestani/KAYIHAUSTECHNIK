@@ -63,6 +63,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase3_quick_create_fix.p
 # Phase 4 owns commercial document lifecycle after creation: list filtering,
 # dynamic payment states, partial payments and dunning actions.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase4_lifecycle.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase4_browser_smoke.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
