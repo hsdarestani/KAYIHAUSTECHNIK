@@ -46,6 +46,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_invoice_wizard.py"), run_
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pdf_layout_bridge_runner.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_migration_alignment.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_browser_smoke.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_legacy_contract_bridge.py"), run_name="__main__")
 
 # Die Abschluss-Erweiterung setzt den Mahnmail-Text in einen generierten Python-
 # String ein. In einem normalen Triple-String würden dabei \n-Sequenzen zu echten
