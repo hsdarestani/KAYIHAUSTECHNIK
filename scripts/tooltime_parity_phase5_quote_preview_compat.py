@@ -80,11 +80,17 @@ detail_block = '''    intro = html.escape(str(getattr(quote, "intro_text", "") o
         + f"<br>Datum: {quote.issue_date:%d.%m.%Y}</td></tr></table>"
     )
     intro = context_block + ("<div style='margin:0 0 16px'>" + intro + "</div>" if intro else "")
+    document_note = (
+        "<div style='margin-top:18px;padding:9px 11px;background:#f6f6f6;font-size:9px;color:#555'>"
+        "<strong>Dokumenthinweis:</strong> Positionen, Mengen, Einzelpreise, Steuern und Gesamtsumme "
+        "entsprechen dem aktuellen Stand dieses Angebots."
+        "</div>"
+    )
     footer_details = "<div style='margin-top:24px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#555'>" + html.escape(company_details)
     if legal_details:
         footer_details += "<br>" + html.escape(legal_details)
     footer_details += "</div>"
-    outro = ("<div style='margin-top:18px'>" + outro + "</div>" if outro else "") + footer_details
+    outro = ("<div style='margin-top:18px'>" + outro + "</div>" if outro else "") + document_note + footer_details
 '''
 if detail_anchor in text:
     text = text.replace(detail_anchor, detail_block, 1)
@@ -174,7 +180,12 @@ if 'self.assertIn("ENTWURF · Angebotsvorschau", views)' not in test_text:
     if anchor not in test_text:
         raise RuntimeError("Phase 5 quote PDF richness test anchor missing")
     test_text = test_text.replace(anchor, anchor + '        self.assertIn("ENTWURF · Angebotsvorschau", views)\n        self.assertIn("Steuernummer/USt.-ID:", views)\n', 1)
+if 'self.assertIn("Dokumenthinweis:", views)' not in test_text:
+    anchor = '        self.assertIn("Steuernummer/USt.-ID:", views)\n'
+    if anchor not in test_text:
+        raise RuntimeError("Phase 5 quote document-note test anchor missing")
+    test_text = test_text.replace(anchor, anchor + '        self.assertIn("Dokumenthinweis:", views)\n', 1)
 test_path.write_text(test_text, encoding="utf-8")
 compile(test_text, str(test_path), "exec")
 
-print("ToolTime Phase 5 Angebots-PDF-Kompatibilität: Entwurfsvorschau enthält Kunde, Projekt, Kalkulation und Geschäftsangaben; E-Mail-Versand bleibt finalisierungspflichtig.")
+print("ToolTime Phase 5 Angebots-PDF-Kompatibilität: Entwurfsvorschau enthält Kunde, Projekt, Kalkulation, Dokumenthinweis und Geschäftsangaben; E-Mail-Versand bleibt finalisierungspflichtig.")
