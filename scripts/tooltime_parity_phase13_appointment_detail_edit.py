@@ -112,20 +112,6 @@ def patch_urls(module) -> None:
     compile(text, str(ROOT / rel), "exec")
 
 
-def patch_field_detail_context(module) -> None:
-    rel = "erp/field_authorization_views.py"
-    text = module.read(rel)
-    missing_old = '        return render(request, "rebuild/appointment_detail.html", {"event": event, "project_missing": True})'
-    missing_new = '        return render(request, "rebuild/appointment_detail.html", {"event": event, "project_missing": True, "can_edit_schedule": not _is_field_user(request)})'
-    text = _replace_once(text, missing_old, missing_new, "project-missing detail edit permission")
-
-    context_anchor = '        "pricing_modes": [("fixed", "Festpreis"), ("estimate", "Kostenschätzung / Budgetfreigabe"), ("hourly", "Nach Aufwand")],\n'
-    context_new = context_anchor + '        "can_edit_schedule": not _is_field_user(request),\n'
-    text = _replace_once(text, context_anchor, context_new, "detail edit permission context")
-    module.write(rel, text)
-    compile(text, str(ROOT / rel), "exec")
-
-
 def patch_form_template(module) -> None:
     rel = "templates/rebuild/appointment_form.html"
     text = module.read(rel)
@@ -169,7 +155,7 @@ def patch_detail_template(module) -> None:
     rel = "templates/rebuild/appointment_detail.html"
     text = module.read(rel)
     anchor = '''{% if event.project %}<a class="nx-btn" href="{% url 'next-project-detail' event.project.pk %}">Projekt</a>{% endif %}</div></div>'''
-    replacement = '''{% if event.project %}<a class="nx-btn" href="{% url 'next-project-detail' event.project.pk %}">Projekt</a>{% endif %}{% if can_edit_schedule %}<a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-edit' event.pk %}">Termin bearbeiten</a>{% endif %}</div></div>'''
+    replacement = '''{% if event.project %}<a class="nx-btn" href="{% url 'next-project-detail' event.project.pk %}">Projekt</a>{% endif %}{% if request.user.profile.role != 'technician' and not request.user.profile.is_mobile_worker %}<a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-edit' event.pk %}">Termin bearbeiten</a>{% endif %}</div></div>'''
     text = _replace_once(text, anchor, replacement, "appointment detail edit CTA")
     module.write(rel, text)
 
@@ -184,7 +170,7 @@ from django.test import Client, TestCase
 from django.urls import resolve, reverse
 from django.utils import timezone
 
-from erp.models import CalendarEvent, Customer, Employee, Organization, Project, UserProfile
+from erp.models import CalendarEvent, Customer, Employee, Organization, Project
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -331,6 +317,9 @@ class ToolTimePhase13AppointmentEditTests(TestCase):
         response = tech_client.get(reverse("next-appointment-edit", args=[self.event.pk]))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("next-appointment-detail", args=[self.event.pk]))
+        detail = tech_client.get(reverse("next-appointment-detail", args=[self.event.pk]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertNotContains(detail, "Termin bearbeiten")
 
     def test_detail_exposes_edit_action_to_office_only(self):
         response = self.client.get(reverse("next-appointment-detail", args=[self.event.pk]))
@@ -351,7 +340,8 @@ class ToolTimePhase13AppointmentEditContractTests(TestCase):
             "Einsatzdokumentation öffnen",
         ):
             self.assertIn(marker, form)
-        self.assertIn("can_edit_schedule", detail)
+        self.assertIn("request.user.profile.role != 'technician'", detail)
+        self.assertIn("next-appointment-edit", detail)
         self.assertIn("def appointment_edit(request, pk):", views)
         self.assertIn("updated.created_by = event.created_by or request.user", views)
         self.assertIn("next-appointment-edit", urls)
@@ -363,7 +353,6 @@ class ToolTimePhase13AppointmentEditContractTests(TestCase):
 def run(module) -> None:
     patch_backend(module)
     patch_urls(module)
-    patch_field_detail_context(module)
     patch_form_template(module)
     patch_detail_template(module)
     install_tests(module)
@@ -372,7 +361,6 @@ def run(module) -> None:
     urls = module.read("erp/rebuild_urls.py")
     form = module.read("templates/rebuild/appointment_form.html")
     detail = module.read("templates/rebuild/appointment_detail.html")
-    field_views = module.read("erp/field_authorization_views.py")
     for marker in (
         "def appointment_edit(request, pk):",
         'organization=org,\n                archived=False,\n                pk=requested_project_id',
@@ -387,10 +375,8 @@ def run(module) -> None:
     for marker in ("data-appointment-mode", "Termin bearbeiten", "Einsatzdokumentation öffnen"):
         if marker not in form:
             raise RuntimeError(f"Phase 13 form guard missing: {marker}")
-    for marker in ("can_edit_schedule", "next-appointment-edit", "Termin bearbeiten"):
+    for marker in ("request.user.profile.role != 'technician'", "next-appointment-edit", "Termin bearbeiten"):
         if marker not in detail:
             raise RuntimeError(f"Phase 13 detail guard missing: {marker}")
-    if field_views.count('"can_edit_schedule": not _is_field_user(request)') < 2:
-        raise RuntimeError("Phase 13 field detail permission context is incomplete")
 
     print(f"{MARKER}: office-only scheduler edit, real CalendarEvent/team persistence and operational-detail handoff installed.")
