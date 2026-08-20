@@ -78,6 +78,9 @@ views_path.write_text(views_text, encoding="utf-8")
 # and the quote-PDF HTML itself contains multiline string delimiters.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_source_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_communication.py"), run_name="__main__")
+# Draft offers keep the established PDF-preview contract, while e-mail delivery
+# remains server-side restricted to finalized offers.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_quote_preview_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py"), run_name="__main__")
 
 for rel in (
