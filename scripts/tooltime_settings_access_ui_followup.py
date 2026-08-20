@@ -179,9 +179,15 @@ def authenticate_field_browser_smoke() -> None:
 
     block = r'''            # A+BAU COMMERCIAL SETTINGS FIELD DENIAL BROWSER SMOKE
             # A+BAU FIELD AUTHENTICATED SESSION SETUP
+            import os as _field_os
             import secrets as _field_secrets
             from django.contrib.auth import get_user_model as _field_get_user_model
 
+            # Playwright's synchronous facade runs over an event loop. Django
+            # therefore blocks synchronous ORM calls inside this smoke context by
+            # default. This flag exists only in the isolated smoke-test process;
+            # the application server/runtime remains unchanged.
+            _field_os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
             _FieldUser = _field_get_user_model()
             _field_user = (
                 _FieldUser.objects.select_related("profile")
@@ -268,6 +274,8 @@ def final_guard() -> None:
         raise RuntimeError("Field browser smoke is not authenticated before testing Konto and Settings denial")
     if 'page.context.clear_cookies()' not in smoke or '_field_profile.is_mobile_worker = True' not in smoke:
         raise RuntimeError("Field browser smoke authentication setup is incomplete")
+    if 'DJANGO_ALLOW_ASYNC_UNSAFE' not in smoke:
+        raise RuntimeError("Field browser smoke does not allow isolated synchronous ORM setup inside Playwright")
     compile(tests, str(ROOT / "tests/test_commercial_settings_access_ui_contract.py"), "exec")
     compile(smoke, str(ROOT / "scripts/production_browser_smoke.py"), "exec")
 
