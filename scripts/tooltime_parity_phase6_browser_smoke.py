@@ -3,6 +3,54 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Phase 6 deliberately exposes Jinja-style-looking communication variables to the
+# user (for example: two opening braces + company_name + two closing braces).
+# Those tokens must be shown as plain text, never parsed by Django's own template
+# engine. The live-preview JavaScript must avoid literal double-brace tokens too.
+settings_path = ROOT / "templates/rebuild/tooltime_settings.html"
+settings_text = settings_path.read_text(encoding="utf-8")
+for variable in (
+    "company_name",
+    "customer_name",
+    "document_number",
+    "quote_number",
+    "invoice_number",
+    "project_name",
+    "date",
+    "time",
+    "address",
+):
+    settings_text = settings_text.replace(
+        "<code>{{ '{{ " + variable + " }}' }}</code>",
+        "<code>&#123;&#123; " + variable + " &#125;&#125;</code>",
+    )
+
+settings_text = settings_text.replace(
+    "  {{ organization.name|default:'Firma'|json_script:'phase6-company-name' }}\n",
+    "  const senderNameInput = root.querySelector('input[name=\"sender_name\"]');\n",
+)
+settings_text = settings_text.replace(
+    "  const values = {company_name:'Firma',",
+    "  const values = {company_name:(senderNameInput && (senderNameInput.value || senderNameInput.placeholder)) || 'Firma',",
+)
+settings_text = settings_text.replace(
+    "  const companyNode = document.getElementById('phase6-company-name'); if (companyNode) { try { values.company_name = JSON.parse(companyNode.textContent); } catch (_) {} }\n",
+    "",
+)
+settings_text = settings_text.replace(
+    "  const render = raw => { let out = raw || ''; Object.entries(values).forEach(([key,value]) => { out = out.split('{{ '+key+' }}').join(value).split('{{'+key+'}}').join(value).split('{'+key+'}').join(value); }); return out; };\n",
+    "  const render = raw => { const open2=String.fromCharCode(123,123), close2=String.fromCharCode(125,125); let out=raw || ''; Object.entries(values).forEach(([key,value]) => { out=out.split(open2+' '+key+' '+close2).join(value).split(open2+key+close2).join(value).split('{'+key+'}').join(value); }); return out; };\n",
+)
+
+# Guard the assembled source itself: no Phase-6 UI literal may accidentally be a
+# Django variable token after the normalization above.
+for variable in ("company_name", "customer_name", "document_number", "quote_number", "invoice_number", "project_name", "date", "time", "address"):
+    bad = "{{ '{{ " + variable + " }}' }}"
+    if bad in settings_text:
+        raise RuntimeError(f"Phase 6 Django-template literal is still unsafe: {variable}")
+settings_path.write_text(settings_text, encoding="utf-8")
+
 REL = "scripts/production_browser_smoke.py"
 path = ROOT / REL
 text = path.read_text(encoding="utf-8")
@@ -52,4 +100,4 @@ if marker not in text:
 
 path.write_text(text, encoding="utf-8")
 compile(text, str(path), "exec")
-print("ToolTime Phase 6 Browser-Smoke installiert: Kommunikationsfelder, Live-Vorschau und SMS-160-Zeichen-Guard werden im echten DOM geprüft.")
+print("ToolTime Phase 6 Browser-Smoke installiert: Django-sichere Variablenanzeige, Live-Vorschau und SMS-160-Zeichen-Guard werden geprüft.")
