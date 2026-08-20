@@ -73,8 +73,10 @@ if mail_count != 1:
     raise RuntimeError("ToolTime-Parität: Mahnmail-Reparaturanker wurde im finalen View nicht gefunden.")
 views_path.write_text(views_text, encoding="utf-8")
 
-# Phase 5 owns the real post-finalization communication workflow. It runs after
-# the generated Mahnmail repair so its final-view validation sees valid Python.
+# Phase 5 owns the real post-finalization communication workflow. The tiny source
+# repair runs first because this repository assembles generated Python from scripts
+# and the quote-PDF HTML itself contains multiline string delimiters.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_source_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_communication.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py"), run_name="__main__")
 
