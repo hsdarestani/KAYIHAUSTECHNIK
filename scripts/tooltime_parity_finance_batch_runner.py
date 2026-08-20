@@ -89,9 +89,9 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_communication_settings.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_browser_smoke.py"), run_name="__main__")
 
-# Phase 7 connects the operational and commercial chain end-to-end. It adds an
-# immutable Auftragsbestätigung between accepted quote and invoice, propagates
-# project state and hardens all core commercial mutations against field-role POSTs.
+# Phase 7 connects the operational and commercial chain end-to-end. The source
+# repair runs first because the patcher itself embeds PDF HTML inside Python code.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_source_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
