@@ -48,6 +48,12 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_migration_alignment.py"),
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_browser_smoke.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_legacy_contract_bridge.py"), run_name="__main__")
 
+# Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
+# Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
+editor_path = ROOT / "templates" / "rebuild" / "document_editor.html"
+editor_text = editor_path.read_text(encoding="utf-8").replace("B&amp;O-Position suchen", "B&O-Position suchen")
+editor_path.write_text(editor_text, encoding="utf-8")
+
 # Die Abschluss-Erweiterung setzt den Mahnmail-Text in einen generierten Python-
 # String ein. In einem normalen Triple-String würden dabei \n-Sequenzen zu echten
 # Zeilenumbrüchen innerhalb des f-Strings und damit zu ungültigem Python. Repariere
