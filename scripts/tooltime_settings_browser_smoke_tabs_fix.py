@@ -180,7 +180,10 @@ def run() -> None:
     # Field/mobile account shell is applied after every Settings/browser patch so
     # no earlier compatibility layer can hide the technician profile/logout menu.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_field_account_shell_fix.py"), run_name="__main__")
-    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst und Mitarbeiter-Topbar/Logout wiederhergestellt.")
+    # Physical-device follow-up: isolate profile interaction from the large cached
+    # app bundle and verify the actual screen hit target after the shell exists.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_field_profile_runtime_fix.py"), run_name="__main__")
+    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst und Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt.")
 
 
 if __name__ == "__main__":
