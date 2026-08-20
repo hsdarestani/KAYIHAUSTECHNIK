@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -175,7 +176,11 @@ def run() -> None:
             raise RuntimeError(f"Tabbed commercial-settings smoke contract missing: {required}")
     if "card.matches('[data-phase2-documents],[data-phase2-tax]')" not in settings:
         raise RuntimeError("Stable Phase-2 finance category mapping missing")
-    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert und Browser-Interaktionen an fünf Tabs angepasst.")
+
+    # Field/mobile account shell is applied after every Settings/browser patch so
+    # no earlier compatibility layer can hide the technician profile/logout menu.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_field_account_shell_fix.py"), run_name="__main__")
+    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst und Mitarbeiter-Topbar/Logout wiederhergestellt.")
 
 
 if __name__ == "__main__":
