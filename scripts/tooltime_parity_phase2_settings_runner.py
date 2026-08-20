@@ -56,4 +56,15 @@ assignment_pos = service_text.find(assignment, service_text.find("def save_docum
 if assignment_pos < 0 or save_pos < 0 or assignment_pos > save_pos:
     raise RuntimeError("Phase 2 legal standard attachments are not persisted by the document save flow")
 
+# A former convenience fallback forced every quote web view back to True whenever
+# the current value was False. That would make the new global ToolTime default
+# impossible to disable. Keep token generation, but respect the actual saved
+# web_view_enabled value produced by the Phase-2 settings.
+force_web = '''    if meta.pk and kind == "quote" and not meta.web_view_enabled:\n        meta.web_view_enabled = True\n'''
+if force_web in service_text:
+    service_text = service_text.replace(force_web, "", 1)
+if force_web in service_text:
+    raise RuntimeError("Phase 2 quote web-view setting is still being forced on")
+service_path.write_text(service_text, encoding="utf-8")
+
 print("ToolTime Phase 2 Runner: Nummern, DATEV, Rechtsanhänge und Dokumentstandards sind im Runtime-Flow verbunden.")
