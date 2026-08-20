@@ -39,10 +39,10 @@ def patch_detail(module) -> None:
 
     css_tag = "<link rel=\"stylesheet\" href=\"{% static 'css/tooltime-phase14-appointment-detail.css' %}?v=20260821-1\">\n"
     if "tooltime-phase14-appointment-detail.css" not in text:
-        anchor = "<link rel=\"stylesheet\" href=\"{% static 'css/field-authorization.css' %}?v=20260810-1\">"
+        anchor = "{% load static %}\n"
         if anchor not in text:
-            raise RuntimeError("Phase 14 detail stylesheet anchor missing")
-        text = text.replace(anchor, css_tag + anchor, 1)
+            raise RuntimeError("Phase 14 stable static-loader anchor missing")
+        text = text.replace(anchor, anchor + css_tag, 1)
     module.write(rel, text)
 
 
