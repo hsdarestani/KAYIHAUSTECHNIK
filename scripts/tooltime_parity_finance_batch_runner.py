@@ -109,6 +109,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay_smoke_context_fix.py"
 # information architecture after every parity phase so later generators cannot
 # re-expose the route or restore the long single-column settings wall.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_fix.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_followup.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
