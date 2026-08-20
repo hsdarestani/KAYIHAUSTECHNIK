@@ -58,7 +58,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_external_js.py"), 
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_browser_smoke.py"), run_name="__main__")
 # Phase 3 owns the real document editor workflow: direct customer documents,
 # group actions, mixed positions, discount quantities, quote status and transfer.
-runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase3_editor.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase3_editor_runner.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
