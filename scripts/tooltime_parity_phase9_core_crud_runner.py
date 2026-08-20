@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
 import re
+import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,11 +10,15 @@ MARKER = "A+BAU TOOLTIME PHASE 9 CORE CRUD BROWSER SMOKE"
 
 
 def load_phase9():
-    spec = importlib.util.spec_from_file_location("tooltime_parity_phase9_core_crud_module", SOURCE)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("Phase 9 module could not be loaded")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    text = SOURCE.read_text(encoding="utf-8")
+    tail = "\npatch_forms_and_views()\ninstall_templates_and_css()\ninstall_tests()\npatch_browser_smoke()\nguard()\n"
+    cut = text.rfind(tail)
+    if cut < 0:
+        raise RuntimeError("Phase 9 executable tail was not found")
+    definitions = text[:cut]
+    module = types.ModuleType("tooltime_parity_phase9_core_crud_module")
+    module.__file__ = str(SOURCE)
+    exec(compile(definitions, str(SOURCE), "exec"), module.__dict__)
     return module
 
 
