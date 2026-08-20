@@ -21,12 +21,24 @@ if new_help not in text:
         raise RuntimeError("Phase 3 quick-create: Hilfsaktionen-Anker fehlt")
     text = text.replace(old_help, new_help, 1)
 
+# The existing completion JS binds the live project selector via
+# [data-project-preview]. Phase 3 also uses [data-project-select] for its own
+# customer/project synchronization. Keep both attributes on the same real select so
+# quick-created projects are inserted, selected and reflected in the address preview.
+old_project_selector = 'name="project" data-project-select>'
+new_project_selector = 'name="project" data-project-select data-project-preview>'
+if new_project_selector not in text:
+    if old_project_selector not in text:
+        raise RuntimeError("Phase 3 quick-create: Projektselektor-Anker fehlt")
+    text = text.replace(old_project_selector, new_project_selector, 1)
+
 # The existing ToolTime completion layer already installs both real creation
 # endpoints, modals and AJAX submit handlers. Phase 3 must preserve those controls
 # when replacing the customer/project header instead of falling back to dead UI.
 for required in (
     'data-new-customer',
     'data-new-project',
+    'data-project-preview',
     "next-quick-customer-create",
     "next-quick-project-create",
     'data-customer-modal',
@@ -36,4 +48,4 @@ for required in (
         raise RuntimeError(f"Phase 3 quick-create contract missing: {required}")
 
 path.write_text(text, encoding="utf-8")
-print("ToolTime Phase 3 Schnellanlage wiederhergestellt: Kunde und Projekt öffnen die bestehenden echten Schnellanlage-Flows.")
+print("ToolTime Phase 3 Schnellanlage wiederhergestellt: Kunde und Projekt öffnen die bestehenden echten Schnellanlage-Flows und bleiben mit der Projektauswahl synchron.")
