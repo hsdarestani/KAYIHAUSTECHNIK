@@ -17,6 +17,17 @@ if old_open in patcher:
 if old_close in patcher:
     patcher = patcher.replace(old_close, new_close, 1)
 
+# A raw f-string is correct for the regex pattern, but not for its replacement:
+# `\"next-quotes\"` would be emitted literally into the generated Python file.
+# Keep the regex backreference escaped while letting the normal f-string turn the
+# quoted redirect name into valid Python source.
+bad_role_replacement = r'''            rf"\1    phase7_guard = _phase7_commercial_guard(request, \"{redirect_name}\")\n"'''
+good_role_replacement = r'''            f"\\1    phase7_guard = _phase7_commercial_guard(request, \"{redirect_name}\")\n"'''
+if bad_role_replacement in patcher:
+    patcher = patcher.replace(bad_role_replacement, good_role_replacement, 1)
+if bad_role_replacement in patcher:
+    raise RuntimeError("Phase 7 source repair: raw role-guard replacement remains")
+
 # invoice_dunning is assembled into tooltime_parity_views.py, not the helper model
 # module. Make the Phase-7 patcher's own dunning step a verification step so it no
 # longer depends on the historical location/format of that endpoint.
@@ -54,14 +65,11 @@ if "Mahnungen sind nur für Büro" not in views:
         views = views[:start] + segment.replace(semicolon_line, replacement, 1) + views[window_end:]
     else:
         org_pos = views.find(plain_org_line, start, window_end)
-        invoice_pos = views.find(invoice_line, start, window_end)
         if org_pos < 0:
             raise RuntimeError("Phase 7 source repair: invoice_dunning organization anchor missing")
         insert_at = org_pos + len(plain_org_line)
         views = views[:insert_at] + guard + views[insert_at:]
-        # The invoice lookup may be farther down after comments/guards; requiring
-        # it before insertion is unnecessary because the function already compiled.
     compile(views, str(views_path), "exec")
     views_path.write_text(views, encoding="utf-8")
 
-print("ToolTime Phase 7 source repair: PDF delimiter and final dunning endpoint role guard are assembly-tolerant.")
+print("ToolTime Phase 7 source repair: PDF delimiter, role-guard escaping and final dunning endpoint are assembly-tolerant.")
