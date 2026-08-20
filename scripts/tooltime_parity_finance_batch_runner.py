@@ -60,6 +60,10 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_browser_smoke.py")
 # group actions, mixed positions, discount quantities, quote status and transfer.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase3_editor_runner.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase3_quick_create_fix.py"), run_name="__main__")
+# Phase 4 owns commercial document lifecycle after creation: list filtering,
+# dynamic payment states, partial payments and dunning actions.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase4_lifecycle.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase4_browser_smoke.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
@@ -90,4 +94,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Texte/Layout, Einstellungen und Phase-3-Dokumenteditor sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Texte/Layout, Einstellungen sowie Phase-3-Editor und Phase-4-Dokument-Lifecycle sind funktional verbunden.")
