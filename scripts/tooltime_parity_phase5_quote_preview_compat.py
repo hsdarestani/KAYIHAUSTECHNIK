@@ -8,14 +8,15 @@ views_path = ROOT / "erp" / "tooltime_parity_views.py"
 text = views_path.read_text(encoding="utf-8")
 
 # Phase 5 may run after earlier layers already expanded the django.http import.
-# Normalize that import semantically, but keep the PDF view self-contained too so
-# future assembly layers cannot accidentally remove its response dependency.
+# Normalize that import semantically. Quote previews are byte-backed because the
+# PDF payload is already materialized; canonical invoice/document downloads may
+# continue using FileResponse where streaming is useful.
 http_lines = [line for line in text.splitlines() if line.startswith("from django.http import ")]
 if not http_lines:
     raise RuntimeError("Phase 5 django.http import anchor missing")
 http_line = http_lines[0]
 http_names = [name.strip() for name in http_line.removeprefix("from django.http import ").split(",") if name.strip()]
-for required in ("FileResponse", "Http404", "JsonResponse"):
+for required in ("FileResponse", "Http404", "HttpResponse", "JsonResponse"):
     if required not in http_names:
         http_names.append(required)
 text = text.replace(http_line, "from django.http import " + ", ".join(sorted(set(http_names))), 1)
@@ -41,7 +42,7 @@ old_quote_pdf = '''def quote_pdf(request, pk):
     try:
         payload = _phase5_quote_pdf_bytes(quote)
 '''
-new_quote_pdf = '''def quote_pdf(request, pk):
+old_quote_pdf_local_stream = '''def quote_pdf(request, pk):
     from django.http import FileResponse
 
     org = _org(request)
@@ -51,12 +52,7 @@ new_quote_pdf = '''def quote_pdf(request, pk):
         # it is never eligible for the e-mail delivery workflow below.
         payload = _phase5_quote_pdf_bytes(quote, require_finalized=False)
 '''
-if old_quote_pdf in text:
-    text = text.replace(old_quote_pdf, new_quote_pdf, 1)
-elif new_quote_pdf not in text:
-    # The preview compatibility may already be present from an earlier run. Ensure
-    # the view still owns the import locally instead of trusting global import order.
-    existing_quote_pdf = '''def quote_pdf(request, pk):
+new_quote_pdf = '''def quote_pdf(request, pk):
     org = _org(request)
     quote = get_object_or_404(m.Quote, organization=org, pk=pk)
     try:
@@ -64,9 +60,23 @@ elif new_quote_pdf not in text:
         # it is never eligible for the e-mail delivery workflow below.
         payload = _phase5_quote_pdf_bytes(quote, require_finalized=False)
 '''
-    if existing_quote_pdf not in text:
-        raise RuntimeError("Phase 5 quote-preview route anchor missing")
-    text = text.replace(existing_quote_pdf, new_quote_pdf, 1)
+if old_quote_pdf in text:
+    text = text.replace(old_quote_pdf, new_quote_pdf, 1)
+elif old_quote_pdf_local_stream in text:
+    text = text.replace(old_quote_pdf_local_stream, new_quote_pdf, 1)
+elif new_quote_pdf not in text:
+    raise RuntimeError("Phase 5 quote-preview route anchor missing")
+
+old_quote_response = '''    return FileResponse(io.BytesIO(payload), as_attachment=True, content_type="application/pdf", filename=f"angebot-{quote.number or quote.pk}.pdf")
+'''
+new_quote_response = '''    response = HttpResponse(payload, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="angebot-{quote.number or quote.pk}.pdf"'
+    return response
+'''
+if old_quote_response in text:
+    text = text.replace(old_quote_response, new_quote_response, 1)
+elif new_quote_response not in text:
+    raise RuntimeError("Phase 5 quote PDF response anchor missing")
 
 views_path.write_text(text, encoding="utf-8")
 compile(text, str(views_path), "exec")
@@ -85,11 +95,16 @@ test_text = test_text.replace(
     'self.assertIn("Der Versand ist erst nach dem Fertigstellen des Angebots verfügbar.", views)\n        self.assertIn("_phase5_quote_pdf_bytes(quote, require_finalized=False)", views)',
     1,
 )
-if 'self.assertIn("from django.http import FileResponse", views)' not in test_text:
+test_text = test_text.replace(
+    '        self.assertIn("from django.http import FileResponse", views)\n',
+    '        self.assertIn("HttpResponse(payload, content_type=\\"application/pdf\\")", views)\n',
+    1,
+)
+if 'self.assertIn("HttpResponse(payload, content_type=\\"application/pdf\\")", views)' not in test_text:
     anchor = '        self.assertIn("_phase5_quote_pdf_bytes(quote, require_finalized=False)", views)\n'
     if anchor not in test_text:
-        raise RuntimeError("Phase 5 quote FileResponse test anchor missing")
-    test_text = test_text.replace(anchor, anchor + '        self.assertIn("from django.http import FileResponse", views)\n', 1)
+        raise RuntimeError("Phase 5 quote HttpResponse test anchor missing")
+    test_text = test_text.replace(anchor, anchor + '        self.assertIn("HttpResponse(payload, content_type=\\"application/pdf\\")", views)\n', 1)
 test_path.write_text(test_text, encoding="utf-8")
 compile(test_text, str(test_path), "exec")
 
