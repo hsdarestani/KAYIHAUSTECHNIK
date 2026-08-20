@@ -95,6 +95,11 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_ui_language_fix.py
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_source_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"), run_name="__main__")
 
+# A+Bau Pay closes the outstanding ToolTime-Pay parity gap after the complete
+# operational flow is installed: provider checkout/webhooks, QR, payouts and
+# automatic dunning are layered on the final invoice/payment endpoints.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay.py"), run_name="__main__")
+
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
 # or earlier compatibility patches. Keep this immediately before final compile.
@@ -118,9 +123,10 @@ for rel in (
     "erp/tooltime_parity_views.py",
     "erp/tooltime_parity_finance.py",
     "erp/services/tooltime_parity_finance.py",
+    "erp/services/tooltime_pay.py",
     "erp/templatetags/tooltime_parity.py",
 ):
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Phase 1–7 inklusive Auftragsbestätigung, Rollenprüfung, Dokument-Lifecycle, canonical PDF, echtem E-Mail-Versand und Kommunikation sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Phase 1–7 plus A+Bau Pay inklusive Provider-Checkout/Webhook, QR, Auszahlungen, automatischem Mahnwesen, Auftragsbestätigung, Rollenprüfung, canonical PDF und echter Kommunikation sind funktional verbunden.")
