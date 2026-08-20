@@ -95,3 +95,4 @@ else:
 # Phase 8 is intentionally chained after Pay so it patches the final commercial
 # source tree and the already-correct authenticated office browser-smoke surface.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase8_online_acceptance.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase8_smoke_sync_fix.py"), run_name="__main__")
