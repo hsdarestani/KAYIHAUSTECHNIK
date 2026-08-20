@@ -53,6 +53,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_route_guard.py"), run_nam
 # Screenshot-Batch 1 is completed in explicit phases. Phase 1 owns text-template
 # management and document layout after all older commercial/UI patches finished.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_text_layout.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_import_fix.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
