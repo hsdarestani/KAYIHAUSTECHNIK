@@ -7,6 +7,25 @@ REL = "scripts/production_browser_smoke.py"
 path = ROOT / REL
 text = path.read_text(encoding="utf-8")
 
+# page.content() HTML-escapes visible ampersands (for example "Texte & Layout"
+# becomes "Texte &amp; Layout"). Test user-visible copy against body.inner_text as
+# well so the smoke remains strict without producing false negatives for valid DOM.
+old_assert = '''    html = page.content()
+    for marker in markers:
+        if marker not in html:
+            fail(f"{path} is missing {marker!r}")
+'''
+new_assert = '''    html = page.content()
+    visible_text = page.locator("body").inner_text()
+    for marker in markers:
+        if marker not in html and marker not in visible_text:
+            fail(f"{path} is missing {marker!r}")
+'''
+if new_assert not in text:
+    if old_assert not in text:
+        raise RuntimeError("ToolTime-Browser-Smoke: assert_page-Anker fehlt.")
+    text = text.replace(old_assert, new_assert, 1)
+
 if '"/quotes/new/"' not in text:
     quote_line = '                ("/quotes/", ("Angebote", "Neues Angebot")),\n'
     if quote_line not in text:
@@ -76,4 +95,4 @@ text = text.replace(
     'print("A+Bau Browser-Smoke bestanden: Büro, Projekte, Termine, Außendienst sowie ToolTime-paritäre Angebote, Rechnungen, Artikelsuche und Einstellungen.")',
 )
 path.write_text(text, encoding="utf-8")
-print("ToolTime-Finanz-Browser-Smoke installiert.")
+print("ToolTime-Finanz-Browser-Smoke installiert: DOM-sichere Textprüfung plus echte Interaktionen.")
