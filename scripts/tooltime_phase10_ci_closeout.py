@@ -96,16 +96,22 @@ def _patch_template(module) -> None:
             raise RuntimeError("Phase 10 CI closeout after-save anchor missing")
         text = text.replace(old, new, 1)
 
+    # Keep the German-only browser/UI contract: "Wizard" is an English label.
+    text = text.replace("Kein Wizard:", "Kein Assistent:")
     module.write(rel, text)
 
 
 def _install_runtime_tests(module) -> None:
     rel = "tests/test_tooltime_phase10_appointment_runtime.py"
-    test = r'''from django.contrib.auth.models import User
+    test = r'''from datetime import timedelta
+
+from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from erp.models import Organization, UserProfile
+from erp import rebuild_views
+from erp.models import CalendarEvent, Organization, UserProfile
 
 
 class ToolTimePhase10AppointmentRuntimeTests(TestCase):
@@ -135,6 +141,30 @@ class ToolTimePhase10AppointmentRuntimeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-initial-customer=""')
         self.assertContains(response, 'data-initial-project=""')
+
+    def test_valid_minimal_post_creates_real_calendar_event(self):
+        form = rebuild_views.AppointmentForm(organization=self.org)
+        start = timezone.localtime().replace(second=0, microsecond=0) + timedelta(hours=1)
+        end = start + timedelta(hours=1)
+        data = {
+            "title": "Phase 10 echter Termin",
+            "starts_at": start.strftime("%Y-%m-%dT%H:%M"),
+            "ends_at": end.strftime("%Y-%m-%dT%H:%M"),
+        }
+        for name, field in form.fields.items():
+            if not field.required or name in data:
+                continue
+            choices = list(getattr(field, "choices", []) or [])
+            usable = [value for value, _label in choices if str(value) != ""]
+            if usable:
+                data[name] = str(usable[0])
+            else:
+                data[name] = "Test"
+
+        response = self.client.post(reverse("next-appointment-create"), data)
+        self.assertEqual(response.status_code, 302)
+        event = CalendarEvent.objects.get(organization=self.org, title="Phase 10 echter Termin")
+        self.assertEqual(event.created_by, self.user)
 '''
     module.write(rel, test)
     compile(test, str(ROOT / rel), "exec")
@@ -160,10 +190,13 @@ def run(module) -> None:
         'data-initial-customer="{{ selected_customer_id|default:\'\' }}"',
         'data-initial-project="{{ selected_project_id|default:\'\' }}"',
         "Nach dem Speichern",
+        "Kein Assistent",
     ):
         if marker not in template:
             raise RuntimeError(f"Phase 10 CI closeout template marker missing: {marker}")
     if "request.POST.customer_filter" in template or "request.GET.customer" in template:
         raise RuntimeError("Phase 10 CI closeout left unsafe QueryDict template access")
+    if "Wizard" in template:
+        raise RuntimeError("Phase 10 CI closeout left English Wizard copy in German appointment UI")
 
-    print(f"{MARKER}: safe scoped preselection, bound POST validation and browser-safe empty GET restored.")
+    print(f"{MARKER}: safe scoped preselection, real submit coverage and browser-safe German appointment creation restored.")
