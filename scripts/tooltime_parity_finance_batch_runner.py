@@ -88,6 +88,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py")
 # organization-scoped ToolTimeCommercialProfile JSON. Provider secrets stay in ENV.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_communication_settings.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_browser_smoke.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_ui_language_fix.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
