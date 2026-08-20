@@ -217,7 +217,7 @@ def run() -> None:
     guard()
     # Phase 9 is intentionally chained after the final mobile/profile shell so
     # customer/project creation remains the last owner of the core CRUD UX.
-    runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase9_core_crud.py"), run_name="__main__")
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase9_core_crud_runner.py"), run_name="__main__")
     print(f"{MARKER}: cache-unabhängiger Profil-Touch-Handler, echter Hit-Test und mobile Pointer-Sicherheit installiert.")
 
 
