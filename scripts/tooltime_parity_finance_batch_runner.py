@@ -54,6 +54,7 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_import_fix.py"), r
 # Phase 2 owns numbering, DATEV, legal standard attachments and all commercial
 # defaults visible in the ToolTime Angebot-&-Rechnung settings screenshots.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_settings_runner.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_browser_smoke.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
