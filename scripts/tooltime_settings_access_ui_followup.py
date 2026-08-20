@@ -153,12 +153,102 @@ def strengthen_browser_smoke() -> None:
     compile(text, str(ROOT / rel), "exec")
 
 
+def authenticate_field_browser_smoke() -> None:
+    """Run the field denial checks as a real authenticated employee.
+
+    Konto is intentionally login-protected. The historical field smoke reaches
+    its final block anonymously, so expecting a 200 there would test the wrong
+    thing. Log in a temporary technician through the real login form, verify the
+    personal page, then verify the commercial Settings URL still returns 403.
+    User password/role/mobile flags are restored even when an assertion fails.
+    """
+    rel = "scripts/production_browser_smoke.py"
+    text = read(rel)
+    marker = "            # A+BAU COMMERCIAL SETTINGS FIELD DENIAL BROWSER SMOKE\n"
+    auth_marker = "            # A+BAU FIELD AUTHENTICATED SESSION SETUP\n"
+    close = "            context.close()\n"
+    if auth_marker in text:
+        return
+
+    start = text.find(marker)
+    if start < 0:
+        raise RuntimeError("Commercial settings field browser marker missing")
+    end = text.find(close, start)
+    if end < 0:
+        raise RuntimeError("Commercial settings field browser context close missing")
+
+    block = r'''            # A+BAU COMMERCIAL SETTINGS FIELD DENIAL BROWSER SMOKE
+            # A+BAU FIELD AUTHENTICATED SESSION SETUP
+            import secrets as _field_secrets
+            from django.contrib.auth import get_user_model as _field_get_user_model
+
+            _FieldUser = _field_get_user_model()
+            _field_user = (
+                _FieldUser.objects.select_related("profile")
+                .filter(is_active=True, profile__isnull=False)
+                .exclude(is_superuser=True)
+                .order_by("pk")
+                .first()
+            )
+            if _field_user is None:
+                fail("Technician browser smoke could not find an active employee account")
+            _field_profile = _field_user.profile
+            _field_old_role = str(getattr(_field_profile, "role", "") or "")
+            _field_old_mobile = bool(getattr(_field_profile, "is_mobile_worker", False))
+            _field_old_password = _field_user.password
+            _field_password = "KayiFieldSmoke-" + _field_secrets.token_urlsafe(18)
+            _field_profile.role = "technician"
+            _field_profile.is_mobile_worker = True
+            _field_profile.save(update_fields=["role", "is_mobile_worker"])
+            _field_user.set_password(_field_password)
+            _field_user.save(update_fields=["password"])
+            try:
+                # Start from a genuinely anonymous browser and authenticate via
+                # Django's real login endpoint instead of forging a browser cookie.
+                page.context.clear_cookies()
+                login_response = page.goto(urljoin(base_url, "login/"), wait_until="domcontentloaded", timeout=30_000)
+                if login_response is None or login_response.status != 200:
+                    fail(f"Technician login page returned {login_response.status if login_response else 'no response'}")
+                page.fill('input[name="username"]', _field_user.username)
+                page.fill('input[name="password"]', _field_password)
+                with page.expect_navigation(wait_until="domcontentloaded", timeout=30_000):
+                    page.click('button[type="submit"], button.btn-primary')
+                if "/login/" in page.url:
+                    fail("Technician browser smoke could not establish an authenticated session")
+
+                response = page.goto(urljoin(base_url, "konto/"), wait_until="domcontentloaded", timeout=30_000)
+                if response is None or response.status != 200:
+                    fail(f"Technician safe account page returned {response.status if response else 'no response'}")
+                if page.locator('[data-safe-account-page]').count() != 1:
+                    fail("Technician Konto no longer resolves to the safe personal account page")
+                if "Zahlungen & Mahnwesen" in page.locator('body').inner_text():
+                    fail("Technician personal account page leaks commercial settings content")
+
+                response = page.goto(urljoin(base_url, "settings/next/"), wait_until="domcontentloaded", timeout=30_000)
+                if response is None or response.status != 403:
+                    fail(f"Technician direct commercial-settings URL must return 403, got {response.status if response else 'no response'}")
+                if page.locator('[data-commercial-settings-shell]').count() != 0:
+                    fail("Technician 403 response leaked the commercial settings shell")
+            finally:
+                _field_user.password = _field_old_password
+                _field_user.save(update_fields=["password"])
+                _field_profile.role = _field_old_role
+                _field_profile.is_mobile_worker = _field_old_mobile
+                _field_profile.save(update_fields=["role", "is_mobile_worker"])
+
+'''
+    text = text[:start] + block + text[end:]
+    write(rel, text)
+    compile(text, str(ROOT / rel), "exec")
+
+
 def final_guard() -> None:
     views = read("erp/tooltime_parity_views.py")
     base = read("templates/rebuild/base.html")
     settings = read("templates/rebuild/tooltime_settings.html")
     urls = read("erp/rebuild_urls.py")
     tests = read("tests/test_commercial_settings_access_ui_contract.py")
+    smoke = read("scripts/production_browser_smoke.py")
     if 'if bool(getattr(profile, "is_mobile_worker", False)):' not in views:
         raise RuntimeError("Field/mobile-worker override is not enforced on commercial settings")
     for forbidden in (
@@ -174,7 +264,12 @@ def final_guard() -> None:
         raise RuntimeError("Legacy settings heading cleanup is missing")
     if "base.split(\"{% url 'next-settings' %}\")" in tests:
         raise RuntimeError("Faulty navigation contract assertion survived follow-up")
+    if "A+BAU FIELD AUTHENTICATED SESSION SETUP" not in smoke:
+        raise RuntimeError("Field browser smoke is not authenticated before testing Konto and Settings denial")
+    if 'page.context.clear_cookies()' not in smoke or '_field_profile.is_mobile_worker = True' not in smoke:
+        raise RuntimeError("Field browser smoke authentication setup is incomplete")
     compile(tests, str(ROOT / "tests/test_commercial_settings_access_ui_contract.py"), "exec")
+    compile(smoke, str(ROOT / "scripts/production_browser_smoke.py"), "exec")
 
 
 def run() -> None:
@@ -182,9 +277,10 @@ def run() -> None:
     clean_legacy_page_heading()
     fix_contract_test()
     strengthen_browser_smoke()
+    authenticate_field_browser_smoke()
     final_guard()
     compile(read("erp/tooltime_parity_views.py"), str(ROOT / "erp/tooltime_parity_views.py"), "exec")
-    print(f"{MARKER}: Mobile Mitarbeiter werden explizit ausgeschlossen, Navigationstest korrigiert und alter Seitentitel entfernt.")
+    print(f"{MARKER}: Mobile Mitarbeiter explizit ausgeschlossen, Mitarbeiter-Browser-Session authentifiziert, Navigationstest korrigiert und alter Seitentitel entfernt.")
 
 
 if __name__ == "__main__":
