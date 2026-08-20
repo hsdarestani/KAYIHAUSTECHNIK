@@ -86,6 +86,11 @@ if mail_count != 1:
     raise RuntimeError("ToolTime-Parität: Mahnmail-Reparaturanker wurde im finalen View nicht gefunden.")
 views_path.write_text(views_text, encoding="utf-8")
 
+# Phase 5 is intentionally installed after the generated Mahnmail repair because it
+# compiles the final view. It owns real finalized-PDF download/e-mail delivery and
+# the delivery audit trail without weakening frozen German invoice originals.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_communication.py"), run_name="__main__")
+
 for rel in (
     "erp/tooltime_parity_views.py",
     "erp/tooltime_parity_finance.py",
@@ -94,4 +99,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Texte/Layout, Einstellungen sowie Phase-3-Editor und Phase-4-Dokument-Lifecycle sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Phase 1–5 inklusive Dokument-Lifecycle, canonical PDF und echtem E-Mail-Versand sind funktional verbunden.")
