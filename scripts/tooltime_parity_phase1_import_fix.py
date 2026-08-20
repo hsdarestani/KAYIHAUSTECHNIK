@@ -40,6 +40,8 @@ for needle in ("from django.http import", "HttpResponseBadRequest", "require_POS
     if needle not in text:
         raise RuntimeError(f"Phase 1 required import missing after patch: {needle}")
 
+# Syntax compilation intentionally happens in tooltime_parity_finance_batch_runner.py
+# after its historical Mahnmail newline repair. Compiling here would inspect the
+# intermediate generated view too early.
 path.write_text(text, encoding="utf-8")
-compile(text, str(path), "exec")
 print("ToolTime Phase 1 imports installed: POST-only template actions and bad-request handling are available.")
