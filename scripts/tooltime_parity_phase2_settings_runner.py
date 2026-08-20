@@ -30,4 +30,30 @@ text = text.replace(
 compile(text, str(SOURCE), "exec")
 namespace = {"__name__": "__main__", "__file__": str(SOURCE), "__package__": None}
 exec(compile(text, str(SOURCE), "exec"), namespace)
-print("ToolTime Phase 2 Runner: Einstellungen werden unabhängig vom Phase-1-Layout installiert.")
+
+# Phase 2 adds service helpers after the original ToolTime view module has already
+# been generated. Wire the helper explicitly into that module so the saved settings
+# are the authoritative source at runtime, not just data persisted in the profile.
+views_path = ROOT / "erp" / "tooltime_parity_views.py"
+views_text = views_path.read_text(encoding="utf-8")
+old_import = "from .services.tooltime_parity_finance import allocate_number, finalize_quote, invoice_type_allowed, meta_for, money, profile_for, save_document_meta, sync_position_extras"
+new_import = "from .services.tooltime_parity_finance import allocate_number, finalize_quote, invoice_type_allowed, meta_for, money, phase2_settings, profile_for, save_document_meta, sync_position_extras"
+if new_import not in views_text:
+    if old_import not in views_text:
+        raise RuntimeError("Phase 2 runtime service import anchor missing")
+    views_text = views_text.replace(old_import, new_import, 1)
+views_path.write_text(views_text, encoding="utf-8")
+
+# Standard AGB/Widerruf attachments are recalculated while a draft is edited and
+# save_document_meta persists the whole model instance. Guard that the assignment is
+# still placed before the real meta.save() call so a changed global default reaches
+# an existing draft instead of only newly created documents.
+service_path = ROOT / "erp" / "services" / "tooltime_parity_finance.py"
+service_text = service_path.read_text(encoding="utf-8")
+assignment = "meta.default_attachment_ids = default_legal_attachment_ids(document.organization, kind)"
+save_pos = service_text.find("    meta.save()", service_text.find("def save_document_meta"))
+assignment_pos = service_text.find(assignment, service_text.find("def save_document_meta"))
+if assignment_pos < 0 or save_pos < 0 or assignment_pos > save_pos:
+    raise RuntimeError("Phase 2 legal standard attachments are not persisted by the document save flow")
+
+print("ToolTime Phase 2 Runner: Nummern, DATEV, Rechtsanhänge und Dokumentstandards sind im Runtime-Flow verbunden.")
