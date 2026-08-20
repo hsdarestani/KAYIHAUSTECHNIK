@@ -91,6 +91,10 @@ def strengthen_browser_smoke() -> None:
         if marker not in text:
             raise RuntimeError("Authenticated technician Konto browser-smoke anchor missing")
         extra = marker + r'''                # A+BAU FIELD TOPBAR LOGOUT BROWSER SMOKE
+                # Reproduce the actual phone layout that originally hid the profile
+                # control instead of validating only the desktop DOM.
+                page.set_viewport_size({"width": 390, "height": 844})
+                page.wait_for_timeout(160)
                 topbar = page.locator('header.nx-topbar')
                 if topbar.count() != 1 or not topbar.is_visible():
                     fail("Technician mobile app topbar is missing on Konto")
@@ -101,15 +105,18 @@ def strengthen_browser_smoke() -> None:
                 profile_menu = page.locator('[data-profile-menu]')
                 if profile_menu.count() != 1 or not profile_menu.is_visible():
                     fail("Technician profile menu does not open")
-                if profile_menu.get_by_text("Abmelden", exact=True).count() != 1:
-                    fail("Technician profile menu has no logout action")
-                if profile_menu.get_by_text("Konto", exact=True).count() != 1:
+                logout_form = profile_menu.locator('form[action$="/konto/abmelden/"]')
+                if logout_form.count() != 1 or logout_form.locator('button[type="submit"]').count() != 1:
+                    fail("Technician profile menu has no secure POST logout action")
+                konto_link = profile_menu.locator('a[href$="/konto/"]')
+                if konto_link.count() != 1:
                     fail("Technician profile menu has no safe Konto link")
-                if profile_menu.get_by_text("Einstellungen", exact=True).count() != 0:
+                if profile_menu.locator('a[href$="/settings/next/"]').count() != 0:
                     fail("Technician profile menu still exposes company settings")
                 profile_toggle.click()
-                if page.locator('[data-account-logout]').count() != 1:
-                    fail("Technician Konto page has no direct logout fallback")
+                direct_logout = page.locator('[data-account-logout]')
+                if direct_logout.count() != 1 or direct_logout.get_attribute("method").lower() != "post":
+                    fail("Technician Konto page has no direct secure logout fallback")
 '''
         text = text.replace(marker, extra, 1)
     write(rel, text)
@@ -144,11 +151,13 @@ class FieldAccountShellContractTests(SimpleTestCase):
         self.assertIn("{% url 'next-logout' %}", account)
         self.assertIn("{% csrf_token %}", account)
 
-    def test_browser_smoke_covers_topbar_profile_and_settings_absence(self):
+    def test_browser_smoke_covers_real_mobile_topbar_and_logout_routes(self):
         smoke = (ROOT / "scripts/production_browser_smoke.py").read_text(encoding="utf-8")
         self.assertIn("A+BAU FIELD TOPBAR LOGOUT BROWSER SMOKE", smoke)
-        self.assertIn("profile_menu.get_by_text(\"Abmelden\", exact=True)", smoke)
-        self.assertIn("profile_menu.get_by_text(\"Einstellungen\", exact=True).count() != 0", smoke)
+        self.assertIn('page.set_viewport_size({"width": 390, "height": 844})', smoke)
+        self.assertIn('form[action$="/konto/abmelden/"]', smoke)
+        self.assertIn('a[href$="/konto/"]', smoke)
+        self.assertIn('a[href$="/settings/next/"]', smoke)
 ''')
 
 
@@ -173,6 +182,8 @@ def guard() -> None:
         raise RuntimeError("Account/logout route missing from final assembly")
     if "A+BAU FIELD TOPBAR LOGOUT BROWSER SMOKE" not in smoke:
         raise RuntimeError("Field topbar/logout browser smoke missing")
+    if 'page.set_viewport_size({"width": 390, "height": 844})' not in smoke:
+        raise RuntimeError("Field topbar/logout smoke is not validating the mobile viewport")
     compile(smoke, str(ROOT / "scripts/production_browser_smoke.py"), "exec")
     compile(read("tests/test_field_account_shell_contract.py"), str(ROOT / "tests/test_field_account_shell_contract.py"), "exec")
 
