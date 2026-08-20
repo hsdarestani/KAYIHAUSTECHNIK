@@ -24,8 +24,6 @@ text, count = pattern.subn("\n" + replacement + "\n", text, count=1)
 if count != 1:
     raise RuntimeError("ToolTime-Parität: Mahnungs-HTML-Reparaturanker wurde nicht gefunden.")
 
-# Das generierte View-Modul benutzt ein echtes datetime.timedelta und verlässt
-# sich nicht auf einen nicht garantierten Alias im Django-timezone-Modul.
 text = text.replace(
     "from decimal import Decimal\n\nfrom django.contrib import messages",
     "from decimal import Decimal\nfrom datetime import timedelta\n\nfrom django.contrib import messages",
@@ -50,10 +48,14 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_legacy_contract_bridge.py
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_final_ui_safety.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_draft_render_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_route_guard.py"), run_name="__main__")
-# Screenshot-Batch 1 is completed in explicit phases. Phase 1 owns text-template
-# management and document layout after all older commercial/UI patches finished.
+# Screenshot-Batch 1 is completed in explicit phases.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_text_layout.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_import_fix.py"), run_name="__main__")
+# Phase 2 owns numbering, DATEV, legal standard attachments and all commercial
+# defaults visible in the ToolTime Angebot-&-Rechnung settings screenshots.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_settings_runner.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_external_js.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase2_browser_smoke.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
@@ -84,4 +86,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Mahnwesen, Routen, Texte/Layout und generierte Python-Module sind syntaktisch gültig.")
+print("ToolTime-Finalprüfung erfolgreich: Texte/Layout sowie Angebots- und Rechnungseinstellungen sind funktional verbunden.")
