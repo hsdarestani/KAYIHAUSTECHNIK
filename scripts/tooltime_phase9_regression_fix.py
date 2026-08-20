@@ -118,6 +118,9 @@ def project_create(request):
             ).first()
 
     initial = {"priority": "normal"}
+    if source_appointment is not None:
+        initial["title"] = source_appointment.title
+        initial["description"] = source_appointment.notes
     requested_customer = request.GET.get("customer")
     if requested_customer and m.Customer.objects.filter(
         organization=org, active=True, pk=requested_customer
@@ -138,7 +141,13 @@ def project_create(request):
         form.save_m2m()
         if source_appointment is not None:
             source_appointment.project = project
-            source_appointment.save(update_fields=["project"])
+            source_appointment.save()
+            messages.success(
+                request,
+                "Projekt angelegt und Termin automatisch zugeordnet. "
+                "Kundenfreigabe und Einsatzdokumentation sind jetzt verfügbar.",
+            )
+            return redirect("next-appointment-detail", pk=source_appointment.pk)
         messages.success(request, "Projekt wurde angelegt.")
         return redirect("next-project-detail", pk=project.pk)
 
