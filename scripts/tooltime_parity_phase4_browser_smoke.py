@@ -9,9 +9,12 @@ text = path.read_text(encoding="utf-8")
 
 marker = "# A+BAU PHASE 4 LIFECYCLE BROWSER SMOKE"
 if marker not in text:
-    anchor = '''            if page_errors:\n                fail("browser page errors: " + " | ".join(page_errors[:8]))\n'''
+    # Earlier ToolTime/browser patches can move the page-error guard. The final
+    # browser context close is stable and keeps this check inside the authenticated
+    # Playwright session without depending on historical smoke layout.
+    anchor = "            context.close()\n"
     if anchor not in text:
-        raise RuntimeError("Phase 4 browser-smoke insertion anchor missing")
+        raise RuntimeError("Phase 4 browser-smoke final context anchor missing")
     block = r'''            # A+BAU PHASE 4 LIFECYCLE BROWSER SMOKE
             response = page.goto(urljoin(base_url, "quotes/"), wait_until="domcontentloaded", timeout=30_000)
             if response is None or response.status >= 500:
