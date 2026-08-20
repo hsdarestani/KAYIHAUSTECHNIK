@@ -46,3 +46,28 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_invoice_wizard.py"), run_
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pdf_layout_bridge_runner.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_migration_alignment.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_browser_smoke.py"), run_name="__main__")
+
+# Die Abschluss-Erweiterung setzt den Mahnmail-Text in einen generierten Python-
+# String ein. In einem normalen Triple-String würden dabei \n-Sequenzen zu echten
+# Zeilenumbrüchen innerhalb des f-Strings und damit zu ungültigem Python. Repariere
+# exakt diesen generierten Block und validiere danach die finalen Python-Module.
+views_path = ROOT / "erp" / "tooltime_parity_views.py"
+views_text = views_path.read_text(encoding="utf-8")
+broken_mail = re.compile(
+    r'body=f"Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie \{heading\.lower\(\)\} zu Rechnung \{invoice\.number\}\.\n\nMit freundlichen Grüßen\n\{org\.name\}"'
+)
+fixed_mail = r'body=f"Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie {heading.lower()} zu Rechnung {invoice.number}.\n\nMit freundlichen Grüßen\n{org.name}"'
+views_text, mail_count = broken_mail.subn(lambda _match: fixed_mail, views_text, count=1)
+if mail_count != 1:
+    raise RuntimeError("ToolTime-Parität: Mahnmail-Reparaturanker wurde im finalen View nicht gefunden.")
+views_path.write_text(views_text, encoding="utf-8")
+
+for rel in (
+    "erp/tooltime_parity_views.py",
+    "erp/tooltime_parity_finance.py",
+    "erp/services/tooltime_parity_finance.py",
+):
+    path = ROOT / rel
+    compile(path.read_text(encoding="utf-8"), str(path), "exec")
+
+print("ToolTime-Finalprüfung erfolgreich: Mahnwesen und generierte Python-Module sind syntaktisch gültig.")
