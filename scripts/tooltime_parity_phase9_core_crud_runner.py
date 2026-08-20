@@ -4,6 +4,7 @@ import re
 import types
 from pathlib import Path
 
+import tooltime_phase9_ci_closeout as ci_closeout
 import tooltime_phase9_regression_fix as regression_fix
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,7 +48,7 @@ def robust_patch_browser_smoke(module) -> None:
     text = replace_office_check(
         text,
         "/projects/new/",
-        '("/projects/new/", ("Neues Projekt", "Kunde auswählen", "Abweichenden Ausführungsort verwenden", "＋ Erstellen")),',
+        '("/projects/new/", ("Neues Projekt", "Kunde suchen", "Abweichenden Ausführungsort verwenden", "＋ Erstellen")),',
     )
 
     if MARKER not in text:
@@ -108,9 +109,10 @@ def run() -> None:
     module.install_templates_and_css()
     module.install_tests()
     regression_fix.run(module)
+    ci_closeout.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
-    print("A+BAU TOOLTIME PHASE 9 CORE CRUD RUNNER 2026-08-20: route-basierter Browser-Smoke ist gegen frühere Text-/UI-Overlays stabilisiert; regression overlay applied.")
+    print("A+BAU TOOLTIME PHASE 9 CORE CRUD RUNNER 2026-08-20: route-basierter Browser-Smoke ist gegen frühere Text-/UI-Overlays stabilisiert; regression and CI closeout overlays applied.")
 
 
 if __name__ == "__main__":
