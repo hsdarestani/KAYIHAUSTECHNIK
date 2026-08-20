@@ -83,6 +83,13 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_communication.py")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_quote_preview_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py"), run_name="__main__")
 
+# Phase 6 completes communication preferences without adding another settings
+# model: sender/reply-to/templates and the SMS provider live in the existing
+# organization-scoped ToolTimeCommercialProfile JSON. Provider secrets stay in ENV.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_communication_settings.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_browser_smoke.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_ui_language_fix.py"), run_name="__main__")
+
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
 # or earlier compatibility patches. Keep this immediately before final compile.
@@ -106,8 +113,9 @@ for rel in (
     "erp/tooltime_parity_views.py",
     "erp/tooltime_parity_finance.py",
     "erp/services/tooltime_parity_finance.py",
+    "erp/templatetags/tooltime_parity.py",
 ):
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Phase 1–5 inklusive Dokument-Lifecycle, canonical PDF und echtem E-Mail-Versand sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Phase 1–6 inklusive Dokument-Lifecycle, canonical PDF, echtem E-Mail-Versand und konfigurierbarer Kommunikation sind funktional verbunden.")
