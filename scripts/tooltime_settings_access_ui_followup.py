@@ -87,17 +87,27 @@ def fix_contract_test() -> None:
         self.assertIn("data-safe-account-page", account)
         self.assertNotIn('<span class="nx-ico">◎</span>Konto</a>', base.split("{% url 'next-settings' %}")[0] if "{% url 'next-settings' %}" in base else "")
 '''
-    new = '''        self.assertIn("{% url 'next-account' %}", base)
+    broken = '''        self.assertIn("{% url 'next-account' %}", base)
         self.assertIn("data-safe-account-page", account)
         self.assertIn('href="{% url \'next-account\' %}"><span class="nx-ico">◎</span>Konto</a>', base)
         self.assertIn('href="{% url \'next-account\' %}"><span>◎</span>Konto</a>', base)
         self.assertNotIn('href="{% url \'next-settings\' %}"><span class="nx-ico">◎</span>Konto</a>', base)
         self.assertNotIn('href="{% url \'next-settings\' %}"><span>◎</span>Konto</a>', base)
 '''
+    new = '''        self.assertIn("{% url 'next-account' %}", base)
+        self.assertIn("data-safe-account-page", account)
+        self.assertIn("""href="{% url 'next-account' %}"><span class="nx-ico">◎</span>Konto</a>""", base)
+        self.assertIn("""href="{% url 'next-account' %}"><span>◎</span>Konto</a>""", base)
+        self.assertNotIn("""href="{% url 'next-settings' %}"><span class="nx-ico">◎</span>Konto</a>""", base)
+        self.assertNotIn("""href="{% url 'next-settings' %}"><span>◎</span>Konto</a>""", base)
+'''
     if new not in text:
-        if old not in text:
-            raise RuntimeError("Commercial settings faulty navigation assertion anchor changed")
-        text = text.replace(old, new, 1)
+        if broken in text:
+            text = text.replace(broken, new, 1)
+        elif old in text:
+            text = text.replace(old, new, 1)
+        else:
+            raise RuntimeError("Commercial settings navigation assertion anchor changed")
 
     old_guard_assert = '''        self.assertIn('return role in {"owner", "admin", "office", "accounting"}', views)
         self.assertNotIn('return role in {"owner", "admin", "office", "project_manager", "accounting"}', views)
@@ -118,6 +128,10 @@ def fix_contract_test() -> None:
             raise RuntimeError("Commercial settings UI assertion anchor changed")
         text = text.replace(ui_assert, ui_extra, 1)
     write(rel, text)
+    # This test file is generated during assembly. Compile it here so malformed
+    # quoting or future patch drift fails the assembly step instead of wasting a
+    # complete Django test run.
+    compile(text, str(ROOT / rel), "exec")
 
 
 def strengthen_browser_smoke() -> None:
@@ -160,6 +174,7 @@ def final_guard() -> None:
         raise RuntimeError("Legacy settings heading cleanup is missing")
     if "base.split(\"{% url 'next-settings' %}\")" in tests:
         raise RuntimeError("Faulty navigation contract assertion survived follow-up")
+    compile(tests, str(ROOT / "tests/test_commercial_settings_access_ui_contract.py"), "exec")
 
 
 def run() -> None:
