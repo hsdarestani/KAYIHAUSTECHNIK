@@ -28,6 +28,16 @@ if bad_role_replacement in patcher:
 if bad_role_replacement in patcher:
     raise RuntimeError("Phase 7 source repair: raw role-guard replacement remains")
 
+# The contract test must inspect the endpoint that actually owns the guard. The
+# first implementation targeted tooltime_parity_finance.py, but the assembled
+# invoice_dunning endpoint lives in tooltime_parity_views.py.
+old_dunning_assert = "        self.assertIn('Mahnungen sind nur für Büro', finance)"
+new_dunning_assert = "        self.assertIn('Mahnungen sind nur für Büro', views)"
+if old_dunning_assert in patcher:
+    patcher = patcher.replace(old_dunning_assert, new_dunning_assert, 1)
+if old_dunning_assert in patcher:
+    raise RuntimeError("Phase 7 source repair: stale dunning contract target remains")
+
 # invoice_dunning is assembled into tooltime_parity_views.py, not the helper model
 # module. Make the Phase-7 patcher's own dunning step a verification step so it no
 # longer depends on the historical location/format of that endpoint.
@@ -72,4 +82,4 @@ if "Mahnungen sind nur für Büro" not in views:
     compile(views, str(views_path), "exec")
     views_path.write_text(views, encoding="utf-8")
 
-print("ToolTime Phase 7 source repair: PDF delimiter, role-guard escaping and final dunning endpoint are assembly-tolerant.")
+print("ToolTime Phase 7 source repair: PDF delimiter, role-guard escaping, dunning endpoint and contract target are assembly-tolerant.")
