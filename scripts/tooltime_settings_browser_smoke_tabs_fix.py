@@ -18,6 +18,28 @@ def write(rel: str, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_settings_categories() -> None:
+    """Classify generated Settings cards by stable data markers before titles.
+
+    The Phase-2 documents card was renamed to "Webansicht & Zahlungsbedingungen".
+    Title-only classification therefore sent it to the fallback master category,
+    making the finance controls invisible even when Finanzen was selected. Stable
+    data markers are the correct contract for generated cards whose headings evolve.
+    """
+    rel = "templates/rebuild/tooltime_settings.html"
+    text = read(rel)
+    marker = "card.matches('[data-phase2-documents],[data-phase2-tax]')"
+    if marker not in text:
+        anchor = "    const title=(card.querySelector('h2')?.textContent||card.querySelector('.tt-section-title')?.textContent||'').trim();\n"
+        if anchor not in text:
+            raise RuntimeError("Commercial settings category function anchor missing")
+        stable = anchor + "    if(card.matches('[data-phase2-numbering],[data-phase2-datev],[data-phase2-legal-documents]'))return 'master';\n    if(card.matches('[data-phase2-documents],[data-phase2-tax]'))return 'finance';\n    if(card.matches('[data-phase6-communication]'))return 'communication';\n"
+        text = text.replace(anchor, stable, 1)
+    if marker not in text:
+        raise RuntimeError("Phase-2 finance cards were not mapped to Finanzen")
+    write(rel, text)
+
+
 def patch_phase2_interactions(text: str) -> str:
     """Make historical Phase-2 interaction checks tab-aware.
 
@@ -139,8 +161,10 @@ def patch_smoke() -> None:
 
 
 def run() -> None:
+    patch_settings_categories()
     patch_smoke()
     smoke = read("scripts/production_browser_smoke.py")
+    settings = read("templates/rebuild/tooltime_settings.html")
     for required in (
         "A+BAU COMMERCIAL SETTINGS FINANCE TAB BROWSER SMOKE",
         "A+BAU PHASE2 MASTER TAB SETUP",
@@ -149,7 +173,9 @@ def run() -> None:
     ):
         if required not in smoke:
             raise RuntimeError(f"Tabbed commercial-settings smoke contract missing: {required}")
-    print(f"{MARKER}: generischer Settings-Check und Phase-2-Interaktionen an die fünf Tabs angepasst.")
+    if "card.matches('[data-phase2-documents],[data-phase2-tax]')" not in settings:
+        raise RuntimeError("Stable Phase-2 finance category mapping missing")
+    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert und Browser-Interaktionen an fünf Tabs angepasst.")
 
 
 if __name__ == "__main__":
