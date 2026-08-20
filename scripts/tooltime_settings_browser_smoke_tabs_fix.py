@@ -18,6 +18,51 @@ def write(rel: str, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_phase2_interactions(text: str) -> str:
+    """Make historical Phase-2 interaction checks tab-aware.
+
+    The old smoke predates the five-tab information architecture and directly
+    fills controls that are now intentionally hidden until their category is
+    active. Keep the real interaction checks, but activate the owning tab first.
+    """
+    master_marker = "            # A+BAU PHASE2 MASTER TAB SETUP\n"
+    finance_marker = "            # A+BAU PHASE2 FINANCE TAB SETUP\n"
+
+    quote_fill = '            quote_prefix.fill("ANG-")\n'
+    if master_marker not in text:
+        pos = text.find(quote_fill)
+        if pos < 0:
+            raise RuntimeError("Phase-2 quote-prefix interaction anchor missing")
+        block = r'''            # A+BAU PHASE2 MASTER TAB SETUP
+            phase2_master_tab = page.locator('[data-commercial-settings-tab="master"]')
+            if phase2_master_tab.count() != 1:
+                fail("Phase 2 settings smoke cannot find Stammdaten & Recht tab")
+            phase2_master_tab.click()
+            page.wait_for_timeout(120)
+            if phase2_master_tab.get_attribute("aria-selected") != "true":
+                fail("Phase 2 settings smoke could not activate Stammdaten & Recht")
+'''
+        text = text[:pos] + block + text[pos:]
+
+    payment_select = '            payment_mode.select_option("custom")\n'
+    if finance_marker not in text:
+        pos = text.find(payment_select)
+        if pos < 0:
+            raise RuntimeError("Phase-2 payment-mode interaction anchor missing")
+        block = r'''            # A+BAU PHASE2 FINANCE TAB SETUP
+            phase2_finance_tab = page.locator('[data-commercial-settings-tab="finance"]')
+            if phase2_finance_tab.count() != 1:
+                fail("Phase 2 settings smoke cannot find Finanzen tab")
+            phase2_finance_tab.click()
+            page.wait_for_timeout(120)
+            if phase2_finance_tab.get_attribute("aria-selected") != "true":
+                fail("Phase 2 settings smoke could not activate Finanzen")
+'''
+        text = text[:pos] + block + text[pos:]
+
+    return text
+
+
 def patch_smoke() -> None:
     rel = "scripts/production_browser_smoke.py"
     text = read(rel)
@@ -48,7 +93,11 @@ def patch_smoke() -> None:
     elif new_double not in before_finance_block and new_single not in before_finance_block:
         raise RuntimeError("Legacy settings finance marker was not found in office smoke")
 
-    # Recalculate anchors after the replacement above.
+    # Preserve the old Phase-2 fill/select checks, but make them operate on the
+    # same tabs a real office user now sees.
+    text = patch_phase2_interactions(text)
+
+    # Recalculate anchors after the replacements above.
     office_start = text.find("def run_office_surface(")
     field_start = text.find("\ndef run_field_surface(", office_start)
     office = text[office_start:field_start]
@@ -92,11 +141,15 @@ def patch_smoke() -> None:
 def run() -> None:
     patch_smoke()
     smoke = read("scripts/production_browser_smoke.py")
-    if "A+BAU COMMERCIAL SETTINGS FINANCE TAB BROWSER SMOKE" not in smoke:
-        raise RuntimeError("Tabbed commercial-settings smoke was not installed")
-    if "Dokumente & Finanzen konfigurieren" not in smoke:
-        raise RuntimeError("Visible commercial-settings shell marker was not installed")
-    print(f"{MARKER}: generischer Settings-Check an Tabs angepasst und Finanzen per echtem Browser-Klick geprüft.")
+    for required in (
+        "A+BAU COMMERCIAL SETTINGS FINANCE TAB BROWSER SMOKE",
+        "A+BAU PHASE2 MASTER TAB SETUP",
+        "A+BAU PHASE2 FINANCE TAB SETUP",
+        "Dokumente & Finanzen konfigurieren",
+    ):
+        if required not in smoke:
+            raise RuntimeError(f"Tabbed commercial-settings smoke contract missing: {required}")
+    print(f"{MARKER}: generischer Settings-Check und Phase-2-Interaktionen an die fünf Tabs angepasst.")
 
 
 if __name__ == "__main__":
