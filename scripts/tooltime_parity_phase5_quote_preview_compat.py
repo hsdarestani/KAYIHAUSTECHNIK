@@ -48,6 +48,8 @@ detail_block = '''    intro = html.escape(str(getattr(quote, "intro_text", "") o
     org = quote.organization
     project = getattr(quote, "project", None)
     project_label = " · ".join(filter(None, [str(getattr(project, "number", "") or ""), str(getattr(project, "title", "") or "")]))
+    price_source = getattr(project, "price_source", None) if project else None
+    price_basis = str(getattr(price_source, "name", "") or "")
     document_number = quote.number or meta.final_number or "ENTWURF"
     draft_notice = "" if meta.finalized_at else (
         "<div style='margin:0 0 16px;padding:9px 12px;border:1px solid #d6b15e;background:#fff8e8'>"
@@ -57,7 +59,9 @@ detail_block = '''    intro = html.escape(str(getattr(quote, "intro_text", "") o
     )
     customer_details = "<br>".join(filter(None, [
         html.escape(str(customer_name)),
+        ("Kundennummer: " + html.escape(str(getattr(customer, "number", "")))) if customer and getattr(customer, "number", "") else "",
         html.escape(str(getattr(customer, "company", "") or "")) if customer and getattr(customer, "company", "") != customer_name else "",
+        ("USt-IdNr.: " + html.escape(str(getattr(customer, "vat_id", "")))) if customer and getattr(customer, "vat_id", "") else "",
         html.escape(str(getattr(customer, "email", "") or "")) if customer else "",
         html.escape(str(getattr(customer, "phone", "") or getattr(customer, "mobile", "") or "")) if customer else "",
     ]))
@@ -77,6 +81,7 @@ detail_block = '''    intro = html.escape(str(getattr(quote, "intro_text", "") o
         + "<td style='vertical-align:top;width:55%'><strong>Kunde</strong><br>" + customer_details + ("<br>" + html.escape(address) if address else "") + "</td>"
         + "<td style='vertical-align:top'><strong>Dokument</strong><br>Nr.: " + html.escape(str(document_number))
         + ("<br>Projekt: " + html.escape(project_label) if project_label else "")
+        + ("<br>Preisgrundlage: " + html.escape(price_basis) if price_basis else "")
         + f"<br>Datum: {quote.issue_date:%d.%m.%Y}</td></tr></table>"
     )
     intro = context_block + ("<div style='margin:0 0 16px'>" + intro + "</div>" if intro else "")
@@ -89,6 +94,7 @@ detail_block = '''    intro = html.escape(str(getattr(quote, "intro_text", "") o
     footer_details = "<div style='margin-top:24px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#555'>" + html.escape(company_details)
     if legal_details:
         footer_details += "<br>" + html.escape(legal_details)
+    footer_details += "<br>Alle Beträge in EUR."
     footer_details += "</div>"
     outro = ("<div style='margin-top:18px'>" + outro + "</div>" if outro else "") + document_note + footer_details
 '''
@@ -185,7 +191,12 @@ if 'self.assertIn("Dokumenthinweis:", views)' not in test_text:
     if anchor not in test_text:
         raise RuntimeError("Phase 5 quote document-note test anchor missing")
     test_text = test_text.replace(anchor, anchor + '        self.assertIn("Dokumenthinweis:", views)\n', 1)
+if 'self.assertIn("Kundennummer:", views)' not in test_text:
+    anchor = '        self.assertIn("Dokumenthinweis:", views)\n'
+    if anchor not in test_text:
+        raise RuntimeError("Phase 5 quote commercial-details test anchor missing")
+    test_text = test_text.replace(anchor, anchor + '        self.assertIn("Kundennummer:", views)\n        self.assertIn("Preisgrundlage:", views)\n', 1)
 test_path.write_text(test_text, encoding="utf-8")
 compile(test_text, str(test_path), "exec")
 
-print("ToolTime Phase 5 Angebots-PDF-Kompatibilität: Entwurfsvorschau enthält Kunde, Projekt, Kalkulation, Dokumenthinweis und Geschäftsangaben; E-Mail-Versand bleibt finalisierungspflichtig.")
+print("ToolTime Phase 5 Angebots-PDF-Kompatibilität: Entwurfsvorschau enthält Kunde, Kundennummer, Projekt, Preisgrundlage, Kalkulation, Dokumenthinweis und Geschäftsangaben; E-Mail-Versand bleibt finalisierungspflichtig.")
