@@ -83,6 +83,25 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_communication.py")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_quote_preview_compat.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py"), run_name="__main__")
 
+# Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
+# be imported in the actual generated view regardless of historical import shape
+# or earlier compatibility patches. Keep this immediately before final compile.
+views_path = ROOT / "erp" / "tooltime_parity_views.py"
+views_text = views_path.read_text(encoding="utf-8")
+http_lines = [line for line in views_text.splitlines() if line.startswith("from django.http import ")]
+if not http_lines:
+    raise RuntimeError("ToolTime Phase 5 final django.http import missing")
+http_line = http_lines[0]
+http_names = [name.strip() for name in http_line.removeprefix("from django.http import ").split(",") if name.strip()]
+for required in ("FileResponse", "Http404", "JsonResponse"):
+    if required not in http_names:
+        http_names.append(required)
+normalized_http_line = "from django.http import " + ", ".join(sorted(set(http_names)))
+views_text = views_text.replace(http_line, normalized_http_line, 1)
+if "FileResponse" not in normalized_http_line:
+    raise RuntimeError("ToolTime Phase 5 FileResponse import guard failed")
+views_path.write_text(views_text, encoding="utf-8")
+
 for rel in (
     "erp/tooltime_parity_views.py",
     "erp/tooltime_parity_finance.py",
