@@ -6,6 +6,7 @@ from pathlib import Path
 
 import tooltime_parity_phase10_appointments as phase10
 import tooltime_parity_phase11_appointment_views as phase11
+import tooltime_parity_phase12_appointment_map as phase12
 import tooltime_phase10_ci_closeout as phase10_closeout
 import tooltime_phase9_ci_closeout as ci_closeout
 import tooltime_phase9_regression_fix as regression_fix
@@ -148,9 +149,10 @@ def run() -> None:
     phase10.run(module)
     phase10_closeout.run(module)
     phase11.run(module)
+    phase12.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
-    print("A+BAU TOOLTIME PHASE 9/10/11 RUNNER 2026-08-21: core CRUD, appointment creation and real calendar/list planning views layered into final assembly.")
+    print("A+BAU TOOLTIME PHASE 9/10/11/12 RUNNER 2026-08-21: core CRUD, appointment creation, real calendar/list planning and on-demand address map layered into final assembly.")
 
 
 if __name__ == "__main__":
