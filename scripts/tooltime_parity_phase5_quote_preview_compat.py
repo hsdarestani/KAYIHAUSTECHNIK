@@ -7,6 +7,19 @@ ROOT = Path(__file__).resolve().parents[1]
 views_path = ROOT / "erp" / "tooltime_parity_views.py"
 text = views_path.read_text(encoding="utf-8")
 
+# Phase 5 may run after earlier layers already expanded the django.http import.
+# Normalize that import semantically so FileResponse is always available for the
+# quote PDF preview route without depending on one exact historical line.
+http_lines = [line for line in text.splitlines() if line.startswith("from django.http import ")]
+if not http_lines:
+    raise RuntimeError("Phase 5 django.http import anchor missing")
+http_line = http_lines[0]
+http_names = [name.strip() for name in http_line.removeprefix("from django.http import ").split(",") if name.strip()]
+for required in ("FileResponse", "Http404", "JsonResponse"):
+    if required not in http_names:
+        http_names.append(required)
+text = text.replace(http_line, "from django.http import " + ", ".join(sorted(set(http_names))), 1)
+
 old_helper = '''def _phase5_quote_pdf_bytes(quote):
     meta = meta_for(quote, "quote", create=False)
     if not meta or not meta.finalized_at:
