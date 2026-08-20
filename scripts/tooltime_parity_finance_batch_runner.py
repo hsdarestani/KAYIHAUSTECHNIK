@@ -100,8 +100,19 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"), run
 # automatic dunning are layered on the final invoice/payment endpoints.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay.py"), run_name="__main__")
 # Keep Pay smoke assertions inside the authenticated office surface. The Pay
-# routes intentionally remain unavailable to technician/field users.
+# routes intentionally remain unavailable to technician/field users. This also
+# chains Phase 8 and its final browser-fixture repair.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay_smoke_context_fix.py"), run_name="__main__")
+
+# Final screenshot feedback: employee/technician Konto must be separated from
+# company-wide commercial settings. Apply security and the redesigned settings
+# information architecture after every parity phase so later generators cannot
+# re-expose the route or restore the long single-column settings wall.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_fix.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_followup.py"), run_name="__main__")
+# Generic legacy page assertions predate the tabbed Settings IA. Keep the old
+# coverage, but verify finance content after an actual Finanzen-tab click.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_browser_smoke_tabs_fix.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
@@ -132,4 +143,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Phase 1–7 plus A+Bau Pay inklusive Provider-Checkout/Webhook, QR, Auszahlungen, automatischem Mahnwesen, Auftragsbestätigung, Rollenprüfung, canonical PDF und echter Kommunikation sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Phase 1–8 plus A+Bau Pay inklusive Provider-Checkout/Webhook, QR, Auszahlungen, automatischem Mahnwesen, Auftragsbestätigung, Rollenprüfung, geschützter Unternehmenseinstellungen, canonical PDF und echter Kommunikation sind funktional verbunden.")

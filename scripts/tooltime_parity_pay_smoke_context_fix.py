@@ -92,6 +92,11 @@ else:
     compile(text, str(path), "exec")
     print("ToolTime Pay UI Germanized and browser smoke moved to authenticated office context; field permissions stay restricted.")
 
+# Phase 6 historically appended its commercial-settings smoke to the generic
+# final browser context. Move only that exact block into office; never relax the
+# employee/technician permission guard to satisfy the legacy smoke.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_phase6_settings_smoke_context_fix.py"), run_name="__main__")
+
 # Phase 8 is intentionally chained after Pay so it patches the final commercial
 # source tree and the already-correct authenticated office browser-smoke surface.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase8_online_acceptance.py"), run_name="__main__")
