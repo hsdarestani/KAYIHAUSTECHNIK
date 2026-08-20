@@ -99,6 +99,9 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"), run
 # operational flow is installed: provider checkout/webhooks, QR, payouts and
 # automatic dunning are layered on the final invoice/payment endpoints.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay.py"), run_name="__main__")
+# Keep Pay smoke assertions inside the authenticated office surface. The Pay
+# routes intentionally remain unavailable to technician/field users.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay_smoke_context_fix.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
