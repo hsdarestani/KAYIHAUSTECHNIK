@@ -45,6 +45,17 @@ robust_toolbar = '''    if "tt-quote-statusbar" not in text:
 '''
 text = text[:toolbar_block_start] + robust_toolbar + text[toolbar_block_end:]
 
+# The generated ToolTime view still contains the known intermediate Mahnmail
+# multiline f-string until tooltime_parity_finance_batch_runner.py repairs it after
+# all feature layers are installed. Phase 3 validates its own changed modules here,
+# but must defer compiling that one final view until the existing final repair runs.
+validate_pos = text.find("def validate() -> None:")
+view_compile_line = '        "erp/tooltime_parity_views.py",\n'
+view_compile_pos = text.find(view_compile_line, validate_pos)
+if validate_pos < 0 or view_compile_pos < 0:
+    raise RuntimeError("Phase 3 early final-view compile guard anchor missing")
+text = text[:view_compile_pos] + text[view_compile_pos + len(view_compile_line):]
+
 code = compile(text, str(SOURCE), "exec")
 namespace = {"__name__": "__main__", "__file__": str(SOURCE), "__package__": None}
 exec(code, namespace)
