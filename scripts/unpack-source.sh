@@ -193,5 +193,8 @@ python3 scripts/invoice_compliance_post_fix.py
 # Compliance rewrites the invoice editor after the runtime performance layer, so
 # restore the same lazy catalog first-paint contract for both invoice render paths.
 python3 scripts/invoice_compliance_catalog_performance_fix.py
+# ToolTime is the product-behaviour baseline. This final layer owns the commercial
+# document UX while preserving the German fiscal compliance rules above.
+python3 scripts/tooltime_parity_finance_batch_runner.py
 
-echo "A+Bau source tree assembled with editable owner Einsatzprüfung, replaced logo, stable Zeiterfassung and current operational UX."
+echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
