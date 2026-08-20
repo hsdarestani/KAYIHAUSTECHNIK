@@ -26,6 +26,27 @@ if new_assert not in text:
         raise RuntimeError("ToolTime-Browser-Smoke: assert_page-Anker fehlt.")
     text = text.replace(old_assert, new_assert, 1)
 
+# Der historische Browser-Smoke wurde zuvor auf den alten A+Bau-Tabelleneditor
+# umgebogen. ToolTime hat absichtlich keine Tabellenzeilen mehr: Leistungsgruppen
+# enthalten echte Positionskarten. Prüfe deshalb denselben Bedienpfad gegen den
+# finalen produktiven DOM, statt Legacy-Attribute wieder in die UI einzubauen.
+selector_replacements = (
+    ("page.locator('[data-ab-items]').first", "page.locator('[data-service-groups]').first"),
+    ('page.locator("[data-ab-items]").first', 'page.locator("[data-service-groups]").first'),
+    ("page.locator('[data-ab-add-item]:visible').first", "page.locator('[data-add-position]:visible').first"),
+    ('page.locator("[data-ab-add-item]:visible").first', 'page.locator("[data-add-position]:visible").first'),
+    ("table.locator('.ab-item-row')", "table.locator('[data-position]')"),
+    ('table.locator(".ab-item-row")', 'table.locator("[data-position]")'),
+)
+for old, new in selector_replacements:
+    text = text.replace(old, new)
+
+if "quote position editor controls are missing" in text:
+    if "data-ab-items" in text or "data-ab-add-item" in text:
+        raise RuntimeError("ToolTime-Browser-Smoke: alter A+Bau-Positionsselektor ist noch aktiv.")
+    if "data-service-groups" not in text or "data-add-position" not in text:
+        raise RuntimeError("ToolTime-Browser-Smoke: produktive Positionsselektoren fehlen.")
+
 if '"/quotes/new/"' not in text:
     quote_line = '                ("/quotes/", ("Angebote", "Neues Angebot")),\n'
     if quote_line not in text:
@@ -95,4 +116,4 @@ text = text.replace(
     'print("A+Bau Browser-Smoke bestanden: Büro, Projekte, Termine, Außendienst sowie ToolTime-paritäre Angebote, Rechnungen, Artikelsuche und Einstellungen.")',
 )
 path.write_text(text, encoding="utf-8")
-print("ToolTime-Finanz-Browser-Smoke installiert: DOM-sichere Textprüfung plus echte Interaktionen.")
+print("ToolTime-Finanz-Browser-Smoke installiert: DOM-sichere Textprüfung, produktive ToolTime-Positionsselektoren und echte Interaktionen.")
