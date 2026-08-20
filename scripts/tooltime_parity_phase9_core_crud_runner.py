@@ -4,6 +4,8 @@ import re
 import types
 from pathlib import Path
 
+import tooltime_phase9_regression_fix as regression_fix
+
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts" / "tooltime_parity_phase9_core_crud.py"
 MARKER = "A+BAU TOOLTIME PHASE 9 CORE CRUD BROWSER SMOKE"
@@ -54,9 +56,6 @@ def robust_patch_browser_smoke(module) -> None:
         if office_start < 0 or field_start < 0:
             raise RuntimeError("Phase 9 office/field smoke anchors missing")
         office = text[office_start:field_start]
-        # Prefix the anchor with a newline so we only match the outer exception
-        # at exactly eight spaces. A nested screenshot exception uses twelve
-        # spaces and previously caused insertion in the middle of that line.
         except_pos = office.rfind("\n        except Exception:")
         if except_pos < 0:
             raise RuntimeError("Phase 9 outer office smoke exception anchor missing")
@@ -75,9 +74,6 @@ def robust_patch_browser_smoke(module) -> None:
                 fail("project creation is missing the alternate-location switch")
             if alternate_panel.is_visible():
                 fail("alternate location must be progressively disclosed")
-            # Click the visible switch row exactly as a user would. The checkbox is
-            # intentionally visually hidden, therefore locator.check() would test
-            # Playwright internals instead of the real interaction target.
             switch_row.click()
             page.wait_for_timeout(80)
             if not alternate_panel.is_visible() or not alternate_toggle.is_checked():
@@ -111,9 +107,10 @@ def run() -> None:
     module.patch_forms_and_views()
     module.install_templates_and_css()
     module.install_tests()
+    regression_fix.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
-    print("A+BAU TOOLTIME PHASE 9 CORE CRUD RUNNER 2026-08-20: route-basierter Browser-Smoke ist gegen frühere Text-/UI-Overlays stabilisiert.")
+    print("A+BAU TOOLTIME PHASE 9 CORE CRUD RUNNER 2026-08-20: route-basierter Browser-Smoke ist gegen frühere Text-/UI-Overlays stabilisiert; regression overlay applied.")
 
 
 if __name__ == "__main__":
