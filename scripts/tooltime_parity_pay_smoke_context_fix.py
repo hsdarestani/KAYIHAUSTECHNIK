@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,3 +91,7 @@ else:
     path.write_text(text, encoding="utf-8")
     compile(text, str(path), "exec")
     print("ToolTime Pay UI Germanized and browser smoke moved to authenticated office context; field permissions stay restricted.")
+
+# Phase 8 is intentionally chained after Pay so it patches the final commercial
+# source tree and the already-correct authenticated office browser-smoke surface.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase8_online_acceptance.py"), run_name="__main__")
