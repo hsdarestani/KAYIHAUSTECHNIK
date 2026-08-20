@@ -1,0 +1,87 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+REL = "scripts/production_browser_smoke.py"
+path = ROOT / REL
+text = path.read_text(encoding="utf-8")
+
+old_import = "from erp.models import Project\n"
+new_import = "from erp.models import Invoice, Project, Quote\n"
+if new_import not in text:
+    if old_import not in text:
+        raise RuntimeError("Phase 5 browser-smoke model import anchor missing")
+    text = text.replace(old_import, new_import, 1)
+
+marker = "# A+BAU PHASE 5 COMMUNICATION BROWSER SMOKE"
+if marker not in text:
+    anchor = "            context.close()\n"
+    pos = text.rfind(anchor)
+    if pos < 0:
+        raise RuntimeError("Phase 5 browser-smoke final context anchor missing")
+    block = r'''            # A+BAU PHASE 5 COMMUNICATION BROWSER SMOKE
+            response = page.goto(urljoin(base_url, "quotes/new/"), wait_until="domcontentloaded", timeout=30_000)
+            if response is None or response.status >= 500:
+                fail(f"neues Angebot returned {response.status if response else 'no response'}")
+            if page.locator('[data-document-communication]').count():
+                fail("Entwurf zeigt fälschlich PDF-/Versandaktionen vor Fertigstellung")
+
+            if organization_id:
+                finalized_quote_pk = (
+                    Quote.objects.filter(organization_id=organization_id, tooltime_meta__finalized_at__isnull=False)
+                    .order_by("-pk").values_list("pk", flat=True).first()
+                )
+                if finalized_quote_pk:
+                    response = page.goto(urljoin(base_url, f"quotes/{finalized_quote_pk}/"), wait_until="domcontentloaded", timeout=30_000)
+                    if response is None or response.status >= 500:
+                        fail(f"fertiggestelltes Angebot returned {response.status if response else 'no response'}")
+                    if page.locator('[data-document-communication]').count() != 1:
+                        fail("fertiggestelltes Angebot hat keinen Kommunikationsbereich")
+                    if "PDF herunterladen" not in page.locator('[data-document-communication]').inner_text():
+                        fail("fertiggestelltes Angebot hat keinen echten PDF-Download")
+                    open_mail = page.locator('[data-document-email-open]')
+                    if open_mail.count() != 1:
+                        fail("fertiggestelltes Angebot hat keinen E-Mail-Versand")
+                    open_mail.click()
+                    mail_modal = page.locator('[data-document-email-modal]')
+                    if mail_modal.is_hidden():
+                        fail("Angebots-E-Mail-Dialog öffnet nicht")
+                    action = mail_modal.locator("form").get_attribute("action") or ""
+                    if not action.endswith(f"/quotes/{finalized_quote_pk}/send-email/"):
+                        fail(f"Angebots-E-Mail-Dialog hat falsches Ziel: {action!r}")
+                    mail_modal.locator('[data-document-email-close]').click()
+
+                finalized_invoice_pk = (
+                    Invoice.objects.filter(organization_id=organization_id, compliance__state__in=["finalized", "cancelled", "credited"], compliance__original_pdf_document__isnull=False)
+                    .order_by("-pk").values_list("pk", flat=True).first()
+                )
+                if finalized_invoice_pk:
+                    response = page.goto(urljoin(base_url, f"invoices/{finalized_invoice_pk}/"), wait_until="domcontentloaded", timeout=30_000)
+                    if response is None or response.status >= 500:
+                        fail(f"finalisierte Rechnung returned {response.status if response else 'no response'}")
+                    communication = page.locator('[data-document-communication]')
+                    if communication.count() != 1:
+                        fail("finalisierte Rechnung hat keinen Kommunikationsbereich")
+                    if "Original-PDF herunterladen" not in communication.inner_text():
+                        fail("finalisierte Rechnung verwendet nicht sichtbar das Original-PDF")
+                    open_mail = page.locator('[data-document-email-open]')
+                    if open_mail.count() != 1:
+                        fail("finalisierte Rechnung hat keinen E-Mail-Versand")
+                    open_mail.click()
+                    mail_modal = page.locator('[data-document-email-modal]')
+                    if mail_modal.is_hidden():
+                        fail("Rechnungs-E-Mail-Dialog öffnet nicht")
+                    action = mail_modal.locator("form").get_attribute("action") or ""
+                    if not action.endswith(f"/invoices/{finalized_invoice_pk}/send-email/"):
+                        fail(f"Rechnungs-E-Mail-Dialog hat falsches Ziel: {action!r}")
+                    for selector in ('input[name="recipient_email"]', 'input[name="subject"]', 'textarea[name="message"]'):
+                        if mail_modal.locator(selector).count() != 1:
+                            fail(f"Rechnungs-E-Mail-Feld fehlt: {selector}")
+                    mail_modal.locator('[data-document-email-close]').click()
+
+'''
+    text = text[:pos] + block + text[pos:]
+
+path.write_text(text, encoding="utf-8")
+print("ToolTime Phase 5 Browser-Smoke installiert: finalisierte PDF-/E-Mail-Kommunikation wird im echten DOM geprüft.")
