@@ -26,10 +26,13 @@ text = text[:match.start()] + replacement + text[match.end():]
 # boundary and only use plain integers in the real browser assertions below.
 data_marker = "# A+BAU PHASE 5 COMMUNICATION DB LOOKUP"
 if data_marker not in text:
+    main_pos = text.find("def main() -> None:\n")
+    if main_pos < 0:
+        raise RuntimeError("Phase 5 browser-smoke main() missing")
     anchor = "    old_password_hash = user.password\n"
-    pos = text.find(anchor)
+    pos = text.find(anchor, main_pos)
     if pos < 0:
-        raise RuntimeError("Phase 5 browser-smoke pre-Playwright anchor missing")
+        raise RuntimeError("Phase 5 browser-smoke pre-Playwright anchor missing inside main()")
     prelude = '''    # A+BAU PHASE 5 COMMUNICATION DB LOOKUP
     finalized_quote_pk = None
     finalized_invoice_pk = None
