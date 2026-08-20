@@ -4,6 +4,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Phase 7 is merged after Phase 6. Refuse to assemble if the final runner would
+# silently drop the Phase-6 communication UI normalization during the merge.
+runner_path = ROOT / "scripts" / "tooltime_parity_finance_batch_runner.py"
+runner_text = runner_path.read_text(encoding="utf-8")
+if "tooltime_parity_phase6_ui_language_fix.py" not in runner_text:
+    raise RuntimeError("Phase 7 requires the final Phase 6 communication UI guard in the assembly runner")
+
 # The Phase-7 patcher embeds an f-string PDF body inside a raw multiline source
 # patch. Normalize the inner delimiter before Python imports/runs the patcher.
 patcher_path = ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"
@@ -82,4 +89,4 @@ if "Mahnungen sind nur für Büro" not in views:
     compile(views, str(views_path), "exec")
     views_path.write_text(views, encoding="utf-8")
 
-print("ToolTime Phase 7 source repair: PDF delimiter, role-guard escaping, dunning endpoint and contract target are assembly-tolerant.")
+print("ToolTime Phase 7 source repair: Phase-6 guard, PDF delimiter, role-guard escaping, dunning endpoint and contract target are assembly-tolerant.")
