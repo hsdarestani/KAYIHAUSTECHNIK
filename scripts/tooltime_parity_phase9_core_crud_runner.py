@@ -12,6 +12,7 @@ import tooltime_phase9_regression_fix as regression_fix
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts" / "tooltime_parity_phase9_core_crud.py"
 MARKER = "A+BAU TOOLTIME PHASE 9 CORE CRUD BROWSER SMOKE"
+PHASE10_SMOKE_MARKER = "A+BAU TOOLTIME PHASE 10 APPOINTMENT BROWSER SMOKE"
 
 
 def load_phase9():
@@ -38,6 +39,19 @@ def replace_office_check(text: str, path: str, replacement: str) -> str:
     return text
 
 
+def _insert_before_office_outer_except(text: str, block: str, label: str) -> str:
+    office_start = text.find("def run_office_surface(")
+    field_start = text.find("\ndef run_field_surface(", office_start)
+    if office_start < 0 or field_start < 0:
+        raise RuntimeError(f"{label} office/field smoke anchors missing")
+    office = text[office_start:field_start]
+    except_pos = office.rfind("\n        except Exception:")
+    if except_pos < 0:
+        raise RuntimeError(f"{label} outer office smoke exception anchor missing")
+    insert_at = office_start + except_pos + 1
+    return text[:insert_at] + block + text[insert_at:]
+
+
 def robust_patch_browser_smoke(module) -> None:
     rel = "scripts/production_browser_smoke.py"
     text = module.read(rel)
@@ -52,17 +66,13 @@ def robust_patch_browser_smoke(module) -> None:
         "/projects/new/",
         '("/projects/new/", ("Neues Projekt", "Kunde suchen", "Abweichenden Ausführungsort verwenden", "＋ Erstellen")),',
     )
+    text = replace_office_check(
+        text,
+        "/appointments/new/",
+        '("/appointments/new/", ("Neuer Termin", "Kunde oder Projekt auswählen", "Arbeitsbericht", "Bilder")),',
+    )
 
     if MARKER not in text:
-        office_start = text.find("def run_office_surface(")
-        field_start = text.find("\ndef run_field_surface(", office_start)
-        if office_start < 0 or field_start < 0:
-            raise RuntimeError("Phase 9 office/field smoke anchors missing")
-        office = text[office_start:field_start]
-        except_pos = office.rfind("\n        except Exception:")
-        if except_pos < 0:
-            raise RuntimeError("Phase 9 outer office smoke exception anchor missing")
-        insert_at = office_start + except_pos + 1
         block = r'''            # A+BAU TOOLTIME PHASE 9 CORE CRUD BROWSER SMOKE
             page.goto(urljoin(base_url, "projects/new/"), wait_until="domcontentloaded", timeout=30_000)
             html = page.content()
@@ -99,7 +109,29 @@ def robust_patch_browser_smoke(module) -> None:
             if customer_number.count() != 1 or not customer_number.is_visible():
                 fail("customer creation is missing the customer-number field")
 '''
-        text = text[:insert_at] + block + text[insert_at:]
+        text = _insert_before_office_outer_except(text, block, "Phase 9")
+
+    if PHASE10_SMOKE_MARKER not in text:
+        phase10_block = r'''            # A+BAU TOOLTIME PHASE 10 APPOINTMENT BROWSER SMOKE
+            response = page.goto(urljoin(base_url, "appointments/new/"), wait_until="domcontentloaded", timeout=30_000)
+            if response is None or response.status >= 500:
+                fail(f"Phase 10 appointment create returned {response.status if response else 'no response'}")
+            if page.locator('[data-appointment-create]').count() != 1:
+                fail("Phase 10 appointment create shell is missing")
+            if page.locator('[data-appointment-customer]').count() != 1 or page.locator('[data-appointment-project-select]').count() != 1:
+                fail("Phase 10 customer/project selection controls are missing")
+            if page.locator('[data-start-date]').count() != 1 or page.locator('[data-start-time]').count() != 1:
+                fail("Phase 10 start date/time controls are missing")
+            if page.locator('[data-end-date]').count() != 1 or page.locator('[data-end-time]').count() != 1:
+                fail("Phase 10 end date/time controls are missing")
+            if page.locator('[data-address-card]').count() != 1 or page.locator('[data-team-search]').count() != 1:
+                fail("Phase 10 address/team controls are missing")
+            phase10_text = page.locator("body").inner_text()
+            for expected in ("Kunde oder Projekt auswählen", "Wiederholt sich nicht", "Arbeitsbericht", "Bilder"):
+                if expected not in phase10_text:
+                    fail(f"Phase 10 appointment create is missing {expected!r}")
+'''
+        text = _insert_before_office_outer_except(text, phase10_block, "Phase 10")
 
     module.write(rel, text)
     compile(text, str(ROOT / rel), "exec")
