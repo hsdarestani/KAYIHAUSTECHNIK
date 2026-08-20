@@ -17,7 +17,7 @@ def patch_detail(module) -> None:
         summary = r'''  {% if request.user.profile.role != 'technician' and not request.user.profile.is_mobile_worker %}
   <section class="tt-appt-detail-summary" aria-label="Terminübersicht">
     <div class="tt-appt-detail-summary-head">
-      <div><span>Terminübersicht</span><strong>Planung & Zuordnung</strong></div>
+      <div><span>Terminübersicht</span><strong>Planung &amp; Zuordnung</strong></div>
       <a class="nx-btn" href="{% url 'next-appointment-edit' event.pk %}">Planung bearbeiten</a>
     </div>
     <div class="tt-appt-detail-facts">
