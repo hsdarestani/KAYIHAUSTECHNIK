@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -8,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # user (for example: two opening braces + company_name + two closing braces).
 # Those tokens must be shown as plain text, never parsed by Django's own template
 # engine. The live-preview JavaScript must avoid literal double-brace tokens too.
-settings_path = ROOT / "templates/rebuild/tooltime_settings.html"
+settings_path = ROOT / "templates" / "rebuild" / "tooltime_settings.html"
 settings_text = settings_path.read_text(encoding="utf-8")
 for variable in (
     "company_name",
@@ -57,6 +58,28 @@ text = path.read_text(encoding="utf-8")
 
 marker = "# A+BAU PHASE 6 COMMUNICATION SETTINGS BROWSER SMOKE"
 if marker not in text:
+    # The older global smoke asserted one legacy communication textarea in a
+    # generic kaufmännisch selector list. Phase 6 replaces that loose assertion
+    # with a scoped end-to-end check of the complete communication panel below.
+    # Remove exactly the legacy selector so the new contract is authoritative.
+    legacy_patterns = (
+        r'(?m)^\s*[\'\"]textarea\[name=[\'\"]invoice_body[\'\"]\][\'\"]\s*,\s*$',
+        r'(?m)^\s*[\'\"]textarea\[name=\\[\'\"]invoice_body\\[\'\"]\][\'\"]\s*,\s*$',
+    )
+    removed = 0
+    for legacy_pattern in legacy_patterns:
+        text, count = re.subn(legacy_pattern, "", text, count=1)
+        removed += count
+        if count:
+            break
+    if removed == 0:
+        literal = '                \'textarea[name="invoice_body"]\',\n'
+        if literal in text:
+            text = text.replace(literal, "", 1)
+            removed = 1
+    if removed == 0 and "Kaufmännische Einstellung" in text and 'textarea[name="invoice_body"]' in text:
+        raise RuntimeError("Phase 6 legacy invoice_body smoke selector could not be retired safely")
+
     anchor = "            context.close()\n"
     pos = text.rfind(anchor)
     if pos < 0:
@@ -87,7 +110,7 @@ if marker not in text:
                 fail("SMS-Vorlage erzwingt nicht exakt maximal 160 Zeichen")
             options = panel.locator('select[name="sms_provider"] option').evaluate_all("nodes => nodes.map(node => node.value)")
             if "disabled" not in options or "webhook" not in options:
-                fail("SMS-Provider bietet nicht Deaktiviert und HTTPS Webhook")
+                fail("SMS-Dienst bietet nicht Deaktiviert und HTTPS-Schnittstelle")
             if panel.locator('[data-phase6-preview]').count() < 4:
                 fail("Live-Vorschau für Angebot und Rechnung fehlt")
             page.wait_for_timeout(150)
@@ -100,4 +123,4 @@ if marker not in text:
 
 path.write_text(text, encoding="utf-8")
 compile(text, str(path), "exec")
-print("ToolTime Phase 6 Browser-Smoke installiert: Django-sichere Variablenanzeige, Live-Vorschau und SMS-160-Zeichen-Guard werden geprüft.")
+print("ToolTime Phase 6 Browser-Smoke installiert: vollständige Kommunikationseinstellungen ersetzen den veralteten Einzel-Selector-Check.")
