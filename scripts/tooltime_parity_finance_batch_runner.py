@@ -50,6 +50,9 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_legacy_contract_bridge.py
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_final_ui_safety.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_draft_render_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_route_guard.py"), run_name="__main__")
+# Screenshot-Batch 1 is completed in explicit phases. Phase 1 owns text-template
+# management and document layout after all older commercial/UI patches finished.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase1_text_layout.py"), run_name="__main__")
 
 # Der bestehende B&O-Regressionsvertrag prüft den sichtbaren deutschen Text als
 # Quelltext. Ampersand bleibt hier bewusst als normales sichtbares Zeichen stehen.
@@ -80,4 +83,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Mahnwesen, Routen und generierte Python-Module sind syntaktisch gültig.")
+print("ToolTime-Finalprüfung erfolgreich: Mahnwesen, Routen, Texte/Layout und generierte Python-Module sind syntaktisch gültig.")
