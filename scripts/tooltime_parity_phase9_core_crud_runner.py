@@ -54,10 +54,13 @@ def robust_patch_browser_smoke(module) -> None:
         if office_start < 0 or field_start < 0:
             raise RuntimeError("Phase 9 office/field smoke anchors missing")
         office = text[office_start:field_start]
-        except_pos = office.rfind("        except Exception:")
+        # Prefix the anchor with a newline so we only match the outer exception
+        # at exactly eight spaces. A nested screenshot exception uses twelve
+        # spaces and previously caused insertion in the middle of that line.
+        except_pos = office.rfind("\n        except Exception:")
         if except_pos < 0:
-            raise RuntimeError("Phase 9 office smoke exception anchor missing")
-        insert_at = office_start + except_pos
+            raise RuntimeError("Phase 9 outer office smoke exception anchor missing")
+        insert_at = office_start + except_pos + 1
         block = r'''            # A+BAU TOOLTIME PHASE 9 CORE CRUD BROWSER SMOKE
             page.goto(urljoin(base_url, "projects/new/"), wait_until="domcontentloaded", timeout=30_000)
             html = page.content()
