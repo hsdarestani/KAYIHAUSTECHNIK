@@ -33,9 +33,16 @@ if marker not in text:
             if page.locator('[data-document-communication]').count():
                 fail("Entwurf zeigt fälschlich PDF-/Versandaktionen vor Fertigstellung")
 
-            if organization_id:
+            # Resolve the active tenant locally instead of depending on a variable
+            # created by an older smoke implementation. Multiple compatibility
+            # layers rewrite main(), so this block must remain self-contained.
+            phase5_user = get_user_model().objects.select_related("profile").filter(
+                username=os.environ.get("KAYI_SMOKE_USER", "demo")
+            ).first()
+            phase5_organization_id = getattr(getattr(phase5_user, "profile", None), "organization_id", None)
+            if phase5_organization_id:
                 finalized_quote_pk = (
-                    Quote.objects.filter(organization_id=organization_id, tooltime_meta__finalized_at__isnull=False)
+                    Quote.objects.filter(organization_id=phase5_organization_id, tooltime_meta__finalized_at__isnull=False)
                     .order_by("-pk").values_list("pk", flat=True).first()
                 )
                 if finalized_quote_pk:
@@ -59,7 +66,7 @@ if marker not in text:
                     mail_modal.locator('[data-document-email-close]').click()
 
                 finalized_invoice_pk = (
-                    Invoice.objects.filter(organization_id=organization_id, compliance__state__in=["finalized", "cancelled", "credited"], compliance__original_pdf_document__isnull=False)
+                    Invoice.objects.filter(organization_id=phase5_organization_id, compliance__state__in=["finalized", "cancelled", "credited"], compliance__original_pdf_document__isnull=False)
                     .order_by("-pk").values_list("pk", flat=True).first()
                 )
                 if finalized_invoice_pk:
@@ -90,4 +97,5 @@ if marker not in text:
     text = text[:pos] + block + text[pos:]
 
 path.write_text(text, encoding="utf-8")
-print("ToolTime Phase 5 Browser-Smoke installiert: finalisierte PDF-/E-Mail-Kommunikation wird im echten DOM geprüft.")
+compile(text, str(path), "exec")
+print("ToolTime Phase 5 Browser-Smoke installiert: finalisierte PDF-/E-Mail-Kommunikation wird tenant-sicher im echten DOM geprüft.")
