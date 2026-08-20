@@ -89,6 +89,11 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase5_browser_smoke.py")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_communication_settings.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase6_browser_smoke.py"), run_name="__main__")
 
+# Phase 7 connects the operational and commercial chain end-to-end. It adds an
+# immutable Auftragsbestätigung between accepted quote and invoice, propagates
+# project state and hardens all core commercial mutations against field-role POSTs.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_phase7_e2e_flow.py"), run_name="__main__")
+
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
 # or earlier compatibility patches. Keep this immediately before final compile.
@@ -117,4 +122,4 @@ for rel in (
     path = ROOT / rel
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-print("ToolTime-Finalprüfung erfolgreich: Phase 1–6 inklusive Dokument-Lifecycle, canonical PDF, echtem E-Mail-Versand und konfigurierbarer Kommunikation sind funktional verbunden.")
+print("ToolTime-Finalprüfung erfolgreich: Phase 1–7 inklusive Auftragsbestätigung, Rollenprüfung, Dokument-Lifecycle, canonical PDF, echtem E-Mail-Versand und Kommunikation sind funktional verbunden.")
