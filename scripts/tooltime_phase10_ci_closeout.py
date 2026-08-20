@@ -98,6 +98,16 @@ def _patch_template(module) -> None:
 
     # Keep the German-only browser/UI contract: "Wizard" is an English label.
     text = text.replace("Kein Wizard:", "Kein Assistent:")
+
+    # Explicitly associate the custom all-day switch label with Django's
+    # checkbox so keyboard/assistive-tech and browser-smoke semantics match.
+    old_toggle = '<label class="tt-appt-toggle"><span><strong>Ganztägig</strong>'
+    new_toggle = '<label class="tt-appt-toggle" for="{{ form.all_day.id_for_label }}"><span><strong>Ganztägig</strong>'
+    if new_toggle not in text:
+        if old_toggle not in text:
+            raise RuntimeError("Phase 10 CI closeout all-day label anchor missing")
+        text = text.replace(old_toggle, new_toggle, 1)
+
     module.write(rel, text)
 
 
@@ -130,6 +140,7 @@ class ToolTimePhase10AppointmentRuntimeTests(TestCase):
         self.assertContains(response, "data-appointment-create")
         self.assertContains(response, "Kunde oder Projekt auswählen")
         self.assertContains(response, 'data-initial-customer=""')
+        self.assertContains(response, 'for="id_all_day"')
 
     def test_empty_post_is_bound_and_surfaces_validation_errors(self):
         response = self.client.post(reverse("next-appointment-create"), {})
@@ -191,6 +202,7 @@ def run(module) -> None:
         'data-initial-project="{{ selected_project_id|default:\'\' }}"',
         "Nach dem Speichern",
         "Kein Assistent",
+        'for="{{ form.all_day.id_for_label }}"',
     ):
         if marker not in template:
             raise RuntimeError(f"Phase 10 CI closeout template marker missing: {marker}")
@@ -199,4 +211,4 @@ def run(module) -> None:
     if "Wizard" in template:
         raise RuntimeError("Phase 10 CI closeout left English Wizard copy in German appointment UI")
 
-    print(f"{MARKER}: safe scoped preselection, real submit coverage and browser-safe German appointment creation restored.")
+    print(f"{MARKER}: safe scoped preselection, real submit coverage, accessible all-day toggle and browser-safe German appointment creation restored.")
