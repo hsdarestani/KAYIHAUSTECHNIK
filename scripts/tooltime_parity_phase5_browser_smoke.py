@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -7,12 +8,17 @@ REL = "scripts/production_browser_smoke.py"
 path = ROOT / REL
 text = path.read_text(encoding="utf-8")
 
-old_import = "from erp.models import Project\n"
-new_import = "from erp.models import Invoice, Project, Quote\n"
-if new_import not in text:
-    if old_import not in text:
-        raise RuntimeError("Phase 5 browser-smoke model import anchor missing")
-    text = text.replace(old_import, new_import, 1)
+# Earlier smoke layers may already extend this import. Add the required models
+# semantically instead of depending on one exact historical import line.
+match = re.search(r"^from erp\.models import ([^\n]+)$", text, flags=re.M)
+if not match:
+    raise RuntimeError("Phase 5 browser-smoke erp.models import missing")
+names = [name.strip() for name in match.group(1).split(",") if name.strip()]
+for required in ("Invoice", "Project", "Quote"):
+    if required not in names:
+        names.append(required)
+replacement = "from erp.models import " + ", ".join(sorted(set(names)))
+text = text[:match.start()] + replacement + text[match.end():]
 
 marker = "# A+BAU PHASE 5 COMMUNICATION BROWSER SMOKE"
 if marker not in text:
