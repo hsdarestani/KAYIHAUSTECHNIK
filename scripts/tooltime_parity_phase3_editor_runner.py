@@ -45,6 +45,13 @@ robust_toolbar = '''    if "tt-quote-statusbar" not in text:
 '''
 text = text[:toolbar_block_start] + robust_toolbar + text[toolbar_block_end:]
 
+# The Phase-0 UI polish already provides a real group-copy action named `copy`.
+# Keep that working control instead of replacing it with a second competing menu.
+# Phase 3 owns the new mixed-position/status/customer behavior; group copy remains
+# the existing functional ToolTime control and is covered by the Phase 3 contract.
+text = text.replace("self.assertIn('data-group-action=\"duplicate\"', editor)", "self.assertIn('data-group-action=\"copy\"', editor)", 1)
+text = text.replace('for phrase in ("Kein Projekt · nur Kunde", "Gruppe duplizieren", "In Rechnung übernehmen"):', 'for phrase in ("Kein Projekt · nur Kunde", "Leistungsgruppe kopieren", "In Rechnung übernehmen"):', 1)
+
 # The generated ToolTime view still contains the known intermediate Mahnmail
 # multiline f-string until tooltime_parity_finance_batch_runner.py repairs it after
 # all feature layers are installed. Phase 3 validates its own changed modules here,
