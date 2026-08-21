@@ -57,11 +57,10 @@ def run(module) -> None:
     module.write(urls_rel, urls)
     compile(urls, str(ROOT / urls_rel), "exec")
 
-    # The production/browser smoke normally logs in with the seeded demo account.
-    # That account is intentionally field-scoped in some environments, while
-    # appointment creation is an office-only workflow. Keep the production
-    # permission boundary intact and elevate only the smoke user's profile for
-    # this one browser assertion, then restore it immediately.
+    # Appointment creation is an office-only workflow. The general production
+    # smoke can be authenticated as a field/demo user, so verify this one page
+    # in a separate temporary Office session. The account is deleted in finally
+    # and production permissions for the original session are never changed.
     smoke_rel = "scripts/production_browser_smoke.py"
     smoke = module.read(smoke_rel)
     old_smoke = r'''            # A+BAU TOOLTIME APPOINTMENT PROCESS BROWSER SMOKE
@@ -76,32 +75,53 @@ def run(module) -> None:
                 fail("appointment service editor is missing")
 '''
     new_smoke = r'''            # A+BAU TOOLTIME APPOINTMENT PROCESS BROWSER SMOKE
-            smoke_profile = getattr(user, "profile", None)
-            if smoke_profile is None:
-                fail("appointment parity smoke user has no profile")
-            old_smoke_role = smoke_profile.role
-            old_smoke_mobile_worker = smoke_profile.is_mobile_worker
+            from erp.models import Organization, UserProfile
+            smoke_org = Organization.objects.filter(settings__is_demo=True).order_by("pk").first() or Organization.objects.order_by("pk").first()
+            if smoke_org is None:
+                fail("appointment parity smoke could not resolve an organization")
+            smoke_username = f"appointment-office-smoke-{secrets.token_hex(5)}"
+            smoke_password = secrets.token_urlsafe(24)
+            SmokeUser = get_user_model()
+            smoke_office_user = SmokeUser.objects.create_user(
+                username=smoke_username,
+                password=smoke_password,
+                email=f"{smoke_username}@example.invalid",
+            )
+            smoke_profile, _ = UserProfile.objects.get_or_create(user=smoke_office_user)
+            smoke_profile.organization = smoke_org
+            smoke_profile.role = UserProfile.Role.OFFICE
+            smoke_profile.is_mobile_worker = False
+            smoke_profile.save()
+            office_context = None
             try:
-                smoke_profile.role = "office"
-                smoke_profile.is_mobile_worker = False
-                smoke_profile.save()
-                response = page.goto(urljoin(base_url, "appointments/new/"), wait_until="domcontentloaded", timeout=30_000)
+                office_context = browser.new_context(locale="de-DE", viewport={"width": 1440, "height": 1000})
+                office_page = office_context.new_page()
+                login_response = office_page.goto(urljoin(base_url, "login/"), wait_until="domcontentloaded", timeout=30_000)
+                if login_response is None or login_response.status >= 500:
+                    fail(f"appointment parity office login returned {login_response.status if login_response else 'no response'}")
+                office_page.fill('input[name="username"]', smoke_username)
+                office_page.fill('input[name="password"]', smoke_password)
+                with office_page.expect_navigation(wait_until="domcontentloaded", timeout=30_000):
+                    office_page.click('button[type="submit"], button.btn-primary')
+                if "/login/" in office_page.url:
+                    fail("appointment parity office login did not establish a session")
+                response = office_page.goto(urljoin(base_url, "appointments/new/"), wait_until="domcontentloaded", timeout=30_000)
                 if response is None or response.status >= 500:
                     fail(f"appointment parity create returned {response.status if response else 'no response'}")
-                if "/login/" in page.url:
+                if "/login/" in office_page.url:
                     fail("appointment parity office smoke unexpectedly redirected to login")
-                body = page.locator("body").inner_text()
+                body = office_page.locator("body").inner_text()
                 for label in ("Terminname", "Mitarbeiter hinzufügen", "Leistungsgruppe hinzufügen", "Position hinzufügen", "Arbeitsbericht"):
                     if label not in body:
                         fail(f"appointment parity is missing {label!r}")
-                if page.locator('[data-service-editor]').count() != 1:
+                if office_page.locator('[data-service-editor]').count() != 1:
                     fail("appointment service editor is missing")
             finally:
-                smoke_profile.role = old_smoke_role
-                smoke_profile.is_mobile_worker = old_smoke_mobile_worker
-                smoke_profile.save()
+                if office_context is not None:
+                    office_context.close()
+                smoke_office_user.delete()
 '''
-    if "old_smoke_role = smoke_profile.role" not in smoke:
+    if "smoke_username = f\"appointment-office-smoke-" not in smoke:
         if old_smoke not in smoke:
             raise RuntimeError("Appointment final closeout: appointment browser smoke anchor fehlt")
         smoke = smoke.replace(old_smoke, new_smoke, 1)
@@ -118,10 +138,10 @@ def run(module) -> None:
         if marker not in haystack:
             raise RuntimeError(f"Appointment final closeout guard missing: {marker}")
     for marker in (
-        "old_smoke_role = smoke_profile.role",
-        'smoke_profile.role = "office"',
-        "old_smoke_mobile_worker = smoke_profile.is_mobile_worker",
+        'smoke_username = f"appointment-office-smoke-',
+        "UserProfile.Role.OFFICE",
+        "smoke_office_user.delete()",
     ):
         if marker not in smoke:
             raise RuntimeError(f"Appointment final closeout browser guard missing: {marker}")
-    print(f"{MARKER}: final template balance, hand-off routes and office-scoped appointment browser smoke restored.")
+    print(f"{MARKER}: final template balance, hand-off routes and isolated Office appointment browser smoke restored.")
