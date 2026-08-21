@@ -126,6 +126,10 @@ def main() -> None:
     # This makes the screenshot-verified list/modal the last owner of /projects/ so
     # older CRUD/UI overlays cannot restore the legacy table during assembly.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_projects_exact_parity.py"), run_name="__main__")
+    # Appointment navigation is normalized last: Phase 10 and Phase 12 both added
+    # their own Kalender/Karte/Liste groups, so the final assembled shell must keep
+    # exactly one live ToolTime-style submenu with a visible active state.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_appointment_sidebar_nav_fix.py"), run_name="__main__")
 
 
 if __name__ == "__main__":
