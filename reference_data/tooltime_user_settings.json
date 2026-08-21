@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "captured_at": "2026-08-21",
-  "source": "ToolTime account settings supplied by the product owner",
+  "source": "ToolTime account settings and KAYI document copy supplied by the product owner",
   "commercial_profile": {
     "numbering": {
       "quote": {"prefix": "A-", "start": 220},
@@ -17,7 +17,8 @@
     "payment_terms": {
       "mode": "immediately",
       "days": 0,
-      "areas": ["invoice"]
+      "areas": ["invoice"],
+      "invoice_text": "Zahlbar sofort ohne Abzug ab Rechnungsdatum."
     },
     "dunning": {
       "reminder": {"days": 7, "fee": "0.00"},
@@ -45,11 +46,18 @@
       "render_qr_in_invoices": false,
       "payout_type": "single"
     },
+    "quote_defaults": {
+      "title": "Angebot",
+      "salutation": "Sehr geehrte Damen und Herren,",
+      "intro_text": "Herzlichen Dank für Ihre Anfrage, hiermit legen wir Ihnen gerne unseren Kostenvoranschlag vor:",
+      "closing_text": "Abschluss & Auftragsbedingungen\nWir würden uns freuen, wenn unser Angebot Ihre Zustimmung findet. Für Rückfragen oder weitere Informationen stehen wir Ihnen jederzeit gerne zur Verfügung.\nBitte beachten Sie, dass bei Annahme des Angebots eine Vorauszahlung in Höhe von 50 % des Rechnungsbetrages fällig wird.\n\nWiderrufsbelehrung\nBei außerhalb von Geschäftsräumen geschlossenen Verträgen steht Ihnen als Verbraucher ein gesetzliches Widerrufsrecht von 14 Tagen gemäß §§ 312g, 355 BGB zu.\n\nZustimmung zum vorzeitigen Arbeitsbeginn\nIch/Wir verlange(n) ausdrücklich, dass die Arbeiten vor Ablauf der Widerrufsfrist beginnen. Mir/Uns ist bekannt, dass bei vollständiger Vertragserfüllung das Widerrufsrecht erlischt. Im Falle eines Widerrufs nach Beginn der Arbeiten ist die bis dahin erbrachte Leistung anteilig zu vergüten.\n\nAusführungs- und Zahlungsbedingungen\nDie Ausführung der Arbeiten erfolgt frühestens zwei Wochen nach Auftragsbestätigung.\nVoraussetzung für den Arbeitsbeginn ist, dass alle bauseits zugesicherten Materialien vollständig und zugänglich vor Ort vorhanden sind und den vereinbarten Anforderungen entsprechen.\nErst nach Prüfung dieser Voraussetzungen wird ein verbindlicher Ausführungstermin festgelegt.\nDer Termin wird nach Eingang der Vorauszahlung (50 %) abgestimmt und gilt erst danach als verbindlich bestätigt.\n\nAuftragsbestätigung\nHiermit bestätige ich/wir das obenstehende Angebot sowie die genannten Bedingungen und beauftrage(n) die Ausführung der Leistungen.\n\nOrt, Datum: _________________________________\n\nUnterschrift Kunde: __________________________\n\nName in Druckbuchstaben: _____________________"
+    },
     "invoice_defaults": {
       "title": "Rechnung",
       "salutation": "Sehr geehrte Damen und Herren,",
       "intro_text": "nachfolgend berechnen wir Ihnen wie vorab besprochen:",
       "closing_text": "Vielen Dank für Ihren Auftrag! Falls Sie Fragen oder Wünsche haben, stehen wir gerne zur Verfügung.",
+      "payment_text": "Zahlbar sofort ohne Abzug ab Rechnungsdatum.",
       "electronic_invoice": true,
       "electronic_invoice_format": "xrechnung_3_0",
       "tax_rate": "19.00",
@@ -68,6 +76,24 @@
     }
   },
   "text_templates": [
+    {
+      "document_kind": "quote",
+      "text_kind": "intro",
+      "title": "Standard",
+      "salutation": "Sehr geehrte Damen und Herren,",
+      "body": "Herzlichen Dank für Ihre Anfrage, hiermit legen wir Ihnen gerne unseren Kostenvoranschlag vor:",
+      "is_standard": true,
+      "sort_order": 1
+    },
+    {
+      "document_kind": "quote",
+      "text_kind": "closing",
+      "title": "Standard",
+      "salutation": "",
+      "body": "Abschluss & Auftragsbedingungen\nWir würden uns freuen, wenn unser Angebot Ihre Zustimmung findet. Für Rückfragen oder weitere Informationen stehen wir Ihnen jederzeit gerne zur Verfügung.\nBitte beachten Sie, dass bei Annahme des Angebots eine Vorauszahlung in Höhe von 50 % des Rechnungsbetrages fällig wird.\n\nWiderrufsbelehrung\nBei außerhalb von Geschäftsräumen geschlossenen Verträgen steht Ihnen als Verbraucher ein gesetzliches Widerrufsrecht von 14 Tagen gemäß §§ 312g, 355 BGB zu.\n\nZustimmung zum vorzeitigen Arbeitsbeginn\nIch/Wir verlange(n) ausdrücklich, dass die Arbeiten vor Ablauf der Widerrufsfrist beginnen. Mir/Uns ist bekannt, dass bei vollständiger Vertragserfüllung das Widerrufsrecht erlischt. Im Falle eines Widerrufs nach Beginn der Arbeiten ist die bis dahin erbrachte Leistung anteilig zu vergüten.\n\nAusführungs- und Zahlungsbedingungen\nDie Ausführung der Arbeiten erfolgt frühestens zwei Wochen nach Auftragsbestätigung.\nVoraussetzung für den Arbeitsbeginn ist, dass alle bauseits zugesicherten Materialien vollständig und zugänglich vor Ort vorhanden sind und den vereinbarten Anforderungen entsprechen.\nErst nach Prüfung dieser Voraussetzungen wird ein verbindlicher Ausführungstermin festgelegt.\nDer Termin wird nach Eingang der Vorauszahlung (50 %) abgestimmt und gilt erst danach als verbindlich bestätigt.\n\nAuftragsbestätigung\nHiermit bestätige ich/wir das obenstehende Angebot sowie die genannten Bedingungen und beauftrage(n) die Ausführung der Leistungen.\n\nOrt, Datum: _________________________________\n\nUnterschrift Kunde: __________________________\n\nName in Druckbuchstaben: _____________________",
+      "is_standard": true,
+      "sort_order": 1
+    },
     {
       "document_kind": "invoice",
       "text_kind": "intro",
