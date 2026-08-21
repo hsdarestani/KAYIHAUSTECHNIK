@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,6 +133,9 @@ def main() -> None:
     install_tests()
     guard()
     print(f"{MARKER}: duplicate Kalender/Karte/Liste groups removed and one visible canonical submenu installed.")
+    # Final visual pass is intentionally project-detail-only. Unlike the deprecated
+    # global ToolTime surface, this keeps finance, B&O, Room Planner and field hooks.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_project_detail_safe_parity.py"), run_name="__main__")
 
 
 if __name__ == "__main__":
