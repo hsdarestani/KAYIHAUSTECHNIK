@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,8 +55,3 @@ if marker not in text:
 
 path.write_text(text, encoding="utf-8")
 print("ToolTime Phase 4 Browser-Smoke installiert: Angebots-/Rechnungsfilter und Zahlungsdialog werden im echten DOM geprüft.")
-
-# The screenshot-verified quote index is the final Phase-4 list surface. Install it
-# after the lifecycle/browser contracts so the exact ToolTime columns, filters,
-# pagination and action menus become authoritative for the assembled app.
-runpy.run_path(str(ROOT / "scripts" / "tooltime_quotes_exact_parity.py"), run_name="__main__")
