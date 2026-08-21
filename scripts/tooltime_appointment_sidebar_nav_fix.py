@@ -136,6 +136,9 @@ def main() -> None:
     # Final visual pass is intentionally project-detail-only. Unlike the deprecated
     # global ToolTime surface, this keeps finance, B&O, Room Planner and field hooks.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_project_detail_safe_parity.py"), run_name="__main__")
+    # Last guard restores every primary 3D link to Room Planner Pro and verifies
+    # that technician voice/KI/signature/PDF capabilities survived all UI layers.
+    runpy.run_path(str(ROOT / "scripts" / "final_preserve_room_planner_field_flow.py"), run_name="__main__")
 
 
 if __name__ == "__main__":
