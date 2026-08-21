@@ -199,5 +199,7 @@ python3 scripts/tooltime_parity_finance_batch_runner.py
 # Screenshot-verified final invoices index. It runs after all ToolTime finance and
 # settings/quotes compatibility layers so nothing can overwrite its route or UI.
 python3 scripts/tooltime_invoices_exact_parity.py
+# Reconcile the exact screenshot index with the established lifecycle/Pay contracts.
+python3 scripts/tooltime_invoices_regression_compat.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
