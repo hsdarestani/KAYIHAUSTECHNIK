@@ -188,6 +188,9 @@ def run() -> None:
     # This makes the ToolTime list the final authoritative surface without breaking
     # downstream phase patchers that still need the pre-parity quote markup.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_quotes_exact_parity.py"), run_name="__main__")
+    # The exact table has responsive columns. Patch the assembled browser smoke
+    # after parity installation so hidden headers are checked semantically in DOM.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_quotes_smoke_dom_fix.py"), run_name="__main__")
     print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst, Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt und finale ToolTime-Angebotsliste aktiviert.")
 
 
