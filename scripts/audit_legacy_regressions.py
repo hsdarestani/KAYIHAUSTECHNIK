@@ -93,3 +93,7 @@ runpy.run_path(str(ROOT / "scripts" / "time_overview_smoke_contract.py"), run_na
 # Keep older regression contracts aligned with deliberate implementation upgrades
 # (MediaRecorder instead of Web Speech and cache versions that are expected to move).
 runpy.run_path(str(ROOT / "scripts" / "final_form_voice_test_contract.py"), run_name="__main__")
+# Customer/contacts parity is intentionally the final UI/data layer. It must run
+# after the A+Bau commercial migration has been normalized to 0010 and after all
+# prior customer polish so ToolTime list/modal semantics cannot be overwritten.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_contacts_parity.py"), run_name="__main__")
