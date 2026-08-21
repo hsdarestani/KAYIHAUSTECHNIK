@@ -12,6 +12,7 @@ import tooltime_parity_phase14_appointment_detail_polish as phase14
 import tooltime_parity_phase15_appointment_customer as phase15
 import tooltime_parity_phase16_appointment_recurrence as phase16
 import tooltime_parity_phase17_recurrence_parity as phase17
+import tooltime_parity_phase18_recurrence_edit_scope as phase18
 import tooltime_phase10_ci_closeout as phase10_closeout
 import tooltime_phase12_ci_closeout as phase12_closeout
 import tooltime_phase15_ci_closeout as phase15_closeout
@@ -166,9 +167,10 @@ def run() -> None:
     phase16.run(module)
     phase16_closeout.run(module)
     phase17.run(module)
+    phase18.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
-    print("A+BAU TOOLTIME PHASE 9/10/11/12/13/14/15/16/17 RUNNER 2026-08-21: core CRUD, appointment creation, calendar/list/map planning, office-only appointment edit, detail polish, native customer-linked appointments, persistent recurrence, ToolTime interval choices and safe series deletion layered into final assembly with linear migrations.")
+    print("A+BAU TOOLTIME PHASE 9/10/11/12/13/14/15/16/17/18 RUNNER 2026-08-21: core CRUD, appointment creation, calendar/list/map planning, office-only appointment edit, detail polish, native customer-linked appointments, persistent recurrence, ToolTime interval choices, safe series deletion and scoped recurrence edits layered into final assembly with linear migrations.")
 
 
 if __name__ == "__main__":
