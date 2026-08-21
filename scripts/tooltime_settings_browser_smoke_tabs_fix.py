@@ -183,7 +183,12 @@ def run() -> None:
     # Physical-device follow-up: isolate profile interaction from the large cached
     # app bundle and verify the actual screen hit target after the shell exists.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_field_profile_runtime_fix.py"), run_name="__main__")
-    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst und Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt.")
+    # Apply the screenshot-verified Quotes index only after all finance, workflow,
+    # Pay and Settings phases have consumed their historical template anchors.
+    # This makes the ToolTime list the final authoritative surface without breaking
+    # downstream phase patchers that still need the pre-parity quote markup.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_quotes_exact_parity.py"), run_name="__main__")
+    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst, Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt und finale ToolTime-Angebotsliste aktiviert.")
 
 
 if __name__ == "__main__":
