@@ -110,9 +110,19 @@ runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_pay_smoke_context_fix.py"
 # re-expose the route or restore the long single-column settings wall.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_access_ui_followup.py"), run_name="__main__")
+# Phase 9 contains a legacy exact-string customer API guard. The current customer
+# payload already exposes address data but formats it differently, so normalize
+# the guard before the settings runner triggers Phase 9/10–19 assembly.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_phase9_customer_anchor_compat.py"), run_name="__main__")
 # Generic legacy page assertions predate the tabbed Settings IA. Keep the old
 # coverage, but verify finance content after an actual Finanzen-tab click.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_settings_browser_smoke_tabs_fix.py"), run_name="__main__")
+# Phase 9 rewrites CustomerForm/customer creation as part of its core CRUD pass.
+# Re-apply the screenshot-derived customer/contacts parity after the entire
+# appointment chain so list/modal/identifiers and Contacts navigation stay final.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_contacts_parity.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_contacts_parity_fix.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_direct_form_compat.py"), run_name="__main__")
 
 # Final assembly guard: quote_pdf returns FileResponse, therefore the symbol must
 # be imported in the actual generated view regardless of historical import shape
