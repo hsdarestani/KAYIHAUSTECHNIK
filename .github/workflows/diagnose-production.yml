@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Inspect production host
+      - name: Audit production price sources
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.HOST }}
@@ -21,28 +21,77 @@ jobs:
           password: ${{ secrets.PASS }}
           command_timeout: 5m
           script: |
-            set +e
-            echo '=== date / uptime ==='
-            date -Is
-            uptime
-            echo '=== memory ==='
-            free -h
-            echo '=== disk / inodes ==='
-            df -h
-            df -i
-            echo '=== docker ==='
-            systemctl is-active docker
-            docker version --format '{{.Server.Version}}'
-            docker system df
-            cd /opt/kayi 2>/dev/null || exit 0
+            set -eu
+            cd /opt/kayi
+            cat >/tmp/ab-bau-price-audit.py <<'PY'
+            from erp.models import Organization, PriceSource, PriceItem, Project
+            from erp.services.pricing import preferred_price_source, commercial_price_sources, price_source_matches_job_type
+
+            org = Organization.objects.filter(name="A+Bau").first()
+            assert org is not None, "A+Bau organization missing"
+
+            sources = list(PriceSource.objects.filter(organization=org).order_by("name", "pk"))
+            print(f"PRICE_AUDIT|organization={org.name}|sources={len(sources)}|rows={PriceItem.objects.filter(organization=org).count()}")
+            for source in sources:
+                rows = PriceItem.objects.filter(organization=org, source=source).count()
+                name = str(getattr(source, "name", "") or "")
+                filename = str(getattr(source, "original_filename", "") or "")
+                kind = str(getattr(source, "kind", "") or "")
+                active = getattr(source, "active", None)
+                try:
+                    private_ok = price_source_matches_job_type(source, Project.JobType.PRIVATE)
+                except Exception as exc:
+                    private_ok = f"error:{type(exc).__name__}"
+                try:
+                    insurance_ok = price_source_matches_job_type(source, Project.JobType.INSURANCE)
+                except Exception as exc:
+                    insurance_ok = f"error:{type(exc).__name__}"
+                print(
+                    "SOURCE|"
+                    f"id={source.pk}|kind={kind}|active={active}|private_ok={private_ok}|insurance_ok={insurance_ok}|"
+                    f"rows={rows}|name={name}|file={filename}"
+                )
+
+            private_candidates = []
+            for source in sources:
+                haystack = f"{getattr(source, 'name', '')} {getattr(source, 'original_filename', '')}".lower()
+                if "privatkund" in haystack or "kayi haustechnik preisliste privat" in haystack or "firmenpreisliste" in haystack:
+                    private_candidates.append(source)
+
+            preferred_private = preferred_price_source(org, Project.JobType.PRIVATE)
+            preferred_insurance = preferred_price_source(org, Project.JobType.INSURANCE)
+            commercial_ids = {s.pk for s in commercial_price_sources(org)}
+
+            def describe(source):
+                if source is None:
+                    return "NONE"
+                return f"id={source.pk}|kind={getattr(source, 'kind', '')}|name={getattr(source, 'name', '')}|file={getattr(source, 'original_filename', '')}|rows={PriceItem.objects.filter(organization=org, source=source).count()}|commercial={source.pk in commercial_ids}"
+
+            print("PREFERRED_PRIVATE|" + describe(preferred_private))
+            print("PREFERRED_INSURANCE|" + describe(preferred_insurance))
+            print(f"PRIVATE_CANDIDATE_COUNT|{len(private_candidates)}")
+            for source in private_candidates:
+                print("PRIVATE_CANDIDATE|" + describe(source))
+
+            owner_private = [
+                s for s in private_candidates
+                if "b&o" not in f"{getattr(s, 'name', '')} {getattr(s, 'original_filename', '')}".lower()
+                and "bo " not in f"{getattr(s, 'name', '')} {getattr(s, 'original_filename', '')}".lower()
+            ]
+            print(f"OWNER_PRIVATE_COUNT|{len(owner_private)}")
+            for source in owner_private:
+                print("OWNER_PRIVATE|" + describe(source))
+
+            if preferred_private is not None:
+                pref_text = f"{getattr(preferred_private, 'name', '')} {getattr(preferred_private, 'original_filename', '')}".lower()
+                print(f"PRIVATE_PREF_IS_BO|{('b&o' in pref_text) or ('b&o' in pref_text)}")
+            else:
+                print("PRIVATE_PREF_IS_BO|UNKNOWN")
+            PY
+
             if docker compose version >/dev/null 2>&1; then
-              docker compose ps -a
-              docker compose logs --tail=80 web db redis caddy worker beat
+              docker compose exec -T web python manage.py shell </tmp/ab-bau-price-audit.py
             else
-              docker-compose ps -a
-              docker-compose logs --tail=80 web db redis caddy worker beat
+              docker-compose exec -T web python manage.py shell </tmp/ab-bau-price-audit.py
             fi
-            echo '=== recent kernel OOM / kills ==='
-            dmesg -T | grep -Ei 'out of memory|oom|killed process|i/o error|no space' | tail -80
-            echo '=== recent docker service ==='
-            journalctl -u docker --no-pager -n 100
+            rm -f /tmp/ab-bau-price-audit.py
