@@ -26,12 +26,15 @@ jobs:
           ref: main
 
       - name: Verify and assemble source
-        run: bash scripts/unpack-source.sh
+        run: |
+          bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
 
       - name: Validate assembled application
         run: |
           python3 -m compileall -q erp config tests scripts/production_browser_smoke.py
           node --check static/js/app.js
+          node --check static/js/ab-bau-production-hardening.js
           cp .env.example .env
           docker compose config --quiet
 
