@@ -21,18 +21,24 @@ def run(module) -> None:
         </div>
       </div>
 '''
-    if canonical_field not in detail:
-        pattern = re.compile(
-            r'<div class="nx-doc-section"[^>]*>\s*<div class="nx-grid nx-grid-2"[^>]*>.*?name="services".*?name="material".*?</div>\s*</div>',
+    if "data-field-services" not in detail and canonical_field not in detail:
+        # The active KAYI technician flow is the signed Field-Authorization
+        # completion form. Normalize only its two free-text completion fields so
+        # the ToolTime service editor can replace them without destroying the
+        # surrounding authorization -> work -> completion workflow.
+        field_pattern = re.compile(
+            r'\s*<div class="fa-grid-2">\s*<label class="fa-field"><span>Ausgeführte Leistungen</span><textarea[^>]*name="services".*?</textarea></label>\s*<label class="fa-field"><span>Material</span><textarea[^>]*name="material".*?</textarea></label>\s*</div>',
             re.S,
         )
-        detail, count = pattern.subn(canonical_field.rstrip(), detail, count=1)
+        detail, count = field_pattern.subn("\n" + canonical_field.rstrip(), detail, count=1)
         if count == 0:
-            customer_pos = detail.find('name="customer_name"')
-            if customer_pos >= 0:
-                section_pos = detail.rfind('<div class="nx-doc-section', 0, customer_pos)
-                if section_pos >= 0:
-                    detail = detail[:section_pos] + canonical_field + detail[section_pos:]
-        if canonical_field not in detail:
-            raise RuntimeError("Appointment parity preflight: mobile documentation insertion anchor fehlt")
+            # Compatibility with the older, simpler appointment documentation
+            # template if a deployment still assembles that variant.
+            legacy_pattern = re.compile(
+                r'<div class="nx-doc-section"[^>]*>\s*<div class="nx-grid nx-grid-2"[^>]*>.*?name="services".*?name="material".*?</div>\s*</div>',
+                re.S,
+            )
+            detail, count = legacy_pattern.subn(canonical_field.rstrip(), detail, count=1)
+        if count == 0 or canonical_field not in detail:
+            raise RuntimeError("Appointment parity preflight: completion service fields anchor fehlt")
     module.write(detail_rel, detail)
