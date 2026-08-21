@@ -14,6 +14,7 @@ import tooltime_parity_phase16_appointment_recurrence as phase16
 import tooltime_parity_phase17_recurrence_parity as phase17
 import tooltime_parity_phase18_recurrence_edit_scope as phase18
 import tooltime_parity_phase19_custom_recurrence as phase19
+import tooltime_appointment_process_parity as appointment_process
 import tooltime_phase10_ci_closeout as phase10_closeout
 import tooltime_phase12_ci_closeout as phase12_closeout
 import tooltime_phase15_ci_closeout as phase15_closeout
@@ -140,7 +141,7 @@ def robust_patch_browser_smoke(module) -> None:
             if page.locator('[data-address-card]').count() != 1 or page.locator('[data-team-search]').count() != 1:
                 fail("Phase 10 address/team controls are missing")
             phase10_text = page.locator("body").inner_text()
-            for expected in ("Kunde oder Projekt auswählen", "Wiederholt sich nicht", "Arbeitsbericht", "Bilder"):
+            for expected in ("Kunde oder Projekt auswählen", "Einmalig", "Arbeitsbericht", "Bilder"):
                 if expected not in phase10_text:
                     fail(f"Phase 10 appointment create is missing {expected!r}")
 '''
@@ -172,9 +173,10 @@ def run() -> None:
     phase18.run(module)
     phase18_timing_fix.run(module)
     phase19.run(module)
+    appointment_process.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
-    print("A+BAU TOOLTIME PHASE 9/10/11/12/13/14/15/16/17/18/19 RUNNER 2026-08-21: core CRUD, appointment creation, calendar/list/map planning, office-only appointment edit, detail polish, native customer-linked appointments, persistent recurrence, ToolTime interval choices, safe series deletion, scoped recurrence edits and custom rhythm/end conditions layered into final assembly with linear migrations.")
+    print("A+BAU TOOLTIME TERMINPROZESS 2026-08-21: Kunden-/Projektbezug, Planung, Kalender/Liste/Karte, Serien, Leistungsgruppen und Positionen, Arbeitsbericht, Angebot→Termin sowie Termin→Angebot/Rechnung sind in der finalen Assembly verbunden.")
 
 
 if __name__ == "__main__":
