@@ -17,14 +17,14 @@ def _replace_once(text: str, old: str, new: str, label: str) -> str:
 def patch_recurrence_choices(module) -> None:
     model_rel = "erp/models.py"
     model = module.read(model_rel)
-    old_choices = '''        choices=[
+    old_model_choices = '''        choices=[
             ("none", "Keine Wiederholung"),
             ("daily", "Täglich"),
             ("weekly", "Wöchentlich"),
             ("monthly", "Monatlich"),
         ],
 '''
-    new_choices = '''        choices=[
+    new_model_choices = '''        choices=[
             ("none", "Keine Wiederholung"),
             ("daily", "Täglich"),
             ("weekdays", "Werktags"),
@@ -35,13 +35,36 @@ def patch_recurrence_choices(module) -> None:
             ("yearly", "Jährlich"),
         ],
 '''
-    model = _replace_once(model, old_choices, new_choices, "CalendarEvent recurrence choices")
+    model = _replace_once(model, old_model_choices, new_model_choices, "CalendarEvent recurrence choices")
     module.write(model_rel, model)
     compile(model, str(ROOT / model_rel), "exec")
 
     migration_rel = "erp/migrations/0021_calendar_event_recurrence.py"
     migration = module.read(migration_rel)
-    migration = _replace_once(migration, old_choices, new_choices, "0021 migration recurrence choices")
+    old_migration_choices = '''                choices=[
+                    ("none", "Keine Wiederholung"),
+                    ("daily", "Täglich"),
+                    ("weekly", "Wöchentlich"),
+                    ("monthly", "Monatlich"),
+                ],
+'''
+    new_migration_choices = '''                choices=[
+                    ("none", "Keine Wiederholung"),
+                    ("daily", "Täglich"),
+                    ("weekdays", "Werktags"),
+                    ("weekly", "Wöchentlich"),
+                    ("biweekly", "Alle zwei Wochen"),
+                    ("monthly", "Monatlich"),
+                    ("half_yearly", "Halbjährlich"),
+                    ("yearly", "Jährlich"),
+                ],
+'''
+    migration = _replace_once(
+        migration,
+        old_migration_choices,
+        new_migration_choices,
+        "0021 migration recurrence choices",
+    )
     module.write(migration_rel, migration)
     compile(migration, str(ROOT / migration_rel), "exec")
 
@@ -278,7 +301,10 @@ class ToolTimePhase17RecurrenceParityTests(TestCase):
         events = list(CalendarEvent.objects.filter(title="Delete single").order_by("recurrence_index"))
         response = self.client.post(reverse("next-appointment-delete", args=[events[1].pk]), {"scope": "single"})
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(list(CalendarEvent.objects.filter(title="Delete single").values_list("recurrence_index", flat=True)), [0, 2])
+        remaining = list(
+            CalendarEvent.objects.filter(title="Delete single").order_by("recurrence_index").values_list("recurrence_index", flat=True)
+        )
+        self.assertEqual(remaining, [0, 2])
 
     def test_delete_following_removes_selected_and_later_occurrences(self):
         start = timezone.localtime().replace(second=0, microsecond=0) + timedelta(days=2)
@@ -286,7 +312,9 @@ class ToolTimePhase17RecurrenceParityTests(TestCase):
         events = list(CalendarEvent.objects.filter(title="Delete following").order_by("recurrence_index"))
         response = self.client.post(reverse("next-appointment-delete", args=[events[1].pk]), {"scope": "following"})
         self.assertEqual(response.status_code, 302)
-        remaining = list(CalendarEvent.objects.filter(title="Delete following").values_list("recurrence_index", flat=True))
+        remaining = list(
+            CalendarEvent.objects.filter(title="Delete following").order_by("recurrence_index").values_list("recurrence_index", flat=True)
+        )
         self.assertEqual(remaining, [0])
 
     def test_create_form_exposes_tooltime_interval_set(self):
