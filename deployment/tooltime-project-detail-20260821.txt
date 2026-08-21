@@ -1,0 +1,11 @@
+Production deployment marker for the final ToolTime project detail surface.
+
+Reason: recent ToolTime parity commits landed directly on main while the production workflow only deploys after a merged PR or manual dispatch. Merging this marker PR intentionally triggers the existing production deployment workflow without changing runtime behavior.
+
+Expected assembled surface:
+- ToolTime-style project detail layout
+- net turnover / expenditure / open amount KPIs
+- customer and project-site rail with map
+- overview / tasks / documents tabs
+- appointments, quotes, invoices, receipts sections
+- final ToolTime CSS and SVG icon surface
