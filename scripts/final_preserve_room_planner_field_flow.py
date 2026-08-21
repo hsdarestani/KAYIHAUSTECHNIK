@@ -20,12 +20,8 @@ def write(rel: str, text: str) -> None:
 
 
 def restore_room_planner_routes() -> None:
-    """Keep the modern Room Planner Pro as the only primary 3D entry point.
-
-    The legacy /configurator/ route stays available as a compatibility fallback,
-    but ToolTime/rebuild pages must never send users there. That page uses the old
-    shell and does not expose the complete Room Planner Pro object/vision workflow.
-    """
+    # Keep Room Planner Pro as the primary 3D entry point. The legacy
+    # /configurator/ route remains only as a compatibility fallback.
     replacements = {
         "{% url 'configurator' %}?project={{ project.pk }}": "{% url 'next-room-planner' project.pk %}",
         '{% url "configurator" %}?project={{ project.pk }}': "{% url 'next-room-planner' project.pk %}",
@@ -56,6 +52,101 @@ def restore_room_planner_routes() -> None:
     print(f"{MARKER}: restored modern 3D routes in {patched} rebuild template(s).")
 
 
+def restore_project_detail_contracts() -> None:
+    # Reconcile the final ToolTime visual pass with established project workflows.
+    # Finance values remain office-only; technicians keep operational controls.
+    rel = "templates/rebuild/project_detail.html"
+    text = read(rel)
+
+    text = text.replace("▱ Aufmaß & 3D", "▱ Raum & 3D · Aufmaß")
+
+    text = text.replace(
+        "<div><span>B&O / Versicherung</span><strong>Leistungsnachweis / Regiebericht</strong></div>",
+        "<div><strong>B&O Leistungsnachweis / Regiebericht</strong><span>Versicherung</span></div>",
+    )
+
+    text = text.replace(
+        '<a class="tt-pd-row" href="{% url \'next-appointment-detail\' event.pk %}">',
+        '<a class="tt-pd-row" data-row-href="{% url \'next-appointment-detail\' event.pk %}" href="{% url \'next-appointment-detail\' event.pk %}">',
+    )
+    text = text.replace(
+        '<a class="tt-pd-row" href="{% url \'next-quote-edit\' row.quote.pk %}">',
+        '<a class="tt-pd-row" data-action="open-offer" data-row-href="{% url \'next-quote-edit\' row.quote.pk %}" href="{% url \'next-quote-edit\' row.quote.pk %}">',
+    )
+    text = text.replace(
+        '<a class="tt-pd-row" href="{% url \'next-invoice-edit\' row.invoice.pk %}">',
+        '<a class="tt-pd-row" data-action="open-invoice" data-row-href="{% url \'next-invoice-edit\' row.invoice.pk %}" href="{% url \'next-invoice-edit\' row.invoice.pk %}">',
+    )
+
+    kpi_block = '''      <div class="tt-pd-kpis">
+        <section><span>Umsatz (netto)</span><strong>€{{ turnover_net|floatformat:2 }}</strong></section>
+        <section><span>Ausgaben (netto)</span><strong>€{{ project_expenditure|floatformat:2 }}</strong></section>
+        <section class="tt-pd-kpi-open"><span>Offener Betrag (brutto)</span><strong>€{{ open_amount|floatformat:2 }}</strong></section>
+      </div>
+
+'''
+    text = text.replace(kpi_block, "", 1)
+
+    old_tabs = '<div class="tt-pd-tabs"><button type="button" class="is-active" data-tab="overview">Übersicht</button><button type="button" data-tab="tasks">Aufgaben</button><button type="button" data-tab="documents">Dokumente</button></div>'
+    new_tabs = '<div class="tt-pd-tabs"><button type="button" class="is-active" data-tab="overview">Übersicht</button><button type="button" data-tab="tasks">Aufgaben</button><button type="button" data-tab="documents">Dokumente</button>{% if not field_user %}<button type="button" data-tab="finance">Finanzen</button>{% endif %}</div>'
+    if 'data-tab="finance"' not in text:
+        if old_tabs not in text:
+            raise RuntimeError("Project detail tab anchor changed before finance restoration")
+        text = text.replace(old_tabs, new_tabs, 1)
+
+    finance_panel = r'''
+        {% if not field_user %}
+        <div class="tt-pd-panel" data-tab-panel="finance">
+          <section class="tt-pd-section">
+            <h3>Finanzen</h3>
+            <div class="tt-pd-kpis">
+              <section><span>Umsatz (netto)</span><strong>€{{ turnover_net|floatformat:2 }}</strong></section>
+              <section><span>Ausgaben (netto)</span><strong>€{{ project_expenditure|floatformat:2 }}</strong></section>
+              <section class="tt-pd-kpi-open"><span>Offener Betrag (brutto)</span><strong>€{{ open_amount|floatformat:2 }}</strong></section>
+            </div>
+            <div class="tt-pd-tool-grid">
+              <a href="{% url 'next-finance' %}">↗ Finanzübersicht</a>
+              <a href="{% url 'next-quote-create' %}?project={{ project.pk }}">◇ Angebot erstellen</a>
+              <a href="{% url 'next-invoice-create' %}?project={{ project.pk }}">€ Rechnung erstellen</a>
+            </div>
+          </section>
+        </div>
+        {% endif %}
+'''
+    if 'data-tab-panel="finance"' not in text:
+        docs_anchor = '''        <div class="tt-pd-panel" data-tab-panel="documents">
+          <section class="tt-pd-section"><h3>Dokumente</h3>{% for document in documents %}<div class="tt-pd-row"><div><strong>{{ document.title }}</strong><small>{{ document.get_category_display }} · {{ document.created_at|date:'d.m.Y H:i' }}</small></div>{% if document.file %}<a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" target="_blank">Öffnen</a>{% endif %}</div>{% empty %}<div class="tt-pd-empty">Noch keine Dokumente angelegt.</div>{% endfor %}</section>
+        </div>
+'''
+        if docs_anchor not in text:
+            raise RuntimeError("Project detail documents panel anchor changed before finance restoration")
+        text = text.replace(docs_anchor, docs_anchor + finance_panel, 1)
+
+    required = (
+        "next-room-planner",
+        "Raum & 3D",
+        "Aufmaß",
+        "B&O Leistungsnachweis / Regiebericht",
+        'data-tab="finance"',
+        'data-tab-panel="finance"',
+        "data-row-href",
+        'data-action="open-offer"',
+        'data-action="open-invoice"',
+    )
+    missing = [marker for marker in required if marker not in text]
+    if missing:
+        raise RuntimeError(f"Project detail final workflow contracts missing: {missing}")
+
+    finance_pos = text.find('data-tab-panel="finance"')
+    kpi_pos = text.find("Umsatz (netto)")
+    guard_pos = text.rfind("{% if not field_user %}", 0, finance_pos + 1)
+    if min(finance_pos, kpi_pos, guard_pos) < 0 or not (guard_pos < finance_pos and guard_pos < kpi_pos):
+        raise RuntimeError("Project-detail finance values are not protected from field users")
+
+    write(rel, text)
+    print(f"{MARKER}: restored project-detail finance/row/B&O/field contracts.")
+
+
 def install_regression_test() -> None:
     write(
         "tests/test_final_room_planner_field_flow_guard.py",
@@ -72,6 +163,28 @@ class FinalRoomPlannerAndFieldFlowGuardTests(SimpleTestCase):
         self.assertIn("next-room-planner", project)
         self.assertNotIn("{% url 'configurator' %}?project={{ project.pk }}", project)
         self.assertNotIn('{% url "configurator" %}?project={{ project.pk }}', project)
+
+    def test_project_detail_keeps_established_workflow_contracts_and_hides_finance_from_field(self):
+        project = (ROOT / "templates/rebuild/project_detail.html").read_text(encoding="utf-8")
+        for marker in (
+            "Raum & 3D",
+            "Aufmaß",
+            "B&O Leistungsnachweis / Regiebericht",
+            'data-tab="finance"',
+            'data-tab-panel="finance"',
+            "data-row-href",
+            'data-action="open-offer"',
+            'data-action="open-invoice"',
+        ):
+            self.assertIn(marker, project)
+        finance_pos = project.find('data-tab-panel="finance"')
+        kpi_pos = project.find("Umsatz (netto)")
+        guard_pos = project.rfind("{% if not field_user %}", 0, finance_pos + 1)
+        self.assertGreaterEqual(finance_pos, 0)
+        self.assertGreaterEqual(kpi_pos, 0)
+        self.assertGreaterEqual(guard_pos, 0)
+        self.assertLess(guard_pos, finance_pos)
+        self.assertLess(guard_pos, kpi_pos)
 
     def test_room_planner_pro_runtime_and_ai_vision_are_still_installed(self):
         template = (ROOT / "templates/rebuild/room_planner.html").read_text(encoding="utf-8")
@@ -144,6 +257,7 @@ def guard_existing_tests() -> None:
 
 def main() -> None:
     restore_room_planner_routes()
+    restore_project_detail_contracts()
     install_regression_test()
     guard_existing_tests()
     test_source = read("tests/test_final_room_planner_field_flow_guard.py")
