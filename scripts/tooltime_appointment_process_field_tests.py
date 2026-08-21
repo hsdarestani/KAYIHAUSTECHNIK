@@ -48,6 +48,7 @@ def run(module) -> None:
             "report_text": "Montage durchgeführt und geprüft.",
             "services": "Zusatznotiz zur Leistung",
             "material": "Kein Zusatzmaterial",
+            "customer_reviewed": "1",
             "document_service_id": [str(item.pk)],
             "document_service_kind": ["labour"],
             "document_service_quantity": ["2.5"],
