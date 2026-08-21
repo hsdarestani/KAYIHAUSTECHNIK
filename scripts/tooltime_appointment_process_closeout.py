@@ -57,6 +57,57 @@ def run(module) -> None:
     module.write(urls_rel, urls)
     compile(urls, str(ROOT / urls_rel), "exec")
 
+    # The production/browser smoke normally logs in with the seeded demo account.
+    # That account is intentionally field-scoped in some environments, while
+    # appointment creation is an office-only workflow. Keep the production
+    # permission boundary intact and elevate only the smoke user's profile for
+    # this one browser assertion, then restore it immediately.
+    smoke_rel = "scripts/production_browser_smoke.py"
+    smoke = module.read(smoke_rel)
+    old_smoke = r'''            # A+BAU TOOLTIME APPOINTMENT PROCESS BROWSER SMOKE
+            response = page.goto(urljoin(base_url, "appointments/new/"), wait_until="domcontentloaded", timeout=30_000)
+            if response is None or response.status >= 500:
+                fail(f"appointment parity create returned {response.status if response else 'no response'}")
+            body = page.locator("body").inner_text()
+            for label in ("Terminname", "Mitarbeiter hinzufügen", "Leistungsgruppe hinzufügen", "Position hinzufügen", "Arbeitsbericht"):
+                if label not in body:
+                    fail(f"appointment parity is missing {label!r}")
+            if page.locator('[data-service-editor]').count() != 1:
+                fail("appointment service editor is missing")
+'''
+    new_smoke = r'''            # A+BAU TOOLTIME APPOINTMENT PROCESS BROWSER SMOKE
+            smoke_profile = getattr(user, "profile", None)
+            if smoke_profile is None:
+                fail("appointment parity smoke user has no profile")
+            old_smoke_role = smoke_profile.role
+            old_smoke_mobile_worker = smoke_profile.is_mobile_worker
+            try:
+                smoke_profile.role = "office"
+                smoke_profile.is_mobile_worker = False
+                smoke_profile.save()
+                response = page.goto(urljoin(base_url, "appointments/new/"), wait_until="domcontentloaded", timeout=30_000)
+                if response is None or response.status >= 500:
+                    fail(f"appointment parity create returned {response.status if response else 'no response'}")
+                if "/login/" in page.url:
+                    fail("appointment parity office smoke unexpectedly redirected to login")
+                body = page.locator("body").inner_text()
+                for label in ("Terminname", "Mitarbeiter hinzufügen", "Leistungsgruppe hinzufügen", "Position hinzufügen", "Arbeitsbericht"):
+                    if label not in body:
+                        fail(f"appointment parity is missing {label!r}")
+                if page.locator('[data-service-editor]').count() != 1:
+                    fail("appointment service editor is missing")
+            finally:
+                smoke_profile.role = old_smoke_role
+                smoke_profile.is_mobile_worker = old_smoke_mobile_worker
+                smoke_profile.save()
+'''
+    if "old_smoke_role = smoke_profile.role" not in smoke:
+        if old_smoke not in smoke:
+            raise RuntimeError("Appointment final closeout: appointment browser smoke anchor fehlt")
+        smoke = smoke.replace(old_smoke, new_smoke, 1)
+    module.write(smoke_rel, smoke)
+    compile(smoke, str(ROOT / smoke_rel), "exec")
+
     for marker in (
         "Nach dem Speichern",
         "data-field-services",
@@ -66,4 +117,11 @@ def run(module) -> None:
         haystack = form if marker == "Nach dem Speichern" else detail if marker == "data-field-services" else urls
         if marker not in haystack:
             raise RuntimeError(f"Appointment final closeout guard missing: {marker}")
-    print(f"{MARKER}: final template balance, legacy semantics and Termin→Angebot/Rechnung routes restored.")
+    for marker in (
+        "old_smoke_role = smoke_profile.role",
+        'smoke_profile.role = "office"',
+        "old_smoke_mobile_worker = smoke_profile.is_mobile_worker",
+    ):
+        if marker not in smoke:
+            raise RuntimeError(f"Appointment final closeout browser guard missing: {marker}")
+    print(f"{MARKER}: final template balance, hand-off routes and office-scoped appointment browser smoke restored.")
