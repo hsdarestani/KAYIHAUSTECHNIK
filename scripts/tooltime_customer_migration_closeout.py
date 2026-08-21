@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,5 +65,10 @@ if customer_template.exists():
     for needle in ("Weitere Angaben", "Abweichenden Ausführungsort hinzufügen", "Kunde konnte nicht gespeichert werden."):
         if needle not in customer:
             raise RuntimeError(f"Customer form compatibility missing: {needle}")
+
+# Keep this after the direct-form migration closeout: it fixes empty POST binding
+# and translates the final Einsatzort field labels without being overwritten by
+# later customer parity layers.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_legacy_form_regression.py"), run_name="__main__")
 
 print("A+BAU TOOLTIME CUSTOMER MIGRATION CLOSEOUT 2026-08-21: customer identifiers linearized as 0024 after appointment process parity 0023.")
