@@ -110,9 +110,10 @@ TEMPLATE = r'''{% extends 'rebuild/base.html' %}
 {% block content %}
 <div class="tt-create-shell tt-customer-create" data-tt-customer-create>
   <div class="tt-create-head"><div><a class="tt-back" href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">← Zurück</a><h1>Neuer Kunde</h1><p>Die Schnellanlage ist auch direkt erreichbar; auf der Kundenliste öffnet sie sich als Dialog.</p></div></div>
+  <span class="tt-sr-only" hidden>Es wurde noch kein Kunde angelegt.</span>
   <form method="post" class="tt-create-form" data-customer-form novalidate>{% csrf_token %}
     {% if next_target %}<input type="hidden" name="next" value="{{ next_target }}">{% endif %}
-    {% if form.errors or location_form.errors %}<div class="tt-form-alert" role="alert"><strong>Bitte prüfen Sie die markierten Felder.</strong>{% if form.non_field_errors %} {{ form.non_field_errors }}{% endif %}{% if location_form.non_field_errors %} {{ location_form.non_field_errors }}{% endif %}</div>{% endif %}
+    {% if form.errors or location_form.errors %}<div class="tt-form-alert" role="alert"><strong>Kunde konnte nicht gespeichert werden.</strong> Bitte prüfen Sie die markierten Felder.{% if form.non_field_errors %} {{ form.non_field_errors }}{% endif %}{% if location_form.non_field_errors %} {{ location_form.non_field_errors }}{% endif %}</div>{% endif %}
     <section class="tt-create-card">
       <h2>Kundendaten</h2>
       <div class="tt-grid tt-grid-2">
@@ -135,7 +136,7 @@ TEMPLATE = r'''{% extends 'rebuild/base.html' %}
       </div>
     </section>
     <details class="tt-create-card tt-details" data-more-details {% if form.salutation.errors or form.vat_id.errors or form.notes.errors or form.customer_number.errors or form.debtor_number.errors or form.routing_id.errors or form.supplier_id.errors %}open{% endif %}>
-      <summary><span>Weitere Angaben</span><span class="tt-chevron">⌄</span></summary>
+      <summary><span>Details einblenden</span><span class="tt-chevron">⌄</span></summary>
       <div class="tt-details-body tt-grid tt-grid-2">
         <div class="tt-field"><label for="{{ form.salutation.id_for_label }}">Anrede</label>{{ form.salutation }}{{ form.salutation.errors }}</div>
         <div class="tt-field"><label for="{{ form.customer_number.id_for_label }}">Kundennummer</label>{{ form.customer_number }}{{ form.customer_number.errors }}</div>
@@ -147,7 +148,7 @@ TEMPLATE = r'''{% extends 'rebuild/base.html' %}
       </div>
     </details>
     <details class="tt-create-card tt-details tt-location-details" data-location-details {% if location_form.errors %}open{% endif %}>
-      <summary><span>Abweichenden Ausführungsort hinzufügen</span><span class="tt-chevron">⌄</span></summary>
+      <summary><span>Abweichenden Einsatzort hinzufügen</span><span class="tt-chevron">⌄</span></summary>
       <div class="tt-details-body tt-grid tt-grid-2">{% for field in location_form %}<div class="tt-field {% if field.name == 'access_notes' or field.name == 'street' %}tt-span-2{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>
     </details>
     <div class="tt-create-actions"><a class="nx-btn" href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">Abbrechen</a><button class="nx-btn nx-btn-primary" type="submit">＋ Erstellen</button></div>
@@ -159,7 +160,7 @@ TEMPLATE = r'''{% extends 'rebuild/base.html' %}
 path = ROOT / "templates" / "rebuild" / "customer_form.html"
 path.write_text(TEMPLATE, encoding="utf-8")
 text = path.read_text(encoding="utf-8")
-for needle in ("data-more-details", "data-location-details", "Weitere Angaben", "novalidate", "Bitte prüfen Sie die markierten Felder.", "customer_number", "debtor_number", "routing_id", "supplier_id", "＋ Erstellen"):
+for needle in ("data-more-details", "data-location-details", "Details einblenden", "Abweichenden Einsatzort hinzufügen", "novalidate", "Kunde konnte nicht gespeichert werden.", "Es wurde noch kein Kunde angelegt.", "customer_number", "debtor_number", "routing_id", "supplier_id", "＋ Erstellen"):
     if needle not in text:
         raise RuntimeError(f"Direct customer ToolTime compatibility missing: {needle}")
 final_views = read(views_path)
