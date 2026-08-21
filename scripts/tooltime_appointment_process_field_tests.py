@@ -49,6 +49,7 @@ def run(module) -> None:
             "services": "Zusatznotiz zur Leistung",
             "material": "Kein Zusatzmaterial",
             "customer_reviewed": "1",
+            "completion_signature_data": SIGNATURE,
             "document_service_id": [str(item.pk)],
             "document_service_kind": ["labour"],
             "document_service_quantity": ["2.5"],
