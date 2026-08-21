@@ -95,10 +95,7 @@ def patch_edit_backend(module) -> None:
                 occurrence.notes = updated.notes
                 occurrence.project = updated.project
                 occurrence.customer = updated.customer
-                occurrence.save(update_fields=[
-                    "starts_at", "ends_at", "title", "type", "all_day", "location",
-                    "notes", "project", "customer", "updated_at",
-                ])
+                occurrence.save()
                 occurrence.attendees.set(attendees)
                 affected += 1
 
