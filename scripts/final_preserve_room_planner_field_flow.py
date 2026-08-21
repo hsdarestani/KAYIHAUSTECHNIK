@@ -78,6 +78,13 @@ def restore_project_detail_contracts() -> None:
         '<a class="tt-pd-row" data-action="open-invoice" data-row-href="{% url \'next-invoice-edit\' row.invoice.pk %}" href="{% url \'next-invoice-edit\' row.invoice.pk %}">',
     )
 
+    # Preserve the established project-document download contract while keeping
+    # the normal browser preview action available.
+    text = text.replace(
+        '<a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" target="_blank">Öffnen</a>',
+        '<a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" target="_blank">Öffnen</a><a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" download>Herunterladen</a>',
+    )
+
     kpi_block = '''      <div class="tt-pd-kpis">
         <section><span>Umsatz (netto)</span><strong>€{{ turnover_net|floatformat:2 }}</strong></section>
         <section><span>Ausgaben (netto)</span><strong>€{{ project_expenditure|floatformat:2 }}</strong></section>
@@ -115,7 +122,7 @@ def restore_project_detail_contracts() -> None:
 '''
     if 'data-tab-panel="finance"' not in text:
         docs_anchor = '''        <div class="tt-pd-panel" data-tab-panel="documents">
-          <section class="tt-pd-section"><h3>Dokumente</h3>{% for document in documents %}<div class="tt-pd-row"><div><strong>{{ document.title }}</strong><small>{{ document.get_category_display }} · {{ document.created_at|date:'d.m.Y H:i' }}</small></div>{% if document.file %}<a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" target="_blank">Öffnen</a>{% endif %}</div>{% empty %}<div class="tt-pd-empty">Noch keine Dokumente angelegt.</div>{% endfor %}</section>
+          <section class="tt-pd-section"><h3>Dokumente</h3>{% for document in documents %}<div class="tt-pd-row"><div><strong>{{ document.title }}</strong><small>{{ document.get_category_display }} · {{ document.created_at|date:'d.m.Y H:i' }}</small></div>{% if document.file %}<a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" target="_blank">Öffnen</a><a class="nx-btn nx-btn-ghost" href="{{ document.file.url }}" download>Herunterladen</a>{% endif %}</div>{% empty %}<div class="tt-pd-empty">Noch keine Dokumente angelegt.</div>{% endfor %}</section>
         </div>
 '''
         if docs_anchor not in text:
@@ -132,6 +139,7 @@ def restore_project_detail_contracts() -> None:
         "data-row-href",
         'data-action="open-offer"',
         'data-action="open-invoice"',
+        "Herunterladen",
     )
     missing = [marker for marker in required if marker not in text]
     if missing:
@@ -175,6 +183,7 @@ class FinalRoomPlannerAndFieldFlowGuardTests(SimpleTestCase):
             "data-row-href",
             'data-action="open-offer"',
             'data-action="open-invoice"',
+            "Herunterladen",
         ):
             self.assertIn(marker, project)
         finance_pos = project.find('data-tab-panel="finance"')
