@@ -43,15 +43,23 @@ elif "'ORGANIZATION_NAME': 'A+Bau'" not in text:
     raise SystemExit("Could not install A+Bau ORGANIZATION_NAME into deployment environment")
 
 # Captured ToolTime account values are deliberately not rendered as constants.
-# Build a fixture-backed Django command into the assembled source before the
-# Docker image is built, then apply it to the real A+Bau organization after
-# migrations and tenant bootstrap have completed.
+# Build the importer and the final screenshot-review hardening into the assembled
+# source before Docker builds the production image.
 assembly_anchor = "bash scripts/unpack-source.sh\n"
+hardening_command = "python3 scripts/final_production_hardening_20260821.py\n"
 installer_command = "python3 scripts/tooltime_user_settings_import.py\n"
-if installer_command not in text:
+if hardening_command not in text:
     if assembly_anchor not in text:
+        raise SystemExit("Could not find source assembly anchor for final production hardening")
+    text = text.replace(assembly_anchor, assembly_anchor + hardening_command, 1)
+if installer_command not in text:
+    hardening_anchor = assembly_anchor + hardening_command
+    if hardening_anchor in text:
+        text = text.replace(hardening_anchor, hardening_anchor + installer_command, 1)
+    elif assembly_anchor in text:
+        text = text.replace(assembly_anchor, assembly_anchor + installer_command, 1)
+    else:
         raise SystemExit("Could not find source assembly anchor for ToolTime settings importer")
-    text = text.replace(assembly_anchor, assembly_anchor + installer_command, 1)
 
 organization_anchor = (
     "dc run --rm web python manage.py shell -c \"from erp.models import Organization; "
@@ -68,6 +76,7 @@ required = (
     "name='A+Bau'",
     "'ORGANIZATION_NAME': 'A+Bau'",
     "Organization.objects.filter(name='A+Bau').first()",
+    hardening_command.strip(),
     installer_command.strip(),
     settings_command.strip(),
 )
