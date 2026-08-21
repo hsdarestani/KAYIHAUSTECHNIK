@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,3 +65,8 @@ for needle in ("data-more-details", "data-location-details", "Details einblenden
     if needle not in text:
         raise RuntimeError(f"Direct customer ToolTime compatibility missing: {needle}")
 print("A+Bau direct customer route kept compatible with ToolTime progressive-detail browser contract.")
+
+# This script is invoked only after the complete appointment parity chain. Move
+# the temporary customer-field migration behind the final appointment migration
+# so Django sees a single deterministic leaf during makemigrations --check.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_migration_closeout.py"), run_name="__main__")
