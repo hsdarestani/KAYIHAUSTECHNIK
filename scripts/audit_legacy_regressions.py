@@ -97,3 +97,6 @@ runpy.run_path(str(ROOT / "scripts" / "final_form_voice_test_contract.py"), run_
 # after the A+Bau commercial migration has been normalized to 0010 and after all
 # prior customer polish so ToolTime list/modal semantics cannot be overwritten.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_contacts_parity.py"), run_name="__main__")
+# Final modal polish removes duplicate posted name fields and normalizes the
+# zero-result pagination range without weakening the ToolTime parity contract.
+runpy.run_path(str(ROOT / "scripts" / "tooltime_customer_contacts_parity_fix.py"), run_name="__main__")
