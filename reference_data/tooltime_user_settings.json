@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-08-21",
+  "source": "ToolTime account settings supplied by the product owner",
+  "commercial_profile": {
+    "numbering": {
+      "quote": {"prefix": "A-", "start": 220},
+      "invoice": {"prefix": "R-", "start": 145},
+      "credit": {"prefix": "GS-2026", "start": 1000},
+      "customer": {"auto": false},
+      "debtor_creditor_enabled": false
+    },
+    "web_view": {
+      "quote_default": true,
+      "acceptance_email": true
+    },
+    "payment_terms": {
+      "mode": "immediately",
+      "days": 0,
+      "areas": ["invoice"]
+    },
+    "dunning": {
+      "reminder": {"days": 7, "fee": "0.00"},
+      "first": {"days": 7, "fee": "3.00"},
+      "second": {"days": 7, "fee": "3.00"},
+      "automatic": false,
+      "grace_days": 1
+    },
+    "communication": {
+      "reply_email": "info@kayi-haustechnik.de",
+      "show_logo": true,
+      "invoice_subject": "Ihre Rechnung von {{ company_name }} ({{ invoice_number }})",
+      "invoice_body": "Sehr geehrte Damen und Herren,\n\nwie besprochen schicken wir Ihnen die Rechnung mit der Nummer {{ invoice_number }}. Sie finden das Dokument im Anhang.\n\nMit freundlichen Grüßen,\n{{ company_name }}"
+    },
+    "layout": {
+      "show_logo": true,
+      "logo_position": "right",
+      "logo_size": "large",
+      "show_footer": true,
+      "footer_mode": "standard"
+    },
+    "pay": {
+      "enabled": false,
+      "credit_card_limit": "2000.00",
+      "render_qr_in_invoices": false,
+      "payout_type": "single"
+    },
+    "invoice_defaults": {
+      "title": "Rechnung",
+      "salutation": "Sehr geehrte Damen und Herren,",
+      "intro_text": "nachfolgend berechnen wir Ihnen wie vorab besprochen:",
+      "closing_text": "Vielen Dank für Ihren Auftrag! Falls Sie Fragen oder Wünsche haben, stehen wir gerne zur Verfügung.",
+      "electronic_invoice": true,
+      "electronic_invoice_format": "xrechnung_3_0",
+      "tax_rate": "19.00",
+      "show_vat_for_labour_costs": true
+    },
+    "appointments": {
+      "types": [
+        {"key": "besichtigung", "label": "Besichtigung"},
+        {"key": "ausfuehrung", "label": "Ausführung"},
+        {"key": "beratung", "label": "Beratung"},
+        {"key": "abnahme", "label": "Abnahme"},
+        {"key": "wartung", "label": "Wartung"},
+        {"key": "notfall", "label": "Notfall"},
+        {"key": "intern", "label": "Intern"}
+      ]
+    }
+  },
+  "text_templates": [
+    {
+      "document_kind": "invoice",
+      "text_kind": "intro",
+      "title": "Standard",
+      "salutation": "Sehr geehrte Damen und Herren,",
+      "body": "nachfolgend berechnen wir Ihnen wie vorab besprochen:",
+      "is_standard": true,
+      "sort_order": 1
+    },
+    {
+      "document_kind": "invoice",
+      "text_kind": "closing",
+      "title": "Standard",
+      "salutation": "",
+      "body": "Vielen Dank für Ihren Auftrag! Falls Sie Fragen oder Wünsche haben, stehen wir gerne zur Verfügung.",
+      "is_standard": true,
+      "sort_order": 1
+    }
+  ]
+}
