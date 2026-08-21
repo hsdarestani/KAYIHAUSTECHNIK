@@ -191,7 +191,11 @@ def run() -> None:
     # The exact table has responsive columns. Patch the assembled browser smoke
     # after parity installation so hidden headers are checked semantically in DOM.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_quotes_smoke_dom_fix.py"), run_name="__main__")
-    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst, Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt und finale ToolTime-Angebotsliste aktiviert.")
+    # The central article catalogue is installed at the same final-parity stage so
+    # existing pricing/import workflows remain authoritative while office users get
+    # the ToolTime-style standalone Catalogue surface from the supplied screenshot.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_catalogue_exact_parity_runner.py"), run_name="__main__")
+    print(f"{MARKER}: Settings-Kategorien markerbasiert stabilisiert, Browser-Interaktionen an fünf Tabs angepasst, Mitarbeiter-Topbar/Logout inklusive Touch-Runtime wiederhergestellt, finale ToolTime-Angebotsliste und Katalog aktiviert.")
 
 
 if __name__ == "__main__":
