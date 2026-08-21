@@ -18,6 +18,7 @@ import tooltime_phase10_ci_closeout as phase10_closeout
 import tooltime_phase12_ci_closeout as phase12_closeout
 import tooltime_phase15_ci_closeout as phase15_closeout
 import tooltime_phase16_ci_closeout as phase16_closeout
+import tooltime_phase18_timing_fix as phase18_timing_fix
 import tooltime_phase9_ci_closeout as ci_closeout
 import tooltime_phase9_regression_fix as regression_fix
 
@@ -169,6 +170,7 @@ def run() -> None:
     phase16_closeout.run(module)
     phase17.run(module)
     phase18.run(module)
+    phase18_timing_fix.run(module)
     phase19.run(module)
     robust_patch_browser_smoke(module)
     module.guard()
