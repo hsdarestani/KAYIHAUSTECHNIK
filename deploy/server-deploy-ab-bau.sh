@@ -42,11 +42,34 @@ if forced_anchor in text:
 elif "'ORGANIZATION_NAME': 'A+Bau'" not in text:
     raise SystemExit("Could not install A+Bau ORGANIZATION_NAME into deployment environment")
 
+# Captured ToolTime account values are deliberately not rendered as constants.
+# Build a fixture-backed Django command into the assembled source before the
+# Docker image is built, then apply it to the real A+Bau organization after
+# migrations and tenant bootstrap have completed.
+assembly_anchor = "bash scripts/unpack-source.sh\n"
+installer_command = "python3 scripts/tooltime_user_settings_import.py\n"
+if installer_command not in text:
+    if assembly_anchor not in text:
+        raise SystemExit("Could not find source assembly anchor for ToolTime settings importer")
+    text = text.replace(assembly_anchor, assembly_anchor + installer_command, 1)
+
+organization_anchor = (
+    "dc run --rm web python manage.py shell -c \"from erp.models import Organization; "
+    "Organization.objects.get_or_create(name='A+Bau', defaults={'settings': {}})\"\n"
+)
+settings_command = "dc run --rm web python manage.py apply_tooltime_user_settings --organization 'A+Bau'\n"
+if settings_command not in text:
+    if organization_anchor not in text:
+        raise SystemExit("Could not find A+Bau organization bootstrap anchor for ToolTime settings import")
+    text = text.replace(organization_anchor, organization_anchor + settings_command, 1)
+
 required = (
     '"ORGANIZATION_NAME=A+Bau"',
     "name='A+Bau'",
     "'ORGANIZATION_NAME': 'A+Bau'",
     "Organization.objects.filter(name='A+Bau').first()",
+    installer_command.strip(),
+    settings_command.strip(),
 )
 missing = [value for value in required if value not in text]
 if missing:
