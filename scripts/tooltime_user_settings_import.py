@@ -34,18 +34,19 @@ from erp.models import Organization, ToolTimeCommercialProfile, ToolTimeTextTemp
 FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "tooltime_user_settings.json"
 
 
-def deep_merge(target, incoming):
-    result = deepcopy(target or {})
-    for key, value in (incoming or {}).items():
-        if isinstance(value, dict) and isinstance(result.get(key), dict):
-            result[key] = deep_merge(result[key], value)
-        else:
+def merge_missing(current, defaults):
+    """Seed only missing keys; values edited by the tenant always win."""
+    result = deepcopy(current or {})
+    for key, value in (defaults or {}).items():
+        if key not in result:
             result[key] = deepcopy(value)
+        elif isinstance(value, dict) and isinstance(result.get(key), dict):
+            result[key] = merge_missing(result[key], value)
     return result
 
 
 class Command(BaseCommand):
-    help = "Import the product-owner supplied ToolTime settings into one organization's persisted settings profile."
+    help = "Seed product-owner supplied ToolTime/KAYI defaults without overwriting tenant edits."
 
     def add_arguments(self, parser):
         parser.add_argument("--organization", required=True, help="Exact Organization.name to update")
@@ -73,7 +74,7 @@ class Command(BaseCommand):
                 organization=organization,
                 defaults={"settings": {}},
             )
-            merged = deep_merge(profile.settings, profile_patch)
+            merged = merge_missing(profile.settings, profile_patch)
 
             if options["dry_run"]:
                 transaction.set_rollback(True)
@@ -85,21 +86,13 @@ class Command(BaseCommand):
             profile.settings = merged
             profile.save(update_fields=["settings", "updated_at"])
 
-            # The editor consumes real database-backed text templates. Keep one
-            # captured Standard row per kind instead of baking customer copy into HTML.
             for row in templates:
                 document_kind = row.get("document_kind")
                 text_kind = row.get("text_kind")
                 if document_kind not in {"quote", "invoice"} or text_kind not in {"intro", "closing"}:
                     raise CommandError(f"Invalid text template kind: {document_kind}/{text_kind}")
-                if row.get("is_standard"):
-                    ToolTimeTextTemplate.objects.filter(
-                        organization=organization,
-                        document_kind=document_kind,
-                        text_kind=text_kind,
-                        is_standard=True,
-                    ).update(is_standard=False)
-                ToolTimeTextTemplate.objects.update_or_create(
+
+                template, created = ToolTimeTextTemplate.objects.get_or_create(
                     organization=organization,
                     document_kind=document_kind,
                     text_kind=text_kind,
@@ -111,9 +104,30 @@ class Command(BaseCommand):
                         "sort_order": int(row.get("sort_order") or 1),
                     },
                 )
+                # Empty placeholder rows from older Settings screens are safe to seed.
+                # Any non-empty tenant text is a deliberate edit and is never replaced.
+                changed = False
+                if not created and not str(template.body or "").strip() and str(row.get("body") or "").strip():
+                    template.body = row.get("body") or ""
+                    changed = True
+                if not created and not str(template.salutation or "").strip() and str(row.get("salutation") or "").strip():
+                    template.salutation = row.get("salutation") or ""
+                    changed = True
+                if row.get("is_standard") and not template.is_standard:
+                    has_other_standard = ToolTimeTextTemplate.objects.filter(
+                        organization=organization,
+                        document_kind=document_kind,
+                        text_kind=text_kind,
+                        is_standard=True,
+                    ).exclude(pk=template.pk).exists()
+                    if not has_other_standard:
+                        template.is_standard = True
+                        changed = True
+                if changed:
+                    template.save()
 
         self.stdout.write(self.style.SUCCESS(
-            f"ToolTime settings imported for {organization.name}: {len(profile_patch)} settings groups, {len(templates)} database templates."
+            f"KAYI settings seeded for {organization.name}: tenant edits preserved; {len(templates)} document defaults checked."
         ))
 ''', encoding="utf-8")
     compile(COMMAND.read_text(encoding="utf-8"), str(COMMAND), "exec")
@@ -127,7 +141,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_tooltime_user_settings_are_fixture_backed_not_template_hardcoded():
+def test_tooltime_user_settings_are_fixture_backed_and_edit_safe():
     fixture = ROOT / "erp" / "fixtures" / "tooltime_user_settings.json"
     command = ROOT / "erp" / "management" / "commands" / "apply_tooltime_user_settings.py"
     assert fixture.exists()
@@ -136,20 +150,22 @@ def test_tooltime_user_settings_are_fixture_backed_not_template_hardcoded():
     cfg = payload["commercial_profile"]
     assert cfg["numbering"]["invoice"] == {"prefix": "R-", "start": 145}
     assert cfg["numbering"]["quote"] == {"prefix": "A-", "start": 220}
-    assert cfg["communication"]["reply_email"] == "info@kayi-haustechnik.de"
-    assert cfg["layout"]["logo_position"] == "right"
-    assert cfg["layout"]["logo_size"] == "large"
-    assert [row["label"] for row in cfg["appointments"]["types"]] == [
-        "Besichtigung", "Ausführung", "Beratung", "Abnahme", "Wartung", "Notfall", "Intern"
-    ]
+    assert cfg["quote_defaults"]["intro_text"].startswith("Herzlichen Dank für Ihre Anfrage")
+    assert cfg["invoice_defaults"]["payment_text"] == "Zahlbar sofort ohne Abzug ab Rechnungsdatum."
     source = command.read_text(encoding="utf-8")
+    assert "merge_missing" in source
     assert "profile.settings = merged" in source
-    assert "ToolTimeTextTemplate.objects.update_or_create" in source
+    assert "ToolTimeTextTemplate.objects.get_or_create" in source
+    assert "Any non-empty tenant text" in source
 
 
-def test_invoice_copy_is_stored_as_database_templates():
+def test_all_four_standard_text_templates_are_seeded():
     payload = json.loads((ROOT / "erp" / "fixtures" / "tooltime_user_settings.json").read_text(encoding="utf-8"))
     rows = {(row["document_kind"], row["text_kind"]): row for row in payload["text_templates"]}
+    assert set(rows) == {("quote", "intro"), ("quote", "closing"), ("invoice", "intro"), ("invoice", "closing")}
+    assert rows[("quote", "intro")]["body"].startswith("Herzlichen Dank für Ihre Anfrage")
+    assert "Widerrufsbelehrung" in rows[("quote", "closing")]["body"]
+    assert "Auftragsbestätigung" in rows[("quote", "closing")]["body"]
     assert rows[("invoice", "intro")]["body"] == "nachfolgend berechnen wir Ihnen wie vorab besprochen:"
     assert rows[("invoice", "closing")]["body"].startswith("Vielen Dank für Ihren Auftrag!")
 ''', encoding="utf-8")
@@ -160,7 +176,7 @@ def run() -> None:
     install_fixture()
     install_command()
     install_contract_test()
-    print(f"{MARKER}: captured ToolTime choices are installed as a database import fixture, not UI constants.")
+    print(f"{MARKER}: defaults seeded without overwriting tenant edits.")
 
 
 if __name__ == "__main__":
