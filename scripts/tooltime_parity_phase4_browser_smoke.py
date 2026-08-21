@@ -20,7 +20,10 @@ if marker not in text:
             if response is None or response.status >= 500:
                 fail(f"Angebotsliste returned {response.status if response else 'no response'}")
             quote_text = page.locator("body").inner_text()
-            for required in ("Angebote", "Suchen", "Status", "Sortieren", "Neues Angebot"):
+            # Sort is intentionally a compact/hidden desktop control in the exact
+            # ToolTime surface and is asserted structurally below. Do not require
+            # its label to be visibly rendered in body.inner_text().
+            for required in ("Angebote", "Suchen", "Status", "Neues Angebot"):
                 if required not in quote_text:
                     fail(f"Angebotsliste fehlt {required!r}")
             if page.locator('form.tt-list-toolbar select[name="status"]').count() != 1:
