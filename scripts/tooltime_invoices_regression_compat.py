@@ -130,9 +130,10 @@ def main() -> None:
     # their own Kalender/Karte/Liste groups, so the final assembled shell must keep
     # exactly one live ToolTime-style submenu with a visible active state.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_appointment_sidebar_nav_fix.py"), run_name="__main__")
-    # Last visual owner of the assembled product: project detail, shell colors/SVG
-    # icons and Settings document defaults must not be overwritten by any legacy layer.
-    runpy.run_path(str(ROOT / "scripts" / "tooltime_final_surface_polish.py"), run_name="__main__")
+    # Do not re-render the global shell/project detail here. The dedicated final
+    # surface pass dropped working finance, B&O report, Room Planner and field hooks.
+    # Those operational features remain authoritative while customer parity stays
+    # limited to contacts/customer surfaces.
 
 
 if __name__ == "__main__":
