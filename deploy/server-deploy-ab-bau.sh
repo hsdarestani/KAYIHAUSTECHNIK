@@ -71,6 +71,15 @@ if settings_command not in text:
         raise SystemExit("Could not find A+Bau organization bootstrap anchor for ToolTime settings import")
     text = text.replace(organization_anchor, organization_anchor + settings_command, 1)
 
+# Production is only considered healthy when the same built image passes the full
+# mobile regression suite on two phone viewports in addition to the desktop smoke.
+desktop_smoke = "    python scripts/production_browser_smoke.py http://127.0.0.1:8001\n"
+mobile_smoke = "    python scripts/mobile_browser_smoke.py http://127.0.0.1:8001\n"
+if mobile_smoke not in text:
+    if desktop_smoke not in text:
+        raise SystemExit("Could not find production browser smoke anchor for mobile audit")
+    text = text.replace(desktop_smoke, desktop_smoke + mobile_smoke, 1)
+
 required = (
     '"ORGANIZATION_NAME=A+Bau"',
     "name='A+Bau'",
@@ -79,6 +88,7 @@ required = (
     hardening_command.strip(),
     installer_command.strip(),
     settings_command.strip(),
+    mobile_smoke.strip(),
 )
 missing = [value for value in required if value not in text]
 if missing:
