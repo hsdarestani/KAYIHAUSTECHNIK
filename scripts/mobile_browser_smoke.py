@@ -22,7 +22,12 @@ import mobile_browser_smoke_v2 as impl
 
 _original_choose_users = impl.choose_users
 _original_login_as = impl.login_as
-_single_seed = {"user": None, "flags": None, "login_count": 0}
+_single_seed = {
+    "user": None,
+    "flags": None,
+    "profile_flags": None,
+    "login_count": 0,
+}
 
 
 def _choose_users_seed_compatible():
@@ -37,9 +42,14 @@ def _choose_users_seed_compatible():
         seed = User.objects.select_related("profile").filter(username=requested, is_active=True).first()
         if seed is None:
             raise
+        try:
+            profile = seed.profile
+        except Exception as profile_exc:
+            raise RuntimeError("lean CI smoke user has no UserProfile for office/technician role emulation") from profile_exc
         org_id = impl.profile_org_id(seed)
         _single_seed["user"] = seed
         _single_seed["flags"] = (seed.is_staff, seed.is_superuser)
+        _single_seed["profile_flags"] = (profile.role, profile.is_mobile_worker)
         _single_seed["login_count"] = 0
         return seed, seed, org_id
 
@@ -53,6 +63,10 @@ def _login_as_role_aware(page, base_url, user, password):
         user.is_staff = office_phase
         user.is_superuser = office_phase
         user.save(update_fields=["is_staff", "is_superuser"])
+        profile = user.profile
+        profile.role = "admin" if office_phase else "technician"
+        profile.is_mobile_worker = not office_phase
+        profile.save(update_fields=["role", "is_mobile_worker"])
     return _original_login_as(page, base_url, user, password)
 
 
@@ -64,9 +78,14 @@ def main():
     finally:
         fallback = _single_seed["user"]
         flags = _single_seed["flags"]
+        profile_flags = _single_seed["profile_flags"]
         if fallback is not None and flags is not None:
             fallback.is_staff, fallback.is_superuser = flags
             fallback.save(update_fields=["is_staff", "is_superuser"])
+        if fallback is not None and profile_flags is not None:
+            profile = fallback.profile
+            profile.role, profile.is_mobile_worker = profile_flags
+            profile.save(update_fields=["role", "is_mobile_worker"])
 
 
 if __name__ == "__main__":
