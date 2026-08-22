@@ -18,6 +18,7 @@ jobs:
           bash scripts/unpack-source.sh
           bash scripts/unpack-source.sh
           python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/mobile_invoice_menu_fix.py
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -43,7 +44,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Python syntax
-        run: python -m compileall -q config erp tests scripts/production_browser_smoke.py scripts/mobile_browser_smoke.py
+        run: python -m compileall -q config erp tests scripts/production_browser_smoke.py scripts/mobile_browser_smoke.py scripts/mobile_invoice_menu_fix.py
       - name: Install Chromium for browser smoke
         run: python -m playwright install --with-deps chromium
       - name: Desktop and mobile browser smoke tests
