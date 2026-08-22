@@ -11,7 +11,7 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
 @media(max-width:860px){
   html,body{width:100%;max-width:100%;overflow-x:hidden!important}
   body{min-width:0!important}
-  :where(.nx-shell,.nx-main,.nx-content,main,.content,.page-content,.page,.container,.container-fluid){min-width:0!important;max-width:100%!important}
+  :where(.nx-shell,.nx-main,.nx-content,main,.content,.page-content,.page,.container,.container-fluid){box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
   :where(.nx-pagehead,.nx-toolbar,.nx-actions,.page-actions,.toolbar,.actions,.form-actions,.tt-actions,.tti-actions,.project-actions,.invoice-actions,.quote-actions){display:flex;flex-wrap:wrap!important;gap:8px;min-width:0;max-width:100%}
   :where(.nx-pagehead,.nx-toolbar,.page-header,.toolbar)>*{min-width:0!important;max-width:100%}
   :where(.nx-grid,.nx-form-grid,.form-grid,.tt-grid,.tti-grid,.settings-grid,.finance-grid,.dashboard-grid,.project-grid,.detail-grid,.summary-grid,.kpi-grid,.stats-grid){grid-template-columns:minmax(0,1fr)!important;min-width:0!important;max-width:100%!important}
@@ -39,6 +39,29 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist]){max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist])>*{flex:0 0 auto}
   :where(.nx-content,.content,main){overflow-wrap:anywhere}
+
+  /* Native A+Bau calendar controls used the desktop track width. Keep toolbars,
+     view selectors and period navigation inside the content box on phones. */
+  :where(.nx-calendar-toolbar,.nx-calendar-views,.nx-calendar-navigation,.nx-calendar-period,.nx-calendar-main,.nx-calendar-grid,.nx-calendar-list){
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  :where(.nx-calendar-toolbar,.nx-calendar-navigation,.nx-calendar-period){
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+  }
+  :where(.nx-calendar-views){
+    display:flex!important;
+    gap:6px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+  }
+  :where(.nx-calendar-view-btn,.nx-calendar-arrow){flex:0 0 auto!important}
 
   /* The ToolTime customer list carries an ~820px desktop content track. The card
      and heading must collapse to the phone, while the table keeps its useful
@@ -121,7 +144,7 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   }
 }
 @media(max-width:560px){
-  :where(.nx-content,.content,main){padding-left:12px!important;padding-right:12px!important}
+  :where(.nx-content,.content,main){box-sizing:border-box!important;padding-left:12px!important;padding-right:12px!important}
   :where(.nx-pagehead h1,.page-header h1,h1){font-size:clamp(22px,7vw,30px);line-height:1.12}
   :where(.nx-pagehead,.page-header){align-items:flex-start!important}
   :where(.nx-pagehead>.nx-actions,.page-header>.actions,.page-header>.page-actions){width:100%}
@@ -131,6 +154,10 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.fc .fc-toolbar-title){font-size:1.05rem!important}
   :where(.fc .fc-button){padding:.45em .65em!important}
   :where(.ab-file-button){max-width:100%}
+  :where(.nx-calendar-toolbar,.nx-calendar-views,.nx-calendar-navigation,.nx-calendar-period,.nx-calendar-main,.nx-calendar-grid,.nx-calendar-list){
+    width:calc(100vw - 48px)!important;
+    max-width:calc(100vw - 48px)!important;
+  }
 
   /* The customers list can inherit an 800px desktop track from its surrounding
      grid. Clamp the actual action group and controls to the physical viewport,
@@ -162,8 +189,9 @@ old_links = (
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-4">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-5">',
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-6">',
 )
-link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-5">'
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-6">'
 for old_link in old_links:
     if old_link in base and old_link != link:
         base = base.replace(old_link, link)
@@ -184,13 +212,16 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
         css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-5", base)
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-6", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
             "overflow-x:auto!important",
             "calc(100vw - 24px)",
             ".fc .fc-toolbar",
+            ".nx-calendar-toolbar",
+            ".nx-calendar-views",
+            ".nx-calendar-navigation",
             "[data-rp-canvas]",
             ".field-actions",
             "[role=tablist]",
@@ -221,8 +252,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-customers-head", ".tt-customer-table-wrap", ".tt-new-customer", "calc(100vw - 48px)", ".invoice-template-select"):
+for needle in (MARKER, ".nx-calendar-toolbar", ".nx-calendar-views", "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-customers-head", ".tt-customer-table-wrap", ".tt-new-customer", "calc(100vw - 48px)", ".invoice-template-select"):
     if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
-print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI, customer list/toolbar and invoice template controls protected.")
+print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, native calendar, Room Planner, field UI, customer list/toolbar and invoice template controls protected.")
