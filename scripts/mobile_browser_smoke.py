@@ -15,15 +15,12 @@ import mobile_browser_smoke_v2 as impl
 
 
 _original_choose_users = impl.choose_users
+_original_login_as = impl.login_as
+_single_seed = {"user": None, "flags": None, "login_count": 0}
 
 
 def _choose_users_seed_compatible():
-    """Prefer a dedicated field seed; fall back to the office seed for layout auditing.
-
-    Production permissions are covered by the existing field authorization regression
-    suite. The demo fixture intentionally contains only one login on some CI runs, so
-    mobile responsiveness must not depend on manufacturing a second user.
-    """
+    """Use real office/field accounts when present; safely emulate both roles in lean CI fixtures."""
     try:
         return _original_choose_users()
     except RuntimeError as exc:
@@ -35,16 +32,36 @@ def _choose_users_seed_compatible():
         if seed is None:
             raise
         org_id = impl.profile_org_id(seed)
-        users = list(User.objects.select_related("profile").filter(is_active=True).order_by("pk"))
-        same_org = [u for u in users if org_id is None or impl.profile_org_id(u) == org_id]
-        office = next((u for u in same_org if u.is_superuser), None)
-        office = office or next((u for u in same_org if u.is_staff), None)
-        office = office or seed
-        return office, office, org_id
+        _single_seed["user"] = seed
+        _single_seed["flags"] = (seed.is_staff, seed.is_superuser)
+        _single_seed["login_count"] = 0
+        return seed, seed, org_id
 
 
-impl.choose_users = _choose_users_seed_compatible
-main = impl.main
+def _login_as_role_aware(page, base_url, user, password):
+    """When CI has one login, alternate it between Office and Monteur without weakening auth checks."""
+    fallback = _single_seed["user"]
+    if fallback is not None and user.pk == fallback.pk:
+        _single_seed["login_count"] += 1
+        office_phase = (_single_seed["login_count"] % 2) == 1
+        user.is_staff = office_phase
+        user.is_superuser = office_phase
+        user.save(update_fields=["is_staff", "is_superuser"])
+    return _original_login_as(page, base_url, user, password)
+
+
+def main():
+    impl.choose_users = _choose_users_seed_compatible
+    impl.login_as = _login_as_role_aware
+    try:
+        return impl.main()
+    finally:
+        fallback = _single_seed["user"]
+        flags = _single_seed["flags"]
+        if fallback is not None and flags is not None:
+            fallback.is_staff, fallback.is_superuser = flags
+            fallback.save(update_fields=["is_staff", "is_superuser"])
+
 
 if __name__ == "__main__":
     main()
