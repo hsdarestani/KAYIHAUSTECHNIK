@@ -97,6 +97,7 @@ if quote_contract_found:
 # still bumping the asset URL beyond the previous release.
 runpy.run_path(str(ROOT / "scripts" / "ab_bau_gold_accent_fix.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "ab_bau_mobile_nav_polish.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "ab_bau_mobile_full_responsive.py"), run_name="__main__")
 runpy.run_path(str(ROOT / "scripts" / "ab_bau_mobile_cache_compat.py"), run_name="__main__")
 
 print("A+Bau browser smoke compatibility installed; technical KAYI_* identifiers preserved.")
