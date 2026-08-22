@@ -10,7 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - name: Verify repeatable source assembly
@@ -43,10 +43,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - name: Python syntax
-        run: python -m compileall -q config erp tests scripts/production_browser_smoke.py
+        run: python -m compileall -q config erp tests scripts/production_browser_smoke.py scripts/mobile_browser_smoke.py
       - name: Install Chromium for browser smoke
         run: python -m playwright install --with-deps chromium
-      - name: Browser smoke tests
+      - name: Desktop and mobile browser smoke tests
         env:
           DEBUG: "1"
           SECURE_SSL_REDIRECT: "0"
@@ -63,6 +63,7 @@ jobs:
           done
           set -o pipefail
           python scripts/production_browser_smoke.py http://127.0.0.1:8000 2>&1 | tee /tmp/kayi-browser-smoke.log
+          python scripts/mobile_browser_smoke.py http://127.0.0.1:8000 2>&1 | tee /tmp/kayi-mobile-browser-smoke.log
       - name: Upload browser smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,8 +71,11 @@ jobs:
           name: kayi-browser-smoke-${{ github.run_id }}
           path: |
             /tmp/kayi-browser-smoke.log
+            /tmp/kayi-mobile-browser-smoke.log
             /tmp/kayi-runserver.log
             /tmp/kayi-browser-smoke.png
+            /tmp/kayi-mobile-smoke-390x844.png
+            /tmp/kayi-mobile-smoke-430x932.png
           if-no-files-found: ignore
           retention-days: 7
       - name: Prepare Compose environment
