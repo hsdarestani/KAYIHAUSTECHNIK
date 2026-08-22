@@ -41,8 +41,7 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.nx-content,.content,main){overflow-wrap:anywhere}
 
   /* Customer search/create toolbar: desktop sizing gave the search field a fixed
-     wide track and pushed "Neuer Kunde" beyond 390px. Collapse/wrap that exact
-     action group without changing the desktop layout. */
+     wide track and pushed "Neuer Kunde" beyond narrow phone viewports. */
   :where(form,div,section,header):has(> .tt-new-customer){
     box-sizing:border-box!important;
     display:flex!important;
@@ -104,7 +103,22 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.fc .fc-toolbar-title){font-size:1.05rem!important}
   :where(.fc .fc-button){padding:.45em .65em!important}
   :where(.ab-file-button){max-width:100%}
-  :where(form,div,section,header):has(> .tt-new-customer)>.tt-new-customer{flex:1 1 100%!important;width:100%!important}
+
+  /* The customers list can inherit an 800px desktop track from its surrounding
+     grid. Clamp the actual action group and controls to the physical viewport,
+     not to that oversized containing block. */
+  :where(form,div,section,header):has(> .tt-new-customer){
+    width:calc(100vw - 48px)!important;
+    max-width:calc(100vw - 48px)!important;
+  }
+  :where(form,div,section,header):has(> .tt-new-customer)>input:not([type=checkbox]):not([type=radio]),
+  :where(form,div,section,header):has(> .tt-new-customer)>select,
+  :where(form,div,section,header):has(> .tt-new-customer)>.tt-new-customer{
+    box-sizing:border-box!important;
+    flex:1 1 100%!important;
+    width:calc(100vw - 48px)!important;
+    max-width:calc(100vw - 48px)!important;
+  }
 }
 '''
 
@@ -118,8 +132,9 @@ old_links = (
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-1">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">',
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-4">',
 )
-link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">'
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-4">'
 for old_link in old_links:
     if old_link in base and old_link != link:
         base = base.replace(old_link, link)
@@ -140,7 +155,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
         css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-3", base)
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-4", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
@@ -152,6 +167,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
             "[role=tablist]",
             ".tt-new-customer",
             ":has(> .tt-new-customer)",
+            "calc(100vw - 48px)",
             ".invoice-template-select",
             ":has(> .invoice-template-select)",
         ):
@@ -172,7 +188,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-new-customer", ".invoice-template-select"):
+for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-new-customer", "calc(100vw - 48px)", ".invoice-template-select"):
     if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
