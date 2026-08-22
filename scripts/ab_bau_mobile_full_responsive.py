@@ -22,7 +22,7 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.ab-file-name){max-width:100%;flex:1 1 180px}
   :where(img,video,svg){max-width:100%;height:auto}
   :where(canvas){max-width:100%}
-  :where(.nx-table-wrap,.table-wrap,.table-responsive,.ab-item-table-wrap,.tt-table-wrap,.tti-table-wrap,.invoice-table-wrap,.quote-table-wrap,.catalog-table-wrap){width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  :where(.nx-table-wrap,.table-wrap,.table-responsive,.ab-item-table-wrap,.tt-table-wrap,.tti-table-wrap,.invoice-table-wrap,.quote-table-wrap,.catalog-table-wrap,.tt-customer-table-wrap){box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
   :where(table,.nx-table,.ab-item-table,.tt-table,.tti-table){max-width:none}
   :where(.nx-modal,.modal,.dialog,[role=dialog]){max-width:100vw!important}
   :where(.nx-modal-dialog,.modal-dialog,.dialog,.dialog-panel,[role=dialog]){box-sizing:border-box!important;width:min(720px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important;margin:12px auto!important;overflow:auto!important}
@@ -39,6 +39,34 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist]){max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist])>*{flex:0 0 auto}
   :where(.nx-content,.content,main){overflow-wrap:anywhere}
+
+  /* The ToolTime customer list carries an ~820px desktop content track. The card
+     and heading must collapse to the phone, while the table keeps its useful
+     columns inside a dedicated horizontal scroller. */
+  :where(.tt-customers-head,.tt-title-line,.tt-customer-table-card){
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  :where(.tt-customers-head,.tt-title-line){
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    align-items:center;
+  }
+  :where(.tt-customer-table-card){overflow:hidden!important}
+  :where(.tt-customer-table-wrap){
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+  }
+  :where(.tt-customer-table){width:max-content!important;min-width:760px!important;max-width:none!important}
 
   /* Customer search/create toolbar: desktop sizing gave the search field a fixed
      wide track and pushed "Neuer Kunde" beyond narrow phone viewports. */
@@ -133,8 +161,9 @@ old_links = (
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-4">',
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-5">',
 )
-link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-4">'
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-5">'
 for old_link in old_links:
     if old_link in base and old_link != link:
         base = base.replace(old_link, link)
@@ -155,7 +184,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
         css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-4", base)
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-5", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
@@ -165,6 +194,10 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
             "[data-rp-canvas]",
             ".field-actions",
             "[role=tablist]",
+            ".tt-customers-head",
+            ".tt-customer-table-card",
+            ".tt-customer-table-wrap",
+            ".tt-customer-table",
             ".tt-new-customer",
             ":has(> .tt-new-customer)",
             "calc(100vw - 48px)",
@@ -188,8 +221,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-new-customer", "calc(100vw - 48px)", ".invoice-template-select"):
+for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-customers-head", ".tt-customer-table-wrap", ".tt-new-customer", "calc(100vw - 48px)", ".invoice-template-select"):
     if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
-print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI, customer toolbar and invoice template controls protected.")
+print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI, customer list/toolbar and invoice template controls protected.")
