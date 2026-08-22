@@ -22,6 +22,7 @@ import mobile_browser_smoke_v2 as impl
 
 _original_choose_users = impl.choose_users
 _original_login_as = impl.login_as
+_original_responsive_report = impl.responsive_report
 _single_seed = {
     "user": None,
     "flags": None,
@@ -70,9 +71,72 @@ def _login_as_role_aware(page, base_url, user, password):
     return _original_login_as(page, base_url, user, password)
 
 
+def _responsive_report_detailed(page):
+    """Keep the strict audit but include DOM ancestry/text when an overflow is found."""
+    report = _original_responsive_report(page)
+    if not report.get("offenders"):
+        return report
+    detailed = page.evaluate(
+        """() => {
+          const de = document.documentElement;
+          const body = document.body;
+          const vw = de.clientWidth;
+          const visible = el => {
+            const s = getComputedStyle(el), r = el.getBoundingClientRect();
+            return s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity || 1) !== 0 && r.width > 1 && r.height > 1;
+          };
+          const inHorizontalScroller = el => {
+            let p = el.parentElement;
+            while (p && p !== body) {
+              const s = getComputedStyle(p);
+              if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && p.scrollWidth > p.clientWidth + 3) return true;
+              p = p.parentElement;
+            }
+            return false;
+          };
+          const intentionallyOffCanvas = el => {
+            if (el.closest('.nx-sidebar') && !body.classList.contains('nx-menu-open')) return true;
+            if (el.closest('[aria-hidden="true"]')) return true;
+            return false;
+          };
+          const cls = el => el ? String(el.className || '').slice(0,160) : '';
+          const offenders = [];
+          for (const el of document.querySelectorAll('body *')) {
+            if (!visible(el) || intentionallyOffCanvas(el) || inHorizontalScroller(el)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.right <= vw + 4 && r.left >= -4) continue;
+            const p = el.parentElement, g = p && p.parentElement, gg = g && g.parentElement;
+            const s = getComputedStyle(el);
+            offenders.push({
+              tag: el.tagName,
+              cls: cls(el),
+              id: el.id || '',
+              left: Math.round(r.left),
+              right: Math.round(r.right),
+              width: Math.round(r.width),
+              text: String(el.innerText || el.textContent || '').trim().replace(/\\s+/g,' ').slice(0,180),
+              href: el.getAttribute('href') || '',
+              position: s.position,
+              transform: s.transform,
+              parentTag: p ? p.tagName : '', parentCls: cls(p), parentId: p ? (p.id || '') : '',
+              grandTag: g ? g.tagName : '', grandCls: cls(g), grandId: g ? (g.id || '') : '',
+              greatTag: gg ? gg.tagName : '', greatCls: cls(gg), greatId: gg ? (gg.id || '') : '',
+              html: String(el.outerHTML || '').replace(/\\s+/g,' ').slice(0,420)
+            });
+            if (offenders.length >= 10) break;
+          }
+          return offenders;
+        }"""
+    )
+    if detailed:
+        report["offenders"] = detailed
+    return report
+
+
 def main():
     impl.choose_users = _choose_users_seed_compatible
     impl.login_as = _login_as_role_aware
+    impl.responsive_report = _responsive_report_detailed
     try:
         return impl.main()
     finally:
