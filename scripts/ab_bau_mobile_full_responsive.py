@@ -4,16 +4,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU MOBILE FULL RESPONSIVE 2026-08-22"
-CSS_PATH = ROOT / "static/css/ab-bau-production-hardening.css"
+CSS_PATH = ROOT / "static/css/ab-bau-mobile-responsive.css"
+BASE_PATH = ROOT / "templates/rebuild/base.html"
 
-if not CSS_PATH.exists():
-    raise RuntimeError("Production hardening CSS must exist before mobile responsive pass")
-
-css = CSS_PATH.read_text(encoding="utf-8")
-if MARKER not in css:
-    css += r'''
-
-/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
+CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
 @media(max-width:860px){
   html,body{width:100%;max-width:100%;overflow-x:hidden!important}
   body{min-width:0!important}
@@ -59,7 +53,19 @@ if MARKER not in css:
   :where(.ab-file-button){max-width:100%}
 }
 '''
-    CSS_PATH.write_text(css, encoding="utf-8")
+
+CSS_PATH.parent.mkdir(parents=True, exist_ok=True)
+CSS_PATH.write_text(CSS, encoding="utf-8")
+
+if not BASE_PATH.exists():
+    raise RuntimeError("A+Bau base template missing during mobile responsive pass")
+base = BASE_PATH.read_text(encoding="utf-8")
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-1">'
+if link not in base:
+    if "</head>" not in base:
+        raise RuntimeError("A+Bau base template has no head anchor for mobile CSS")
+    base = base.replace("</head>", link + "\n</head>", 1)
+    BASE_PATH.write_text(base, encoding="utf-8")
 
 TEST_PATH = ROOT / "tests/test_ab_bau_mobile_full_responsive.py"
 TEST_PATH.write_text(
@@ -70,7 +76,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
-        css = (ROOT / "static/css/ab-bau-production-hardening.css").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
+        base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-1", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
@@ -98,9 +106,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-final_css = CSS_PATH.read_text(encoding="utf-8")
 for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important"):
-    if needle not in final_css:
+    if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
 print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner and field UI protected.")
