@@ -40,6 +40,30 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist])>*{flex:0 0 auto}
   :where(.nx-content,.content,main){overflow-wrap:anywhere}
 
+  /* Customer search/create toolbar: desktop sizing gave the search field a fixed
+     wide track and pushed "Neuer Kunde" beyond 390px. Collapse/wrap that exact
+     action group without changing the desktop layout. */
+  :where(form,div,section,header):has(> .tt-new-customer){
+    box-sizing:border-box!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  :where(form,div,section,header):has(> .tt-new-customer)>input:not([type=checkbox]):not([type=radio]),
+  :where(form,div,section,header):has(> .tt-new-customer)>select{
+    flex:1 1 220px!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  :where(form,div,section,header):has(> .tt-new-customer)>.tt-new-customer{
+    flex:0 1 auto!important;
+    max-width:100%!important;
+  }
+
   /* Invoice/quote template pickers used button sizing on desktop. On narrow screens
      their flex parent could stay wider than the viewport and place the select off-canvas. */
   :where(.invoice-template-select,.quote-template-select){
@@ -80,6 +104,7 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.fc .fc-toolbar-title){font-size:1.05rem!important}
   :where(.fc .fc-button){padding:.45em .65em!important}
   :where(.ab-file-button){max-width:100%}
+  :where(form,div,section,header):has(> .tt-new-customer)>.tt-new-customer{flex:1 1 100%!important;width:100%!important}
 }
 '''
 
@@ -92,8 +117,9 @@ base = BASE_PATH.read_text(encoding="utf-8")
 old_links = (
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-1">',
     '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">',
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">',
 )
-link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">'
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-3">'
 for old_link in old_links:
     if old_link in base and old_link != link:
         base = base.replace(old_link, link)
@@ -114,7 +140,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
         css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-2", base)
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-3", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
@@ -124,6 +150,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
             "[data-rp-canvas]",
             ".field-actions",
             "[role=tablist]",
+            ".tt-new-customer",
+            ":has(> .tt-new-customer)",
             ".invoice-template-select",
             ":has(> .invoice-template-select)",
         ):
@@ -144,8 +172,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".invoice-template-select"):
+for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".tt-new-customer", ".invoice-template-select"):
     if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
-print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI and invoice template controls protected.")
+print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI, customer toolbar and invoice template controls protected.")
