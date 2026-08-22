@@ -139,10 +139,33 @@ def _responsive_report_detailed(page):
     return report
 
 
+def _audit_mobile_menu_settled(page, label: str) -> None:
+    """Validate the drawer after its declared 220ms transition has finished."""
+    button = page.locator("[data-nx-menu]")
+    if not button.count() or not button.is_visible():
+        return
+    button.click()
+    page.wait_for_timeout(280)
+    sidebar = page.locator(".nx-sidebar")
+    if not sidebar.count() or not sidebar.is_visible():
+        impl.fail(f"{label}: mobile menu button did not expose sidebar")
+    rect = sidebar.bounding_box()
+    width = (page.viewport_size or {}).get("width", 0)
+    if not rect or rect["x"] < -3 or rect["x"] + rect["width"] > width + 3:
+        impl.fail(f"{label}: opened mobile drawer is outside viewport after transition: {rect}")
+    if button.get_attribute("aria-expanded") != "true":
+        impl.fail(f"{label}: mobile menu aria-expanded did not become true")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(120)
+    if "nx-menu-open" in (page.locator("body").get_attribute("class") or ""):
+        impl.fail(f"{label}: Escape did not close mobile drawer")
+
+
 def main():
     impl.choose_users = _choose_users_seed_compatible
     impl.login_as = _login_as_role_aware
     impl.responsive_report = _responsive_report_detailed
+    impl.audit_mobile_menu = _audit_mobile_menu_settled
     try:
         return impl.main()
     finally:
