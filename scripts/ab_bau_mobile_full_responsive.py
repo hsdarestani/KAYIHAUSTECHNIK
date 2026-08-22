@@ -39,6 +39,35 @@ CSS = r'''/* A+BAU MOBILE FULL RESPONSIVE 2026-08-22 */
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist]){max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
   :where(.settings-tabs,.tabs,.tab-list,[role=tablist])>*{flex:0 0 auto}
   :where(.nx-content,.content,main){overflow-wrap:anywhere}
+
+  /* Invoice/quote template pickers used button sizing on desktop. On narrow screens
+     their flex parent could stay wider than the viewport and place the select off-canvas. */
+  :where(.invoice-template-select,.quote-template-select){
+    box-sizing:border-box!important;
+    position:static!important;
+    flex:1 1 180px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    transform:none!important;
+  }
+  :where(div,section,header):has(> .invoice-template-select),
+  :where(div,section,header):has(> .quote-template-select){
+    box-sizing:border-box!important;
+    min-width:0!important;
+    max-width:100%!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+  }
+  :where(.btn-group,.input-group):has(.invoice-template-select),
+  :where(.btn-group,.input-group):has(.quote-template-select){
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    flex-wrap:wrap!important;
+  }
 }
 @media(max-width:560px){
   :where(.nx-content,.content,main){padding-left:12px!important;padding-right:12px!important}
@@ -60,12 +89,19 @@ CSS_PATH.write_text(CSS, encoding="utf-8")
 if not BASE_PATH.exists():
     raise RuntimeError("A+Bau base template missing during mobile responsive pass")
 base = BASE_PATH.read_text(encoding="utf-8")
-link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-1">'
+old_links = (
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-1">',
+    '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">',
+)
+link = '<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-2">'
+for old_link in old_links:
+    if old_link in base and old_link != link:
+        base = base.replace(old_link, link)
 if link not in base:
     if "</head>" not in base:
         raise RuntimeError("A+Bau base template has no head anchor for mobile CSS")
     base = base.replace("</head>", link + "\n</head>", 1)
-    BASE_PATH.write_text(base, encoding="utf-8")
+BASE_PATH.write_text(base, encoding="utf-8")
 
 TEST_PATH = ROOT / "tests/test_ab_bau_mobile_full_responsive.py"
 TEST_PATH.write_text(
@@ -78,7 +114,7 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     def test_global_mobile_hardening_covers_layouts_tables_modals_calendar_3d_and_field(self):
         css = (ROOT / "static/css/ab-bau-mobile-responsive.css").read_text(encoding="utf-8")
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-1", base)
+        self.assertIn("ab-bau-mobile-responsive.css?v=20260822-2", base)
         for marker in (
             "A+BAU MOBILE FULL RESPONSIVE 2026-08-22",
             "grid-template-columns:minmax(0,1fr)!important",
@@ -88,6 +124,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
             "[data-rp-canvas]",
             ".field-actions",
             "[role=tablist]",
+            ".invoice-template-select",
+            ":has(> .invoice-template-select)",
         ):
             self.assertIn(marker, css)
 
@@ -106,8 +144,8 @@ class ABBauMobileFullResponsiveTests(SimpleTestCase):
     encoding="utf-8",
 )
 
-for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important"):
+for needle in (MARKER, "[data-rp-canvas]", ".field-actions", "overflow-x:auto!important", ".invoice-template-select"):
     if needle not in CSS_PATH.read_text(encoding="utf-8"):
         raise RuntimeError(f"Mobile responsive guard missing: {needle}")
 compile(TEST_PATH.read_text(encoding="utf-8"), str(TEST_PATH), "exec")
-print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner and field UI protected.")
+print("A+Bau mobile full responsive hardening installed: global layout, forms, tables, dialogs, calendar, Room Planner, field UI and invoice template controls protected.")
