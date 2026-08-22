@@ -72,7 +72,7 @@ def _login_as_role_aware(page, base_url, user, password):
 
 
 def _responsive_report_detailed(page):
-    """Keep the strict audit but include DOM ancestry/text when an overflow is found."""
+    """Keep the strict audit while excluding genuinely closed off-canvas navigation."""
     report = _original_responsive_report(page)
     if not report.get("offenders"):
         return report
@@ -96,6 +96,11 @@ def _responsive_report_detailed(page):
           };
           const intentionallyOffCanvas = el => {
             if (el.closest('.nx-sidebar') && !body.classList.contains('nx-menu-open')) return true;
+            const legacySidebar = el.closest('#sidebar, .sidebar');
+            if (legacySidebar) {
+              const r = legacySidebar.getBoundingClientRect();
+              if (r.right <= 0 || r.left <= -(Math.max(32, r.width * 0.5))) return true;
+            }
             if (el.closest('[aria-hidden="true"]')) return true;
             return false;
           };
@@ -128,8 +133,9 @@ def _responsive_report_detailed(page):
           return offenders;
         }"""
     )
-    if detailed:
-        report["offenders"] = detailed
+    # Replace the coarse list even when the refined list is empty. A closed legacy
+    # drawer is intentionally outside the viewport and must not be treated as page overflow.
+    report["offenders"] = detailed
     return report
 
 
