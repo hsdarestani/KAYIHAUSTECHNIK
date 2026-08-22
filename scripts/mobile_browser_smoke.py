@@ -11,6 +11,12 @@ document horizontal overflow
 """
 import os
 
+# Playwright's synchronous API runs on a greenlet-backed event loop. The CI-only
+# fallback below briefly persists role flags while that loop is active, which
+# triggers Django's async-context guard even though this script is strictly
+# single-threaded and isolated to the disposable smoke-test database.
+os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
+
 import mobile_browser_smoke_v2 as impl
 
 
