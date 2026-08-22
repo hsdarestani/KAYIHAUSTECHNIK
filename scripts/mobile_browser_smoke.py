@@ -14,6 +14,9 @@ import os
 import mobile_browser_smoke_v2 as impl
 
 
+_original_choose_users = impl.choose_users
+
+
 def _choose_users_seed_compatible():
     """Prefer a dedicated field seed; fall back to the office seed for layout auditing.
 
@@ -22,7 +25,7 @@ def _choose_users_seed_compatible():
     mobile responsiveness must not depend on manufacturing a second user.
     """
     try:
-        return impl.choose_users()
+        return _original_choose_users()
     except RuntimeError as exc:
         if "no dedicated non-staff technician account" not in str(exc):
             raise
