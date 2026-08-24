@@ -20,7 +20,9 @@ jobs:
         run: |
           tar -czf /tmp/kayi-unpacked-source.tar.gz \
             config erp templates static tests manage.py requirements.txt \
-            Dockerfile .env.example
+            Dockerfile .env.example \
+            native/www native/package.json native/capacitor.config.ts \
+            native/plugins/kayi-room-scanner
       - uses: actions/upload-artifact@v4
         with:
           name: kayi-unpacked-source-${{ github.run_id }}
