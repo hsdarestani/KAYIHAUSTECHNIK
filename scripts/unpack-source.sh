@@ -201,5 +201,9 @@ python3 scripts/tooltime_parity_finance_batch_runner.py
 python3 scripts/tooltime_invoices_exact_parity.py
 # Reconcile the exact screenshot index with the established lifecycle/Pay contracts.
 python3 scripts/tooltime_invoices_regression_compat.py
+# App Store 2.1(a): iPads without LiDAR must still have a working primary room
+# measurement action. RoomPlan remains on LiDAR hardware; other iOS devices get a
+# native manual length/width/height fallback and upload it without a USDZ model.
+python3 scripts/app_store_ipad_scanner_fallback.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
