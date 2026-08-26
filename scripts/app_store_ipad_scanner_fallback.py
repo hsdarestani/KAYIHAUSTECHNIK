@@ -95,10 +95,16 @@ def patch_ios_plugin() -> None:
         }
     }
 
-    private func presentManualMeasurement(call: CAPPluginCall, presenter: UIViewController, roomName: String) {
+    private func presentManualMeasurement(
+        call: CAPPluginCall,
+        presenter: UIViewController,
+        roomName: String,
+        previousValues: [String] = [],
+        validationMessage: String? = nil
+    ) {
         let alert = UIAlertController(
             title: "Manuelles Raumaufmaß",
-            message: "Dieses Gerät hat keinen LiDAR-Scanner. Bitte Länge, Breite und Höhe eingeben. Das Aufmaß wird anschließend wie ein Scan zur Prüfung gespeichert.",
+            message: validationMessage ?? "Dieses Gerät hat keinen LiDAR-Scanner. Bitte Länge, Breite und Höhe eingeben. Das Aufmaß wird anschließend wie ein Scan zur Prüfung gespeichert.",
             preferredStyle: .alert
         )
         let fields: [(String, UIKeyboardType)] = [
@@ -106,26 +112,44 @@ def patch_ios_plugin() -> None:
             ("Breite in m (z. B. 2,80)", .decimalPad),
             ("Höhe in m (z. B. 2,50)", .decimalPad),
         ]
-        for (placeholder, keyboardType) in fields {
+        for (index, fieldConfiguration) in fields.enumerated() {
+            let (placeholder, keyboardType) = fieldConfiguration
             alert.addTextField { field in
                 field.placeholder = placeholder
                 field.keyboardType = keyboardType
                 field.clearButtonMode = .whileEditing
+                if previousValues.indices.contains(index) {
+                    field.text = previousValues[index]
+                }
             }
         }
         alert.addAction(UIAlertAction(title: "Abbrechen", style: .cancel) { _ in
             call.reject("Aufmaß wurde abgebrochen.", "SCAN_CANCELLED")
         })
         alert.addAction(UIAlertAction(title: "Aufmaß speichern", style: .default) { _ in
-            let values = (alert.textFields ?? []).compactMap { field -> Double? in
-                let normalized = (field.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+            let enteredValues = (alert.textFields ?? []).map { $0.text ?? "" }
+            let values = enteredValues.compactMap { value -> Double? in
+                let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
                 return Double(normalized)
             }
             guard values.count == 3,
                   values[0] >= 0.20, values[0] <= 100.0,
                   values[1] >= 0.20, values[1] <= 100.0,
                   values[2] >= 1.20, values[2] <= 20.0 else {
-                call.reject("Bitte gültige Maße eingeben: Länge/Breite 0,20–100 m und Höhe 1,20–20 m.", "INVALID_MANUAL_DIMENSIONS")
+                let message = "Bitte gültige Maße eingeben: Länge/Breite 0,20–100 m und Höhe 1,20–20 m."
+                alert.dismiss(animated: true) { [weak self, weak presenter] in
+                    guard let self, let presenter else {
+                        call.reject(message, "INVALID_MANUAL_DIMENSIONS")
+                        return
+                    }
+                    self.presentManualMeasurement(
+                        call: call,
+                        presenter: presenter,
+                        roomName: roomName,
+                        previousValues: enteredValues,
+                        validationMessage: message
+                    )
+                }
                 return
             }
             let id = UUID()
@@ -215,6 +239,23 @@ def patch_native_web_shell() -> None:
         "capability message",
     )
     replace_required(path, "status('Scanner wird geöffnet …')", "status('Aufmaß wird geöffnet …')", "scan opening status")
+    replace_required(
+        path,
+        '''async function startScan(projectId){status('Aufmaß wird geöffnet …');try{const scan=await Scanner.startScan({roomName:'Raum'});status('Scan lokal gespeichert. Upload läuft …');const uploaded=await Scanner.uploadScan({scanId:scan.scanId,projectId,apiBaseUrl:state.baseUrl,token:state.token});status('Scan wurde als prüfpflichtiges Aufmaß gespeichert.');document.querySelector('#result').innerHTML=`<pre>${esc(JSON.stringify(uploaded,null,2))}</pre>`}catch(err){status(err.message||String(err),true)}}
+async function listPending(){try{const data=await Scanner.listPendingScans();document.querySelector('#result').innerHTML=`<pre>${esc(JSON.stringify(data,null,2))}</pre>`}catch(err){status(err.message,true)}}
+''',
+        '''function clearScannerFeedback(){status('');const result=document.querySelector('#result');if(result)result.replaceChildren()}
+function renderPendingScans(data){
+  const result=document.querySelector('#result');if(!result)return;
+  const scans=Array.isArray(data?.scans)?data.scans:[];
+  if(!scans.length){result.innerHTML='<p class="empty-state">Keine nicht hochgeladenen Scans vorhanden.</p>';return}
+  result.innerHTML=`<section class="pending-scans"><h2>Nicht hochgeladene Scans</h2><ul>${scans.map(scan=>`<li><b>${esc(scan.roomName||'Raumaufmaß')}</b><span>${esc(scan.createdAt||'Lokal gespeichert')}</span><small>${esc(scan.scanId||'')}</small></li>`).join('')}</ul></section>`
+}
+async function startScan(projectId){clearScannerFeedback();status('Aufmaß wird geöffnet …');try{const scan=await Scanner.startScan({roomName:'Raum'});status('Scan lokal gespeichert. Upload läuft …');await Scanner.uploadScan({scanId:scan.scanId,projectId,apiBaseUrl:state.baseUrl,token:state.token});status('Scan wurde als prüfpflichtiges Aufmaß gespeichert.')}catch(err){status(err.message||String(err),true)}}
+async function listPending(){clearScannerFeedback();status('Nicht hochgeladene Scans werden geladen …');try{const data=await Scanner.listPendingScans();status('');renderPendingScans(data)}catch(err){status(err.message||String(err),true)}}
+''',
+        "scanner feedback lifecycle and pending-scan presentation",
+    )
 
 
 def patch_server_semantics() -> None:
@@ -310,6 +351,15 @@ def patch_tests() -> None:
         self.assertIn('"supported": true', ios_source)
         self.assertIn('"capture_mode": "manual_fallback"', ios_source)
         self.assertIn("Manuelles Aufmaß verfügbar", web_source)
+        self.assertIn("function clearScannerFeedback()", web_source)
+        self.assertIn("async function startScan(projectId){clearScannerFeedback();", web_source)
+        self.assertIn("async function listPending(){clearScannerFeedback();", web_source)
+        self.assertIn("Keine nicht hochgeladenen Scans vorhanden.", web_source)
+        self.assertNotIn("JSON.stringify(data,null,2)", web_source)
+        self.assertNotIn("JSON.stringify(uploaded,null,2)", web_source)
+        self.assertIn("previousValues: enteredValues", ios_source)
+        self.assertIn("validationMessage: message", ios_source)
+        self.assertNotIn('call.reject("Bitte gültige Maße eingeben:', ios_source)
 '''
         if anchor not in contract_text:
             raise RuntimeError("Could not add native fallback source contract")
@@ -327,6 +377,9 @@ def guard() -> None:
         ('modelURL: URL?', swift),
         ('if !scan.modelPath.isEmpty', swift),
         ('Manuelles Aufmaß verfügbar', web),
+        ('function clearScannerFeedback()', web),
+        ('Keine nicht hochgeladenen Scans vorhanden.', web),
+        ('previousValues: enteredValues', swift),
         ('capture_mode', server),
         ('RoomMeasurement.Method.MANUAL if manual_fallback', server),
     ]
@@ -335,6 +388,10 @@ def guard() -> None:
         raise RuntimeError(f"App Store iPad scanner fallback incomplete: {missing}")
     if "${caps.supported?'':'disabled'}" not in web:
         raise RuntimeError("Native Scannen button enable/disable contract changed unexpectedly")
+    if "JSON.stringify(data,null,2)" in web or "JSON.stringify(uploaded,null,2)" in web:
+        raise RuntimeError("Raw scanner payload remains visible in the App Store shell")
+    if 'call.reject("Bitte gültige Maße eingeben:' in swift:
+        raise RuntimeError("Invalid manual dimensions still poison the global scanner status")
 
 
 patch_ios_plugin()
