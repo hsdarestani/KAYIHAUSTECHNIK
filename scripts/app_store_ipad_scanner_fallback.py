@@ -14,6 +14,23 @@ def replace_required(path: Path, old: str, new: str, label: str) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
+def replace_struct_with_prefix(path: Path, prefixed_old: str, new_struct: str, label: str) -> None:
+    """Replace a source struct while inserting the controller declared before it."""
+    marker = "private struct KayiCapturedResult {"
+    marker_index = prefixed_old.find(marker)
+    if marker_index < 0:
+        raise RuntimeError(f"Could not apply {label}: embedded struct marker is missing")
+    prefix = prefixed_old[:marker_index]
+    old_struct = prefixed_old[marker_index:]
+    desired = prefix + new_struct
+    text = path.read_text(encoding="utf-8")
+    if desired in text:
+        return
+    if old_struct not in text:
+        raise RuntimeError(f"Could not apply {label}: expected struct missing in {path.relative_to(ROOT)}")
+    path.write_text(text.replace(old_struct, desired, 1), encoding="utf-8")
+
+
 def patch_ios_plugin() -> None:
     path = ROOT / "native" / "plugins" / "kayi-room-scanner" / "ios" / "Sources" / "KayiRoomScannerPlugin" / "KayiRoomScannerPlugin.swift"
     replace_required(
@@ -95,63 +112,12 @@ def patch_ios_plugin() -> None:
         }
     }
 
-    private func presentManualMeasurement(
-        call: CAPPluginCall,
-        presenter: UIViewController,
-        roomName: String,
-        previousValues: [String] = [],
-        validationMessage: String? = nil
-    ) {
-        let alert = UIAlertController(
-            title: "Manuelles Raumaufmaß",
-            message: validationMessage ?? "Dieses Gerät hat keinen LiDAR-Scanner. Bitte Länge, Breite und Höhe eingeben. Das Aufmaß wird anschließend wie ein Scan zur Prüfung gespeichert.",
-            preferredStyle: .alert
-        )
-        let fields: [(String, UIKeyboardType)] = [
-            ("Länge in m (z. B. 4,20)", .decimalPad),
-            ("Breite in m (z. B. 2,80)", .decimalPad),
-            ("Höhe in m (z. B. 2,50)", .decimalPad),
-        ]
-        for (index, fieldConfiguration) in fields.enumerated() {
-            let (placeholder, keyboardType) = fieldConfiguration
-            alert.addTextField { field in
-                field.placeholder = placeholder
-                field.keyboardType = keyboardType
-                field.clearButtonMode = .whileEditing
-                if previousValues.indices.contains(index) {
-                    field.text = previousValues[index]
-                }
-            }
-        }
-        alert.addAction(UIAlertAction(title: "Abbrechen", style: .cancel) { _ in
+    private func presentManualMeasurement(call: CAPPluginCall, presenter: UIViewController, roomName: String) {
+        let controller = KayiManualMeasurementViewController()
+        controller.onCancel = {
             call.reject("Aufmaß wurde abgebrochen.", "SCAN_CANCELLED")
-        })
-        alert.addAction(UIAlertAction(title: "Aufmaß speichern", style: .default) { _ in
-            let enteredValues = (alert.textFields ?? []).map { $0.text ?? "" }
-            let values = enteredValues.compactMap { value -> Double? in
-                let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
-                return Double(normalized)
-            }
-            guard values.count == 3,
-                  values[0] >= 0.20, values[0] <= 100.0,
-                  values[1] >= 0.20, values[1] <= 100.0,
-                  values[2] >= 1.20, values[2] <= 20.0 else {
-                let message = "Bitte gültige Maße eingeben: Länge/Breite 0,20–100 m und Höhe 1,20–20 m."
-                alert.dismiss(animated: true) { [weak self, weak presenter] in
-                    guard let self, let presenter else {
-                        call.reject(message, "INVALID_MANUAL_DIMENSIONS")
-                        return
-                    }
-                    self.presentManualMeasurement(
-                        call: call,
-                        presenter: presenter,
-                        roomName: roomName,
-                        previousValues: enteredValues,
-                        validationMessage: message
-                    )
-                }
-                return
-            }
+        }
+        controller.onSave = { values in
             let id = UUID()
             let payload: [String: Any] = [
                 "schema_version": "1.0",
@@ -179,15 +145,171 @@ def patch_ios_plugin() -> None:
             } catch {
                 call.reject("Aufmaß konnte nicht lokal gespeichert werden: \\(error.localizedDescription)")
             }
-        })
-        presenter.present(alert, animated: true)
+        }
+        presenter.present(controller, animated: true)
     }
 ''',
         "non-LiDAR iOS fallback",
     )
-    replace_required(
+    replace_struct_with_prefix(
         path,
-        '''private struct KayiCapturedResult {
+        '''private final class KayiManualMeasurementViewController: UIViewController, UITextFieldDelegate {
+    private let scrollView = UIScrollView()
+    private let stack = UIStackView()
+    private let validationLabel = UILabel()
+    private var fields: [UITextField] = []
+    var onCancel: (() -> Void)?
+    var onSave: (([Double]) -> Void)?
+
+    init() {
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .fullScreen
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        configureLayout()
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardChanged), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardHidden), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    private func configureLayout() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.alwaysBounceVertical = true
+        view.addSubview(scrollView)
+
+        stack.axis = .vertical
+        stack.spacing = 18
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stack)
+
+        let title = UILabel()
+        title.text = "Manuelles Raumaufmaß"
+        title.font = .boldSystemFont(ofSize: 28)
+        title.numberOfLines = 0
+        stack.addArrangedSubview(title)
+
+        let hint = UILabel()
+        hint.text = "Dieses iPad hat keinen LiDAR-Scanner. Bitte Länge, Breite und Höhe eingeben."
+        hint.font = .preferredFont(forTextStyle: .body)
+        hint.textColor = .secondaryLabel
+        hint.numberOfLines = 0
+        stack.addArrangedSubview(hint)
+
+        let definitions = [
+            ("Länge / Tiefe", "z. B. 4,20"),
+            ("Breite", "z. B. 2,80"),
+            ("Höhe", "z. B. 2,50"),
+        ]
+        fields = definitions.enumerated().map { index, definition in
+            let label = UILabel()
+            label.text = definition.0
+            label.font = .preferredFont(forTextStyle: .headline)
+            let field = UITextField()
+            field.placeholder = definition.1
+            field.keyboardType = .decimalPad
+            field.borderStyle = .roundedRect
+            field.clearButtonMode = .whileEditing
+            field.font = .preferredFont(forTextStyle: .title3)
+            field.adjustsFontForContentSizeCategory = true
+            field.delegate = self
+            field.tag = index
+            field.accessibilityLabel = definition.0
+            field.translatesAutoresizingMaskIntoConstraints = false
+            field.heightAnchor.constraint(greaterThanOrEqualToConstant: 50).isActive = true
+            let group = UIStackView(arrangedSubviews: [label, field])
+            group.axis = .vertical
+            group.spacing = 7
+            stack.addArrangedSubview(group)
+            return field
+        }
+
+        validationLabel.textColor = .systemRed
+        validationLabel.font = .preferredFont(forTextStyle: .footnote)
+        validationLabel.numberOfLines = 0
+        validationLabel.isHidden = true
+        validationLabel.accessibilityIdentifier = "manualMeasurementValidation"
+        stack.addArrangedSubview(validationLabel)
+
+        let save = UIButton(type: .system)
+        save.setTitle("Aufmaß speichern", for: .normal)
+        save.titleLabel?.font = .boldSystemFont(ofSize: 17)
+        save.backgroundColor = .systemBlue
+        save.setTitleColor(.white, for: .normal)
+        save.layer.cornerRadius = 12
+        save.heightAnchor.constraint(equalToConstant: 54).isActive = true
+        save.accessibilityIdentifier = "manualMeasurementSave"
+        save.addTarget(self, action: #selector(saveTapped), for: .touchUpInside)
+        stack.addArrangedSubview(save)
+
+        let cancel = UIButton(type: .system)
+        cancel.setTitle("Abbrechen", for: .normal)
+        cancel.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        cancel.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
+        stack.addArrangedSubview(cancel)
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -24),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 28),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -48),
+        ])
+    }
+
+    @objc private func saveTapped() {
+        view.endEditing(true)
+        let values = fields.compactMap { field -> Double? in
+            let normalized = (field.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+            return Double(normalized)
+        }
+        guard values.count == 3,
+              values[0] >= 0.20, values[0] <= 100.0,
+              values[1] >= 0.20, values[1] <= 100.0,
+              values[2] >= 1.20, values[2] <= 20.0 else {
+            validationLabel.text = "Bitte gültige Maße eingeben: Länge/Breite 0,20–100 m und Höhe 1,20–20 m."
+            validationLabel.isHidden = false
+            UIAccessibility.post(notification: .announcement, argument: validationLabel.text)
+            return
+        }
+        dismiss(animated: true) { [onSave] in onSave?(values) }
+    }
+
+    @objc private func cancelTapped() {
+        dismiss(animated: true) { [onCancel] in onCancel?() }
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        let next = textField.tag + 1
+        if fields.indices.contains(next) { fields[next].becomeFirstResponder() }
+        else { textField.resignFirstResponder() }
+        return true
+    }
+
+    @objc private func keyboardChanged(_ notification: Notification) {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let covered = max(0, view.bounds.maxY - view.convert(frame, from: nil).minY)
+        scrollView.contentInset.bottom = covered
+        scrollView.verticalScrollIndicatorInsets.bottom = covered
+    }
+
+    @objc private func keyboardHidden() {
+        scrollView.contentInset.bottom = 0
+        scrollView.verticalScrollIndicatorInsets.bottom = 0
+    }
+}
+
+private struct KayiCapturedResult {
     let id: UUID
     let roomName: String
     let payload: [String: Any]
@@ -201,7 +323,7 @@ def patch_ios_plugin() -> None:
     let modelURL: URL?
 }
 ''',
-        "optional model file",
+        "dedicated iPad manual measurement form and optional model file",
     )
     replace_required(
         path,
@@ -357,13 +479,30 @@ def patch_tests() -> None:
         self.assertIn("Keine nicht hochgeladenen Scans vorhanden.", web_source)
         self.assertNotIn("JSON.stringify(data,null,2)", web_source)
         self.assertNotIn("JSON.stringify(uploaded,null,2)", web_source)
-        self.assertIn("previousValues: enteredValues", ios_source)
-        self.assertIn("validationMessage: message", ios_source)
+        self.assertIn("KayiManualMeasurementViewController", ios_source)
+        self.assertIn('modalPresentationStyle = .fullScreen', ios_source)
+        self.assertIn('accessibilityLabel = definition.0', ios_source)
+        self.assertIn('keyboardWillChangeFrameNotification', ios_source)
+        self.assertNotIn("UIAlertController", ios_source)
         self.assertNotIn('call.reject("Bitte gültige Maße eingeben:', ios_source)
 '''
         if anchor not in contract_text:
             raise RuntimeError("Could not add native fallback source contract")
         contract.write_text(contract_text.replace(anchor, addition, 1), encoding="utf-8")
+    else:
+        stale = '''        self.assertIn("previousValues: enteredValues", ios_source)
+        self.assertIn("validationMessage: message", ios_source)
+        self.assertNotIn('call.reject("Bitte gültige Maße eingeben:', ios_source)
+'''
+        current = '''        self.assertIn("KayiManualMeasurementViewController", ios_source)
+        self.assertIn('modalPresentationStyle = .fullScreen', ios_source)
+        self.assertIn('accessibilityLabel = definition.0', ios_source)
+        self.assertIn('keyboardWillChangeFrameNotification', ios_source)
+        self.assertNotIn("UIAlertController", ios_source)
+        self.assertNotIn('call.reject("Bitte gültige Maße eingeben:', ios_source)
+'''
+        if stale in contract_text:
+            contract.write_text(contract_text.replace(stale, current, 1), encoding="utf-8")
 
 
 def guard() -> None:
@@ -379,7 +518,10 @@ def guard() -> None:
         ('Manuelles Aufmaß verfügbar', web),
         ('function clearScannerFeedback()', web),
         ('Keine nicht hochgeladenen Scans vorhanden.', web),
-        ('previousValues: enteredValues', swift),
+        ('KayiManualMeasurementViewController', swift),
+        ('modalPresentationStyle = .fullScreen', swift),
+        ('accessibilityLabel = definition.0', swift),
+        ('keyboardWillChangeFrameNotification', swift),
         ('capture_mode', server),
         ('RoomMeasurement.Method.MANUAL if manual_fallback', server),
     ]
@@ -392,6 +534,8 @@ def guard() -> None:
         raise RuntimeError("Raw scanner payload remains visible in the App Store shell")
     if 'call.reject("Bitte gültige Maße eingeben:' in swift:
         raise RuntimeError("Invalid manual dimensions still poison the global scanner status")
+    if "UIAlertController" in swift:
+        raise RuntimeError("iPad manual measurement still uses the fragile alert form")
 
 
 patch_ios_plugin()
