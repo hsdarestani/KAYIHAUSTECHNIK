@@ -24,23 +24,22 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 10
+    env:
+      REVIEW_USER: demo
+      REVIEW_PASS: ${{ secrets.KAYI_REVIEW_PASSWORD }}
     steps:
-      - name: Require stable Store review secrets
-        env:
-          REVIEW_USER: ${{ secrets.KAYI_REVIEW_USERNAME }}
-          REVIEW_PASS: ${{ secrets.KAYI_REVIEW_PASSWORD }}
+      - name: Require stable Store review password
         run: |
           set -euo pipefail
-          test -n "$REVIEW_USER" || { echo 'KAYI_REVIEW_USERNAME is missing.' >&2; exit 2; }
           test -n "$REVIEW_PASS" || { echo 'KAYI_REVIEW_PASSWORD is missing.' >&2; exit 2; }
           test "${#REVIEW_PASS}" -ge 20 || { echo 'KAYI_REVIEW_PASSWORD must be at least 20 characters.' >&2; exit 2; }
           echo "::add-mask::$REVIEW_PASS"
-          echo 'Stable Store review secrets are configured.'
+          echo 'Stable Store review password is configured; username is fixed to demo.'
 
       - name: Verify exact reviewer login against production
         uses: appleboy/ssh-action@v1.2.5
         env:
-          REVIEW_USER: ${{ secrets.KAYI_REVIEW_USERNAME }}
+          REVIEW_USER: demo
           REVIEW_PASS: ${{ secrets.KAYI_REVIEW_PASSWORD }}
         with:
           host: ${{ secrets.HOST }}
