@@ -20,7 +20,59 @@ env:
   KAYI_BUILD_NUMBER: ${{ inputs.build_number }}
 
 jobs:
+  review-credentials-gate:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - name: Require stable Store review secrets
+        env:
+          REVIEW_USER: ${{ secrets.KAYI_REVIEW_USERNAME }}
+          REVIEW_PASS: ${{ secrets.KAYI_REVIEW_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$REVIEW_USER" || { echo 'KAYI_REVIEW_USERNAME is missing.' >&2; exit 2; }
+          test -n "$REVIEW_PASS" || { echo 'KAYI_REVIEW_PASSWORD is missing.' >&2; exit 2; }
+          test "${#REVIEW_PASS}" -ge 20 || { echo 'KAYI_REVIEW_PASSWORD must be at least 20 characters.' >&2; exit 2; }
+          echo "::add-mask::$REVIEW_PASS"
+          echo 'Stable Store review secrets are configured.'
+
+      - name: Verify exact reviewer login against production
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          REVIEW_USER: ${{ secrets.KAYI_REVIEW_USERNAME }}
+          REVIEW_PASS: ${{ secrets.KAYI_REVIEW_PASSWORD }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.DEPLOY_USER || 'root' }}
+          key: ${{ secrets.SSH_KEY }}
+          password: ${{ secrets.PASS }}
+          envs: REVIEW_USER,REVIEW_PASS
+          command_timeout: 5m
+          script: |
+            set -eu
+            cd /opt/kayi
+            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+            $DC exec -T \
+              -e REVIEW_USER="$REVIEW_USER" \
+              -e REVIEW_PASS="$REVIEW_PASS" \
+              web python manage.py shell -c "
+            import os
+            from django.contrib.auth import authenticate, get_user_model
+
+            username = os.environ['REVIEW_USER']
+            password = os.environ['REVIEW_PASS']
+            User = get_user_model()
+            user = User.objects.filter(username=username).first()
+            assert user is not None, 'Store review account missing'
+            assert user.is_active, 'Store review account inactive'
+            assert user.check_password(password), 'Store review password does not match production'
+            assert authenticate(username=username, password=password) is not None, 'Store review authentication failed'
+            print('A+Bau Store review authentication verified on production.')
+            "
+
   google-play-aab:
+    needs: review-credentials-gate
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -63,7 +115,7 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kayi-upload.jks"
           chmod 600 "$RUNNER_TEMP/kayi-upload.jks"
           echo "KAYI_ANDROID_KEYSTORE=$RUNNER_TEMP/kayi-upload.jks" >> "$GITHUB_ENV"
-      - name: Configure signed release and KAYI launcher assets
+      - name: Configure signed release and A+Bau launcher assets
         env:
           KAYI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KAYI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -91,7 +143,7 @@ jobs:
           "$ZIPALIGN" -c -P 16 -v 4 "$APK"
       - uses: actions/upload-artifact@v4
         with:
-          name: KAYI-Google-Play-${{ inputs.app_version }}-${{ inputs.build_number }}
+          name: A-Bau-Google-Play-${{ inputs.app_version }}-${{ inputs.build_number }}
           path: native/android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 30
@@ -133,7 +185,7 @@ jobs:
       - name: Generate iOS project
         working-directory: native
         run: npx cap add ios && npx cap sync ios
-      - name: Configure release and KAYI AppIcon
+      - name: Configure release and A+Bau AppIcon
         run: |
           python scripts/configure_native_release.py ios
           python scripts/generate_store_brand_assets.py --native
@@ -204,7 +256,7 @@ jobs:
           test -f "$RUNNER_TEMP/export/App.ipa"
       - uses: actions/upload-artifact@v4
         with:
-          name: KAYI-App-Store-${{ inputs.app_version }}-${{ inputs.build_number }}
+          name: A-Bau-App-Store-${{ inputs.app_version }}-${{ inputs.build_number }}
           path: ${{ runner.temp }}/export/*.ipa
           if-no-files-found: error
           retention-days: 30
