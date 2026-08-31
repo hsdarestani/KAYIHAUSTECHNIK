@@ -3,19 +3,19 @@
 ## Review account
 A+Bau requires authentication and does not offer public self-registration in the store build. Reviewers must use the dedicated isolated Store review account.
 
-The single source of truth for that account is the protected deployment secrets:
-- `KAYI_REVIEW_USERNAME`
-- `KAYI_REVIEW_PASSWORD`
-- optional `KAYI_REVIEW_EMAIL`
+The Store reviewer identity is fixed:
+- Username: `demo`
+- Password source: protected secret `KAYI_REVIEW_PASSWORD`
+- optional review email: `KAYI_REVIEW_EMAIL`
 
-The username/password entered in Google Play Console App Access and App Store Connect Review Information must be exactly the same values. Do not rotate this password while a review is pending. Never commit or paste the password into source control or public store metadata.
+The password entered in Google Play Console App Access and App Store Connect Review Information must be exactly the same protected value. Do not rotate this password while a review is pending. Never commit or paste the password into source control or public store metadata.
 
-Workflow `Provision A+Bau Store Review Credentials` synchronizes the fixed credential to production and Publisher. It does not generate or rotate a password. The Google build in `Signed store release` is blocked unless the same protected username/password authenticates successfully against production.
+Workflow `Provision A+Bau Store Review Credentials` synchronizes the fixed `demo` account password to production and Publisher. It does not generate or rotate a password. The Google build in `Signed store release` is blocked unless `demo` with the protected password authenticates successfully against production.
 
 ## Apple App Review Notes
 A+Bau is a business application for professional construction and building-services companies. The app requires a company-provided account; there is no public self-registration and no in-app purchase.
 
-Review account: use the username/password supplied in the protected App Review Information fields. The account belongs only to an isolated demo organization and contains sample customers, projects, appointments and financial documents.
+Review account: username `demo`; use the password supplied in the protected App Review Information password field. The review account belongs only to an isolated demo organization and contains sample customers, projects, appointments and financial documents.
 
 Recommended review path:
 1. Sign in.
@@ -41,11 +41,11 @@ https://kayi.smarbiz.sbs/support/
 A+Bau uses standard platform/TLS encryption and declares ITSAppUsesNonExemptEncryption = false; it does not implement non-exempt proprietary cryptography.
 
 ## Google Play — App Access instructions
-Choose **All or some functionality is restricted** and provide the dedicated A+Bau review username/password in Play Console App Access.
+Choose **All or some functionality is restricted** and provide username `demo` plus the exact `KAYI_REVIEW_PASSWORD` value in Play Console App Access.
 
 Instructions:
 1. Launch A+Bau.
-2. Enter the supplied review username and password.
+2. Enter username `demo` and the supplied review password.
 3. No OTP, paid subscription, external hardware, VPN, IP allow-listing or additional approval is required for the review demo account.
 4. The account belongs to a demo tenant and can be used to inspect customers, projects, appointments, documentation, 3D room planning, quotes and invoices.
 5. Optional AI actions have a separate privacy-consent flow. AI consent is not required to access the rest of the app.
@@ -54,8 +54,10 @@ If ARCore room scanning is unsupported on the review device, use the photo/manua
 
 ## Mandatory pre-submission gate
 Before any Google Play submission:
-1. Run `Provision A+Bau Store Review Credentials` with `SYNC_STABLE_REVIEW_CREDENTIALS` when production/Publisher need synchronization.
-2. Enter the exact same protected username/password in Google Play Console → App content → App access.
-3. Run `Signed store release`. The Google AAB job must not proceed unless production authentication succeeds.
-4. Test the exact candidate artifact through Internal testing / Pre-launch report before promotion.
-5. Do not change the review password until Google has completed review.
+1. Set/update the protected `KAYI_REVIEW_PASSWORD` in the GitHub `production` environment. Do not put it in Git or chat.
+2. Run `Provision A+Bau Store Review Credentials` with `SYNC_STABLE_REVIEW_CREDENTIALS` to synchronize `demo` on production and Publisher.
+3. Enter username `demo` and the exact same password in Google Play Console → App content → App access.
+4. Run `A+Bau review credential readiness`; it must pass.
+5. Run `Signed store release`. The Google AAB job must not proceed unless production authentication succeeds.
+6. Test the exact candidate artifact through Internal testing / Pre-launch report before promotion.
+7. Do not change the review password until Google has completed review.
