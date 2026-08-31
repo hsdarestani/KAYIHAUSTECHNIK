@@ -26,17 +26,18 @@
 - Production browser smoke after merge: Datenschutz, Support and account deletion public without login
 
 ## Store reviewer credential — critical
-There is exactly one stable Store reviewer credential, supplied through protected secrets:
-- `KAYI_REVIEW_USERNAME`
-- `KAYI_REVIEW_PASSWORD`
-- optional `KAYI_REVIEW_EMAIL`
+There is exactly one stable Store reviewer account:
+- Username: `demo`
+- Password: protected `KAYI_REVIEW_PASSWORD` secret
+- optional review email: `KAYI_REVIEW_EMAIL`
 
 Rules:
 - Never generate a new random review password during a release.
 - Never rotate the password while Google Play or Apple review is pending.
-- Production, Publisher, Google Play Console App Access and App Store Connect Review Information must use the same username/password.
+- Production, Publisher, Google Play Console App Access and App Store Connect Review Information must use `demo` plus the same password.
 - Run `Provision A+Bau Store Review Credentials` with confirmation `SYNC_STABLE_REVIEW_CREDENTIALS` when synchronization is needed.
-- `Signed store release` must stop before Google AAB generation if the protected reviewer credential cannot authenticate against production.
+- Run `A+Bau review credential readiness` before release; it must pass.
+- `Signed store release` must stop before Google AAB generation if `demo` cannot authenticate against production using `KAYI_REVIEW_PASSWORD`.
 - Do not place the password in Git, store descriptions, release notes, screenshots, issues or chat transcripts.
 
 ## Google Play Console
@@ -51,7 +52,8 @@ Rules:
 - Privacy policy URL: `https://kayi.smarbiz.sbs/datenschutz/`
 - Account deletion URL: `https://kayi.smarbiz.sbs/konto-loeschen/`
 - App access: choose **All or some functionality is restricted**.
-- Enter the exact values of `KAYI_REVIEW_USERNAME` and `KAYI_REVIEW_PASSWORD` in the protected App Access fields.
+- Username: `demo`.
+- Password: enter the exact value stored as protected `KAYI_REVIEW_PASSWORD`.
 - Paste the non-secret instructions from `store/review-notes.md`.
 - Ads: No.
 - Data Safety: use `store/privacy-declarations.md`.
@@ -68,15 +70,16 @@ Rules:
 - Do not add ranking, price, discount or misleading comparison claims.
 
 ### Release
-1. Synchronize the stable reviewer account if necessary.
-2. Manually verify Google Play Console App Access contains the exact same protected credential.
-3. Run `Signed store release` with a new build number.
-4. The `review-credentials-gate` must pass before the Google AAB can be built.
-5. Upload the generated signed `.aab` to Internal testing first.
-6. Run Pre-launch report/device checks and fix crashes, ANRs, freezes, loading errors or policy warnings.
-7. Test login with the same reviewer account on the exact candidate build.
-8. Promote the exact tested artifact rather than rebuilding it manually.
-9. Do not rotate reviewer credentials until review is complete.
+1. Set a strong stable `KAYI_REVIEW_PASSWORD` in the GitHub `production` environment. Do not disclose it in Git or chat.
+2. Run `Provision A+Bau Store Review Credentials` to synchronize the `demo` account on production and Publisher.
+3. Update Google Play Console App Access to username `demo` and the exact same password.
+4. Run `A+Bau review credential readiness`; it must pass.
+5. Run `Signed store release` with a new build number. The `review-credentials-gate` must pass before the Google AAB can be built.
+6. Upload the generated signed `.aab` to Internal testing first.
+7. Run Pre-launch report/device checks and fix crashes, ANRs, freezes, loading errors or policy warnings.
+8. Test login with `demo` on the exact candidate build.
+9. Promote the exact tested artifact rather than rebuilding it manually.
+10. Do not rotate reviewer credentials until review is complete.
 
 ## App Store Connect
 ### App record
@@ -89,7 +92,8 @@ Rules:
 - Support URL: `https://kayi.smarbiz.sbs/support/`
 
 ### Review information
-- Supply the same stable dedicated reviewer username/password in App Store Connect protected review fields.
+- Username: `demo`.
+- Password: use the same stable protected reviewer password.
 - Paste Apple review notes from `store/review-notes.md`.
 - Review account must work without OTP, VPN, IP allow-listing or a temporary-password reset.
 - Do not rotate it during review.
