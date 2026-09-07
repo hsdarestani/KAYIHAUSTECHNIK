@@ -57,6 +57,19 @@ def patch_css() -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_receipt_generator_syntax() -> None:
+    """Keep re.sub replacement processing from collapsing a Windows-path escape."""
+    path = ROOT / "scripts" / "tooltime_receipt_create_parity.py"
+    text = path.read_text(encoding="utf-8")
+    bad = r'''safe_name = (getattr(upload, "name", "beleg") or "beleg").split("/")[-1].split("\\")[-1]'''
+    good = '''safe_name = (getattr(upload, "name", "beleg") or "beleg").rsplit("/", 1)[-1]'''
+    if bad in text:
+        text = text.replace(bad, good, 1)
+        path.write_text(text, encoding="utf-8")
+    elif good not in text:
+        raise RuntimeError("Receipt generator safe-name anchor missing")
+
+
 def guard() -> None:
     template = read("templates/rebuild/customer_detail.html")
     views = read("erp/rebuild_views.py")
@@ -81,6 +94,7 @@ def main() -> None:
     # Receipt creation is intentionally the final customer/finance handoff layer.
     # It must run after the screenshot-exact customer cockpit so customer context
     # and the upload-first ToolTime receipt flow cannot be overwritten downstream.
+    patch_receipt_generator_syntax()
     runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_create_parity.py"), run_name="__main__")
     runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_interaction_fix.py"), run_name="__main__")
     print("ToolTime customer detail regression compatibility applied.")
