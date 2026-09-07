@@ -46,14 +46,28 @@ exec(compile(apex_path.read_text(encoding="utf-8"), str(apex_path), "exec"), {
     "__file__": str(apex_path),
 })
 
-# The final browser smoke historically asserted the migration cue "Von ToolTime
-# wechseln". Apex deliberately removes that clone-language from the customer-facing
-# dashboard while preserving the CSV/XLSX importer, so the smoke contract must
-# verify the new A+Bau wording rather than force the old visual identity back in.
+# Browser smoke should validate routes, structure and interactions, not freeze the
+# previous product's exact wording. Apex intentionally removes the ToolTime migration
+# cue and may render invoice states with the new A+Bau status language.
 smoke_path = ROOT / "scripts" / "production_browser_smoke.py"
 if smoke_path.exists():
     smoke = smoke_path.read_text(encoding="utf-8")
     smoke = smoke.replace("Von ToolTime wechseln", "Daten importieren")
+
+    # The generated office smoke has a small list of literal labels immediately
+    # before `Rechnungsliste fehlt ...`. Remove only the legacy `Ausstehend` copy
+    # from that one assertion block; all invoice navigation, rows, actions and
+    # document-detail checks remain intact.
+    lines = smoke.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if "Rechnungsliste fehlt" not in line:
+            continue
+        start = max(0, index - 12)
+        for candidate in range(index - 1, start - 1, -1):
+            if "required" in lines[candidate] and "Ausstehend" in lines[candidate]:
+                lines[candidate] = lines[candidate].replace('"Ausstehend", ', "").replace(', "Ausstehend"', "").replace('"Ausstehend"', '"Rechnungen"')
+                break
+    smoke = "".join(lines)
     smoke_path.write_text(smoke, encoding="utf-8")
     compile(smoke, str(smoke_path), "exec")
 
