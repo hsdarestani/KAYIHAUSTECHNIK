@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,6 +78,10 @@ def main() -> None:
     patch_customer_template()
     patch_css()
     guard()
+    # Receipt creation is intentionally the final customer/finance handoff layer.
+    # It must run after the screenshot-exact customer cockpit so customer context
+    # and the upload-first ToolTime receipt flow cannot be overwritten downstream.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_create_parity.py"), run_name="__main__")
     print("ToolTime customer detail regression compatibility applied.")
 
 
