@@ -82,6 +82,7 @@ def main() -> None:
     # It must run after the screenshot-exact customer cockpit so customer context
     # and the upload-first ToolTime receipt flow cannot be overwritten downstream.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_create_parity.py"), run_name="__main__")
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_interaction_fix.py"), run_name="__main__")
     print("ToolTime customer detail regression compatibility applied.")
 
 
