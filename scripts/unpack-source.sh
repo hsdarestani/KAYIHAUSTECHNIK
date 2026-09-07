@@ -210,5 +210,8 @@ python3 scripts/app_store_ipad_scanner_fallback.py
 python3 scripts/tooltime_customer_detail_exact_parity.py
 # Preserve older customer/object contracts without changing the new ToolTime cockpit.
 python3 scripts/tooltime_customer_detail_regression_compat.py
+# Angebot lifecycle is intentionally the last commercial-document layer: drafts keep
+# the full ToolTime editor while every post-draft state becomes a read-only document cockpit.
+python3 scripts/tooltime_quote_postdraft_detail.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
