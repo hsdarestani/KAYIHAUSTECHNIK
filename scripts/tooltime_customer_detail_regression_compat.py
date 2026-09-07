@@ -71,17 +71,20 @@ def patch_receipt_generator_syntax() -> None:
 
 
 def patch_browser_smoke_receipt_contract() -> None:
-    """Make every assembled browser-smoke reference follow the new receipt-first UI."""
+    """Preserve the expenses-list smoke contract while receipt creation is tested separately.
+
+    The list page intentionally keeps its existing ``Ausgabe erfassen`` CTA.  Only the
+    create page changed to the ToolTime-style ``Beleg erfassen`` flow, and that route is
+    covered by the dedicated Django receipt tests.  Replacing the marker globally made
+    the browser smoke expect the create-page title on ``/expenses/`` and caused a false
+    failure even though the new receipt flow itself was healthy.
+    """
     path = ROOT / "scripts" / "production_browser_smoke.py"
     if not path.exists():
         raise RuntimeError("Browser smoke script missing after source assembly")
     text = path.read_text(encoding="utf-8")
-    old_count = text.count("Ausgabe erfassen")
-    text = text.replace("Ausgabe erfassen", "Beleg erfassen")
-    if old_count == 0 and "Beleg erfassen" not in text:
-        raise RuntimeError("Browser smoke receipt marker could not be identified")
-    if "Ausgabe erfassen" in text:
-        raise RuntimeError("Browser smoke still expects the removed manual expense form")
+    if "Ausgabe erfassen" not in text:
+        raise RuntimeError("Browser smoke expenses-list marker could not be identified")
     path.write_text(text, encoding="utf-8")
 
 
