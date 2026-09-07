@@ -46,6 +46,17 @@ exec(compile(apex_path.read_text(encoding="utf-8"), str(apex_path), "exec"), {
     "__file__": str(apex_path),
 })
 
+# The final browser smoke historically asserted the migration cue "Von ToolTime
+# wechseln". Apex deliberately removes that clone-language from the customer-facing
+# dashboard while preserving the CSV/XLSX importer, so the smoke contract must
+# verify the new A+Bau wording rather than force the old visual identity back in.
+smoke_path = ROOT / "scripts" / "production_browser_smoke.py"
+if smoke_path.exists():
+    smoke = smoke_path.read_text(encoding="utf-8")
+    smoke = smoke.replace("Von ToolTime wechseln", "Daten importieren")
+    smoke_path.write_text(smoke, encoding="utf-8")
+    compile(smoke, str(smoke_path), "exec")
+
 # The Apex installer deliberately verifies that it is final. Since this repository
 # uses the document-compatibility script as the last assembly hook, align that
 # generated contract with the actual authoritative hook instead of duplicating a
@@ -57,6 +68,9 @@ apex_contract = apex_contract.replace(
     "    def test_apex_runs_from_the_final_document_compatibility_hook(self):\n        compat = (ROOT / \"scripts/tooltime_document_workspace_regression_compat.py\").read_text(encoding=\"utf-8\")\n        self.assertIn(\"ab_bau_apex_design_system.py\", compat)\n        self.assertIn(\"exec(compile(apex_path.read_text\", compat)\n",
     1,
 )
+apex_contract += "\n# Browser-smoke wording guard: the redesigned dashboard no longer exposes ToolTime clone copy.\n"
+apex_contract += "assert 'Von ToolTime wechseln' not in (ROOT / 'templates/rebuild/dashboard.html').read_text(encoding='utf-8')\n"
+apex_contract += "assert 'Daten importieren' in (ROOT / 'templates/rebuild/dashboard.html').read_text(encoding='utf-8')\n"
 apex_test.write_text(apex_contract, encoding="utf-8")
 compile(apex_contract, str(apex_test), "exec")
 
