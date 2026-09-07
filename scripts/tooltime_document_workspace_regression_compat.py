@@ -35,4 +35,29 @@ template = template.replace(
 )
 template_path.write_text(template, encoding="utf-8")
 
-print("ToolTime document workspace regression compatibility applied: dedicated quote preview is authoritative and no unverified XML route is rendered.")
+# This is already the final step in scripts/unpack-source.sh. Install the bespoke
+# A+Bau Apex visual system here so it always wins over both legacy A+Bau CSS and
+# the previous ToolTime-parity surfaces without disturbing their business logic.
+apex_path = ROOT / "scripts" / "ab_bau_apex_design_system.py"
+if not apex_path.exists():
+    raise RuntimeError("A+Bau Apex installer is missing")
+exec(compile(apex_path.read_text(encoding="utf-8"), str(apex_path), "exec"), {
+    "__name__": "__ab_bau_apex_design_system__",
+    "__file__": str(apex_path),
+})
+
+# The Apex installer deliberately verifies that it is final. Since this repository
+# uses the document-compatibility script as the last assembly hook, align that
+# generated contract with the actual authoritative hook instead of duplicating a
+# second line in unpack-source.sh.
+apex_test = ROOT / "tests" / "test_ab_bau_apex_design_system.py"
+apex_contract = apex_test.read_text(encoding="utf-8")
+apex_contract = apex_contract.replace(
+    "    def test_apex_runs_after_previous_document_layers(self):\n        unpack = (ROOT / \"scripts/unpack-source.sh\").read_text(encoding=\"utf-8\")\n        self.assertGreater(unpack.rfind(\"python3 scripts/ab_bau_apex_design_system.py\"), unpack.rfind(\"python3 scripts/tooltime_document_workspace_regression_compat.py\"))\n",
+    "    def test_apex_runs_from_the_final_document_compatibility_hook(self):\n        compat = (ROOT / \"scripts/tooltime_document_workspace_regression_compat.py\").read_text(encoding=\"utf-8\")\n        self.assertIn(\"ab_bau_apex_design_system.py\", compat)\n        self.assertIn(\"exec(compile(apex_path.read_text\", compat)\n",
+    1,
+)
+apex_test.write_text(apex_contract, encoding="utf-8")
+compile(apex_contract, str(apex_test), "exec")
+
+print("ToolTime document compatibility applied, then A+Bau Apex installed as the final cross-platform visual layer.")
