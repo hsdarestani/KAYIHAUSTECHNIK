@@ -213,5 +213,8 @@ python3 scripts/tooltime_customer_detail_regression_compat.py
 # Angebot lifecycle is intentionally the last commercial-document layer: drafts keep
 # the full ToolTime editor while every post-draft state becomes a read-only document cockpit.
 python3 scripts/tooltime_quote_postdraft_detail.py
+# Final commercial workspace parity: dedicated inline PDF previews, ToolTime-style
+# invoice drafts and immutable post-draft invoice documents must win over older layers.
+python3 scripts/tooltime_document_workspace_final.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
