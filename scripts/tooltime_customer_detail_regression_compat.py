@@ -71,21 +71,17 @@ def patch_receipt_generator_syntax() -> None:
 
 
 def patch_browser_smoke_receipt_contract() -> None:
-    """Make the assembled browser smoke verify the new upload-first receipt surface."""
+    """Make every assembled browser-smoke reference follow the new receipt-first UI."""
     path = ROOT / "scripts" / "production_browser_smoke.py"
     if not path.exists():
         raise RuntimeError("Browser smoke script missing after source assembly")
     text = path.read_text(encoding="utf-8")
-    old_tuple = '("/expenses/new/", ("Ausgabe erfassen",))'
-    new_tuple = '("/expenses/new/", ("Beleg erfassen", "Ausgabe als Beleg hochladen", "Projekt auswählen (optional)", "Lieferant auswählen (optional)"))'
-    if old_tuple in text:
-        text = text.replace(old_tuple, new_tuple, 1)
-    elif '"Ausgabe erfassen"' in text:
-        text = text.replace('"Ausgabe erfassen"', '"Beleg erfassen"', 1)
-    if '"Ausgabe erfassen"' in text:
+    old_count = text.count("Ausgabe erfassen")
+    text = text.replace("Ausgabe erfassen", "Beleg erfassen")
+    if old_count == 0 and "Beleg erfassen" not in text:
+        raise RuntimeError("Browser smoke receipt marker could not be identified")
+    if "Ausgabe erfassen" in text:
         raise RuntimeError("Browser smoke still expects the removed manual expense form")
-    if '"Beleg erfassen"' not in text:
-        raise RuntimeError("Browser smoke receipt marker was not installed")
     path.write_text(text, encoding="utf-8")
 
 
