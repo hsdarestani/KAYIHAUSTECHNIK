@@ -111,3 +111,15 @@ exec(compile(v3_path.read_text(encoding="utf-8"), str(v3_path), "exec"), {
     "__name__": "__main__",
     "__file__": str(v3_path),
 })
+
+# The native/field-facing home is part of the same phase but stays isolated from
+# the office command palette. Existing appointment detail, time tracking, voice,
+# signature and documentation logic remain authoritative; only the field home DOM
+# is rebuilt into a mobile-first operations cockpit.
+field_v3_path = ROOT / "scripts" / "ab_bau_v3_phase1_field.py"
+if not field_v3_path.exists():
+    raise RuntimeError("A+Bau V3 Field installer is missing")
+exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(field_v3_path),
+})
