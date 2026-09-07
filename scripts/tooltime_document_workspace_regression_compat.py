@@ -99,4 +99,15 @@ apex_contract += "assert 'Daten importieren' in (ROOT / 'templates/rebuild/dashb
 apex_test.write_text(apex_contract, encoding="utf-8")
 compile(apex_contract, str(apex_test), "exec")
 
-print("ToolTime document compatibility applied, then A+Bau Apex installed as the final cross-platform visual layer.")
+print("ToolTime document compatibility applied, then A+Bau Apex installed as the cross-platform visual baseline.")
+
+# A+Bau V3 is intentionally the final structural layer. It rebuilds the shell and
+# dashboard DOM while preserving the already-tested ToolTime-compatible business
+# routes, document lifecycle and field workflows beneath it.
+v3_path = ROOT / "scripts" / "ab_bau_v3_phase1_shell_dashboard.py"
+if not v3_path.exists():
+    raise RuntimeError("A+Bau V3 Phase 1 installer is missing")
+exec(compile(v3_path.read_text(encoding="utf-8"), str(v3_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(v3_path),
+})
