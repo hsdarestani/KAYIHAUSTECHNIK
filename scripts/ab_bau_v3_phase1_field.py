@@ -124,7 +124,7 @@ class ABauV3FieldTests(SimpleTestCase):
     def test_v3_keeps_upstream_field_workflow_instead_of_reimplementing_it(self):
         installer = (ROOT / "scripts/ab_bau_v3_phase1_field.py").read_text(encoding="utf-8")
         self.assertIn("legacy = read(FIELD)", installer)
-        self.assertNotIn("write(FIELD, r'''{% extends", installer)
+        self.assertNotIn("write(FIELD, r", installer)
         for marker in ("Projekt aufnehmen", "Vor Ort in einem Ablauf", "Signierte PDF"):
             self.assertIn(marker, installer)
 
