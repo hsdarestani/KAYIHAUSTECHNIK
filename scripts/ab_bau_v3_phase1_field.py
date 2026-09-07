@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -26,7 +27,7 @@ def install_css() -> None:
     CSS_TARGET.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(CSS_SOURCE, CSS_TARGET)
     base = read(BASE)
-    link = '<link rel="stylesheet" href="/static/css/ab-bau-v3-field.css?v=20260908-2">'
+    link = '<link rel="stylesheet" href="/static/css/ab-bau-v3-field.css?v=20260908-3">'
     if link not in base:
         if "</head>" not in base:
             raise RuntimeError("A+Bau V3 field CSS head anchor missing")
@@ -35,13 +36,47 @@ def install_css() -> None:
 
 
 def install_field_template() -> None:
-    write(FIELD, r'''{% extends 'rebuild/base.html' %}
-{% block title %}Meine Einsätze · A+Bau{% endblock %}
-{% block content %}
-<div class="nx-field-shell ab-v3-field" data-ab-v3-field>
-  <section class="ab-v3-field-hero">
+    """Upgrade the final technician surface without deleting field capabilities.
+
+    Multiple late production layers add one-tap project capture, voice AI, customer
+    signature and signed-PDF handoff to field_home.html. Replacing the template would
+    silently remove those workflows. V3 therefore treats the fully assembled field
+    template as the source of truth and changes its composition in-place: a new Field
+    Deck and next-job focus are injected into the existing operational shell, while
+    every existing form, route, signed-PDF action, tab and data hook remains intact.
+    """
+    legacy = read(FIELD)
+    required_upstream = (
+        "nx-field-shell",
+        "nx-mobile-tabs",
+        "nx-job-card",
+        "Projekt aufnehmen",
+        "Vor Ort in einem Ablauf",
+        "Signierte PDF",
+    )
+    missing = [marker for marker in required_upstream if marker not in legacy]
+    if missing:
+        raise RuntimeError(
+            "A+Bau V3 refuses to replace an incomplete field workflow; missing upstream contracts: "
+            + ", ".join(missing)
+        )
+
+    if "data-ab-v3-field" in legacy:
+        # Repeatable source assembly: the final template is already upgraded.
+        return
+
+    root = re.search(r'<div class="([^"]*\bnx-field-shell\b[^"]*)"([^>]*)>', legacy)
+    if not root:
+        raise RuntimeError("A+Bau V3 field root anchor missing")
+    classes = root.group(1).split()
+    if "ab-v3-field" not in classes:
+        classes.append("ab-v3-field")
+    replacement = f'<div class="{" ".join(classes)}"{root.group(2)} data-ab-v3-field>'
+
+    hero = r'''
+  <section class="ab-v3-field-hero" data-ab-v3-field-deck>
     <div class="ab-v3-field-hero-top">
-      <div><div class="ab-v3-field-eyebrow">Field Deck · Live</div><h1>Meine Einsätze</h1><p>{% if employee %}{{ employee.first_name }} {{ employee.last_name }} · {% endif %}Termine, Zeit und Dokumentation in einem klaren Arbeitsfluss.</p></div>
+      <div><div class="ab-v3-field-eyebrow">Field Deck · Live</div><h1>Meine Einsätze</h1><p>{% if employee %}{{ employee.first_name }} {{ employee.last_name }} · {% endif %}Termin, KI-Aufnahme, Unterschrift und Dokumentation bleiben in einem durchgängigen Baustellen-Workflow.</p></div>
       <div class="ab-v3-field-time"><span>Jetzt</span><strong>{% now 'H:i' %}</strong></div>
     </div>
     <div class="ab-v3-field-counters">
@@ -51,7 +86,7 @@ def install_field_template() -> None:
     </div>
   </section>
 
-  <section class="ab-v3-next-job">
+  <section class="ab-v3-next-job" data-ab-v3-next-job>
     <div class="ab-v3-next-label"><span>Nächster Einsatz</span><span>Priorität: jetzt</span></div>
     {% for event in planned|slice:':1' %}
     <a class="ab-v3-next-content" href="{% url 'next-appointment-detail' event.pk %}">
@@ -62,29 +97,10 @@ def install_field_template() -> None:
     {% empty %}<div class="nx-card nx-card-pad nx-empty ab-v3-field-empty"><strong>Kein Einsatz wartet.</strong>Neue Termine erscheinen automatisch hier.</div>{% endfor %}
   </section>
 
-  <div data-tabs>
-    <nav class="nx-mobile-tabs ab-v3-field-tabs" aria-label="Einsatzstatus">
-      <button class="is-active" type="button" data-tab="planned">Geplant <b>{{ planned|length }}</b></button>
-      <button type="button" data-tab="overdue">Überfällig <b>{{ overdue|length }}</b></button>
-      <button type="button" data-tab="documented">Erledigt <b>{{ documented|length }}</b></button>
-    </nav>
-
-    <div class="nx-tab-panel ab-v3-field-panel is-active" data-tab-panel="planned">
-      {% for event in planned %}<a class="nx-card nx-job-card ab-v3-field-job" href="{% url 'next-appointment-detail' event.pk %}"><time>{{ event.starts_at|date:'H:i' }}<small>{{ event.starts_at|date:'d.m.' }}</small></time><span class="ab-v3-field-job-copy"><strong>{{ event.title }}</strong><span>{% if event.project %}{{ event.project.customer.display_name }} · {{ event.location|default:event.project.title }}{% else %}Interner Termin{% endif %}</span></span><span class="ab-v3-field-job-state">Öffnen</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty ab-v3-field-empty"><strong>Keine geplanten Einsätze.</strong>Neue Termine erscheinen automatisch hier.</div>{% endfor %}
-    </div>
-
-    <div class="nx-tab-panel ab-v3-field-panel" data-tab-panel="overdue">
-      {% for event in overdue %}<a class="nx-card nx-job-card ab-v3-field-job" href="{% url 'next-appointment-detail' event.pk %}"><time>{{ event.starts_at|date:'H:i' }}<small>{{ event.starts_at|date:'d.m.' }}</small></time><span class="ab-v3-field-job-copy"><strong>{{ event.title }}</strong><span>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</span></span><span class="ab-v3-field-job-state is-warn">Offen</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty ab-v3-field-empty"><strong>Alles erledigt.</strong>Keine überfällige Dokumentation.</div>{% endfor %}
-    </div>
-
-    <div class="nx-tab-panel ab-v3-field-panel" data-tab-panel="documented">
-      {% for event in documented %}<a class="nx-card nx-job-card ab-v3-field-job" href="{% url 'next-appointment-detail' event.pk %}"><time>{{ event.starts_at|date:'H:i' }}<small>{{ event.starts_at|date:'d.m.' }}</small></time><span class="ab-v3-field-job-copy"><strong>{{ event.title }}</strong><span>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</span></span><span class="ab-v3-field-job-state is-done">✓ Dokumentiert</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty ab-v3-field-empty"><strong>Noch nichts dokumentiert.</strong>Abgeschlossene Einsätze landen automatisch hier.</div>{% endfor %}
-    </div>
-  </div>
-
-  <div class="ab-v3-field-actions"><a href="{% url 'next-time' %}"><span>◷</span> Zeiterfassung</a><a href="{% url 'next-settings' %}">◎ Konto & Einstellungen</a></div>
-</div>
-{% endblock %}''')
+  <div class="ab-v3-field-flow-label"><span>Vor Ort in einem Ablauf</span><small>Projekt aufnehmen · Sprach-KI · Unterschrift · Signierte PDF</small></div>
+'''
+    legacy = legacy[:root.start()] + replacement + hero + legacy[root.end():]
+    write(FIELD, legacy)
 
 
 def install_tests() -> None:
@@ -95,17 +111,28 @@ from django.test import SimpleTestCase
 ROOT = Path(__file__).resolve().parents[1]
 
 class ABauV3FieldTests(SimpleTestCase):
-    def test_field_home_is_structurally_rebuilt_and_keeps_operational_data(self):
+    def test_field_home_is_structurally_upgraded_without_deleting_tooltime_capabilities(self):
         template = (ROOT / "templates/rebuild/field_home.html").read_text(encoding="utf-8")
-        for marker in ("data-ab-v3-field", "Field Deck", "Nächster Einsatz", "data-tabs", "nx-mobile-tabs", "nx-job-card", 'data-tab="planned"', 'data-tab-panel="overdue"', "planned", "overdue", "documented", "next-appointment-detail", "next-time"):
+        for marker in (
+            "data-ab-v3-field", "data-ab-v3-field-deck", "data-ab-v3-next-job",
+            "Field Deck", "Nächster Einsatz", "nx-mobile-tabs", "nx-job-card",
+            "planned", "overdue", "documented", "next-appointment-detail", "next-time",
+            "Projekt aufnehmen", "Vor Ort in einem Ablauf", "Signierte PDF",
+        ):
             self.assertIn(marker, template)
-        self.assertNotIn("Nur Termine, Zeit und Dokumentation – ohne Büro-Menüs", template)
+
+    def test_v3_keeps_upstream_field_workflow_instead_of_reimplementing_it(self):
+        installer = (ROOT / "scripts/ab_bau_v3_phase1_field.py").read_text(encoding="utf-8")
+        self.assertIn("legacy = read(FIELD)", installer)
+        self.assertNotIn("write(FIELD, r'''{% extends", installer)
+        for marker in ("Projekt aufnehmen", "Vor Ort in einem Ablauf", "Signierte PDF"):
+            self.assertIn(marker, installer)
 
     def test_field_visuals_are_mobile_first(self):
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
         css = (ROOT / "static/css/ab-bau-v3-field.css").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-v3-field.css?v=20260908-2", base)
-        for marker in ("A+BAU V3", ".ab-v3-field-hero", ".ab-v3-next-job", ".ab-v3-field-tabs", ".ab-v3-field-job", "safe-area-inset-bottom"):
+        self.assertIn("ab-bau-v3-field.css?v=20260908-3", base)
+        for marker in ("A+BAU V3", ".ab-v3-field-hero", ".ab-v3-next-job", ".ab-v3-field-flow-label", "safe-area-inset-bottom"):
             self.assertIn(marker, css)
 ''')
 
@@ -114,11 +141,15 @@ def guard() -> None:
     base = read(BASE)
     field = read(FIELD)
     css = read(CSS_TARGET)
-    if "ab-bau-v3-field.css?v=20260908-2" not in base:
+    if "ab-bau-v3-field.css?v=20260908-3" not in base:
         raise RuntimeError("A+Bau V3 field stylesheet is not loaded")
-    for marker in ("data-ab-v3-field", "Nächster Einsatz", "data-tabs", "nx-mobile-tabs", "nx-job-card", "next-appointment-detail", "next-time"):
+    for marker in (
+        "data-ab-v3-field", "data-ab-v3-field-deck", "data-ab-v3-next-job",
+        "Nächster Einsatz", "nx-mobile-tabs", "nx-job-card", "next-appointment-detail",
+        "Projekt aufnehmen", "Vor Ort in einem Ablauf", "Signierte PDF",
+    ):
         if marker not in field:
-            raise RuntimeError(f"A+Bau V3 field contract missing: {marker}")
+            raise RuntimeError(f"A+Bau V3 field contract missing after redesign: {marker}")
     if "A+BAU V3" not in css:
         raise RuntimeError("A+Bau V3 field CSS guard missing")
 
@@ -128,7 +159,7 @@ def main() -> None:
     install_field_template()
     install_tests()
     guard()
-    print(f"{MARKER}: field app home structurally rebuilt while appointment/time/documentation flows remain unchanged.")
+    print(f"{MARKER}: Field Deck structurally upgraded; one-tap capture, voice, signature and signed-PDF workflows preserved from the authoritative assembled template.")
 
 
 if __name__ == "__main__":
