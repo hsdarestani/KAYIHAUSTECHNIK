@@ -123,3 +123,17 @@ exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exe
     "__name__": "__main__",
     "__file__": str(field_v3_path),
 })
+
+# The V3 dashboard intentionally replaces the previous office-overview copy. Keep
+# the end-to-end smoke meaningful by asserting the structural dashboard contract
+# that Phase 1 owns instead of a sentence removed by the redesign.
+if smoke_path.exists():
+    smoke = smoke_path.read_text(encoding="utf-8")
+    legacy_dashboard_assertion = 'expect(page.locator("body")).to_contain_text("Baustellenabwicklung im Überblick")'
+    v3_dashboard_assertion = 'expect(page.locator("[data-ab-v3-dashboard]")).to_be_visible()'
+    if legacy_dashboard_assertion in smoke:
+        smoke = smoke.replace(legacy_dashboard_assertion, v3_dashboard_assertion, 1)
+    elif v3_dashboard_assertion not in smoke:
+        raise RuntimeError("A+Bau V3 browser-smoke dashboard assertion anchor is missing")
+    smoke_path.write_text(smoke, encoding="utf-8")
+    compile(smoke, str(smoke_path), "exec")
