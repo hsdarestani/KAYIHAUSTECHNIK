@@ -46,13 +46,17 @@ def install_field_template() -> None:
     every existing form, route, signed-PDF action, tab and data hook remains intact.
     """
     legacy = read(FIELD)
+    # These are literal DOM contracts that must exist before V3 touches the page.
+    # The signed-PDF workflow is installed by the authoritative field handoff layer,
+    # but its existing control does not use the literal label "Signierte PDF" at this
+    # point in assembly. V3 adds that discoverability label below while leaving the
+    # underlying workflow/action untouched.
     required_upstream = (
         "nx-field-shell",
         "nx-mobile-tabs",
         "nx-job-card",
         "Projekt aufnehmen",
         "Vor Ort in einem Ablauf",
-        "Signierte PDF",
     )
     missing = [marker for marker in required_upstream if marker not in legacy]
     if missing:
