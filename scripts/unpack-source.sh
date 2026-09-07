@@ -205,5 +205,8 @@ python3 scripts/tooltime_invoices_regression_compat.py
 # measurement action. RoomPlan remains on LiDAR hardware; other iOS devices get a
 # native manual length/width/height fallback and upload it without a USDZ model.
 python3 scripts/app_store_ipad_scanner_fallback.py
+# Customer detail is the last ToolTime parity surface: keep it after every older
+# customer/object and finance overlay so its read-only cockpit cannot regress.
+python3 scripts/tooltime_customer_detail_exact_parity.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
