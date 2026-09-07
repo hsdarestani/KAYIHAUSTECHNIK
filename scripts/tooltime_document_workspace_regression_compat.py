@@ -47,17 +47,28 @@ exec(compile(apex_path.read_text(encoding="utf-8"), str(apex_path), "exec"), {
 })
 
 # Browser smoke should validate routes, structure and interactions, not freeze the
-# previous product's exact wording. Apex intentionally removes the ToolTime migration
-# cue and may render invoice states with the new A+Bau status language.
+# previous product's exact wording or the visual casing produced by CSS. Apex uses
+# uppercase table-header typography; Chromium's innerText reflects that rendering,
+# so compare invoice header semantics case-insensitively rather than weakening the
+# list/table coverage.
 smoke_path = ROOT / "scripts" / "production_browser_smoke.py"
 if smoke_path.exists():
     smoke = smoke_path.read_text(encoding="utf-8")
     smoke = smoke.replace("Von ToolTime wechseln", "Daten importieren")
+    smoke = smoke.replace(
+        'invoice_headers = " ".join(page.locator(\'[data-invoice-table] thead th\').all_inner_texts())\n',
+        'invoice_headers = " ".join(page.locator(\'[data-invoice-table] thead th\').all_inner_texts())\n            invoice_headers_folded = invoice_headers.casefold()\n',
+        1,
+    )
+    smoke = smoke.replace(
+        'if expected_header not in invoice_headers:\n',
+        'if expected_header.casefold() not in invoice_headers_folded:\n',
+        1,
+    )
 
-    # The generated office smoke has a small list of literal labels immediately
-    # before `Rechnungsliste fehlt ...`. Remove only the legacy `Ausstehend` copy
-    # from that one assertion block; all invoice navigation, rows, actions and
-    # document-detail checks remain intact.
+    # The generated office smoke also contains a legacy invoice-list marker close
+    # to `Rechnungsliste fehlt ...`. Keep the functional list check while avoiding
+    # a dependency on one historical status label.
     lines = smoke.splitlines(keepends=True)
     for index, line in enumerate(lines):
         if "Rechnungsliste fehlt" not in line:
