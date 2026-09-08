@@ -135,6 +135,18 @@ exec(compile(phase2_path.read_text(encoding="utf-8"), str(phase2_path), "exec"),
     "__file__": str(phase2_path),
 })
 
+# Appointment detail still uses the mature field/authorization workflow underneath
+# V3, but its dedicated Phase-14 stylesheet can be lost by the later structural
+# layers. Re-assert only this page's final layout after V3 has finished so the
+# summary, services and execution cards never collapse back to unstyled text.
+appointment_detail_v3_path = ROOT / "scripts" / "ab_bau_v3_appointment_detail_layout_fix.py"
+if not appointment_detail_v3_path.exists():
+    raise RuntimeError("A+Bau V3 appointment detail layout installer is missing")
+exec(compile(appointment_detail_v3_path.read_text(encoding="utf-8"), str(appointment_detail_v3_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(appointment_detail_v3_path),
+})
+
 # The V3 installers add structural coverage while the existing browser smoke still
 # exercises the real authenticated dashboard and business routes. Compile the final
 # smoke after all structural layers so stale assertions fail during assembly.
