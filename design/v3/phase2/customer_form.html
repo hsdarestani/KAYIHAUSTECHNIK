@@ -1,0 +1,13 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{% if mode == 'create' %}Kunde anlegen{% else %}Kunde bearbeiten{% endif %} · A+Bau{% endblock %}
+{% block content %}
+<div class="ab-v3-form-page" data-ab-v3-customer-form>
+  <header class="ab-v3-form-page-head"><div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Kunde anlegen{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten, Kontakt und Rechnungsadresse sauber erfassen. Zusätzliche Einsatzorte bleiben optional.</p></div><a class="ab-v3-directory-secondary" href="{% url 'next-customers' %}">← Kunden</a></header>
+  <form method="post" class="ab-v3-form-card">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="tt-form-error">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="ab-v3-form-grid">{% for field in form %}<label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}</div>
+    {% if location_form %}<div style="margin-top:22px;padding-top:18px;border-top:1px solid #e7dfd3"><div class="ab-v3-kicker">Optional · Einsatzort</div><div class="ab-v3-form-grid">{% for field in location_form %}<label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}</div></div>{% endif %}
+    <div class="ab-v3-form-actions"><a href="{% url 'next-customers' %}">Abbrechen</a><button type="submit">{% if mode == 'create' %}Kunde anlegen{% else %}Speichern{% endif %}</button></div>
+  </form>
+</div>
+{% endblock %}
