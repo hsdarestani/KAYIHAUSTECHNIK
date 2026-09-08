@@ -124,12 +124,20 @@ exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exe
     "__file__": str(field_v3_path),
 })
 
-# The Phase-1 installer adds a dedicated structural smoke check when the generated
-# smoke layout exposes its known insertion point. Later compatibility layers may
-# legitimately reshape that internal script, so absence of that optional marker
-# must not make source assembly fail. The generated V3 Django contract tests remain
-# authoritative for the new shell/dashboard DOM; the existing browser smoke still
-# exercises the real authenticated dashboard route and all critical workflows.
+# Phase 2 owns the customer/project information architecture after every ToolTime
+# compatibility and Phase-1 shell pass. It deliberately replaces those page DOMs
+# while keeping their server-side routes, financial guards and field workflows.
+phase2_path = ROOT / "scripts" / "ab_bau_v3_phase2_customers_projects.py"
+if not phase2_path.exists():
+    raise RuntimeError("A+Bau V3 Phase 2 installer is missing")
+exec(compile(phase2_path.read_text(encoding="utf-8"), str(phase2_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(phase2_path),
+})
+
+# The V3 installers add structural coverage while the existing browser smoke still
+# exercises the real authenticated dashboard and business routes. Compile the final
+# smoke after all structural layers so stale assertions fail during assembly.
 if smoke_path.exists():
     smoke = smoke_path.read_text(encoding="utf-8")
     compile(smoke, str(smoke_path), "exec")
