@@ -162,6 +162,13 @@ def install_global_table_row_navigation() -> None:
     runpy.run_path(str(script), run_name="__main__")
 
 
+def install_dashboard_action_alignment() -> None:
+    script = ROOT / "scripts/ab_bau_dashboard_action_alignment.py"
+    if not script.exists():
+        raise RuntimeError("Final dashboard action-alignment installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
 def main() -> None:
     install_runtime_asset()
     patch_document_template()
@@ -170,6 +177,10 @@ def main() -> None:
     # This script is the last source-assembly layer. Keep cross-table row navigation
     # here so later ToolTime/V3 overlays cannot remove its global cache-busted assets.
     install_global_table_row_navigation()
+    # Dashboard button centering must run after all V3/cache overlays for the same
+    # reason: the user-visible + Einsatz planen label must not fall back to link
+    # baseline alignment after a later stylesheet/cache rewrite.
+    install_dashboard_action_alignment()
     print(f"{MARKER}: Vorlagen uses one canonical modal and both finance/singleton runtimes are cache-busted.")
 
 
