@@ -1,0 +1,11 @@
+{% extends 'erp/base.html' %}
+{% block page_title %}Aufgabe aktualisieren{% endblock %}
+{% block page_subtitle %}{{ task.project|default:'Ohne Projekt' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ task.title }}</h1><p>Nur Ausführungsstatus und Baustellennotiz ändern.</p></div></div>
+<form method="post" class="panel form-grid">{% csrf_token %}
+<label>Status<select class="form-control" name="status"><option value="open" {% if task.status == 'open' %}selected{% endif %}>Offen</option><option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Arbeit</option><option value="blocked" {% if task.status == 'blocked' %}selected{% endif %}>Blockiert</option><option value="done" {% if task.status == 'done' %}selected{% endif %}>Erledigt</option></select></label>
+<label>Baustellennotiz<textarea class="form-control" name="description" rows="7">{{ task.description }}</textarea></label>
+<button class="btn btn-primary">Aufgabe speichern</button>
+</form>
+{% endblock %}

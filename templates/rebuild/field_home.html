@@ -1,0 +1,51 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}Monteur-App · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-field-shell fa-mobile-shell ab-v3-field" data-ab-v3-field>
+  <section class="ab-v3-field-hero" data-ab-v3-field-deck>
+    <div class="ab-v3-field-hero-top">
+      <div><div class="ab-v3-field-eyebrow">Field Deck · Live</div><h1>Meine Einsätze</h1><p>{% if employee %}{{ employee.first_name }} {{ employee.last_name }} · {% endif %}Termin, KI-Aufnahme, Unterschrift und Dokumentation bleiben in einem durchgängigen Baustellen-Workflow.</p></div>
+      <div class="ab-v3-field-time"><span>Jetzt</span><strong>{% now 'H:i' %}</strong></div>
+    </div>
+    <div class="ab-v3-field-counters">
+      <div class="ab-v3-field-counter"><small>Geplant</small><strong>{{ planned|length }}</strong></div>
+      <div class="ab-v3-field-counter is-warn"><small>Überfällig</small><strong>{{ overdue|length }}</strong></div>
+      <div class="ab-v3-field-counter is-done"><small>Dokumentiert</small><strong>{{ documented|length }}</strong></div>
+    </div>
+  </section>
+
+  <section class="ab-v3-next-job" data-ab-v3-next-job>
+    <div class="ab-v3-next-label"><span>Nächster Einsatz</span><span>Priorität: jetzt</span></div>
+    {% for event in planned|slice:':1' %}
+    <a class="ab-v3-next-content" href="{% url 'next-appointment-detail' event.pk %}">
+      <time class="ab-v3-next-time">{{ event.starts_at|date:'H:i' }}<small>{{ event.starts_at|date:'d.m.' }}</small></time>
+      <span class="ab-v3-next-copy"><h2>{{ event.title }}</h2><p>{% if event.project %}{{ event.project.customer.display_name }} · {{ event.location|default:event.project.title }}{% else %}Interner Termin{% endif %}</p></span>
+      <span class="ab-v3-next-arrow" aria-hidden="true">›</span>
+    </a>
+    {% empty %}<div class="nx-card nx-card-pad nx-empty ab-v3-field-empty"><strong>Kein Einsatz wartet.</strong>Neue Termine erscheinen automatisch hier.</div>{% endfor %}
+  </section>
+
+  <div class="ab-v3-field-flow-label"><span>Vor Ort in einem Ablauf</span><small>Projekt aufnehmen · Sprach-KI · Unterschrift · Signierte PDF</small></div>
+
+  <div class="nx-pagehead"><div><div class="nx-kicker">Monteur-App</div><h1>Meine Einsätze</h1><p>{% if employee %}{{ employee.first_name }} {{ employee.last_name }} · {% endif %}Auftrag aufnehmen, freigeben, arbeiten und dokumentieren – direkt vor Ort.</p></div><div class="nx-actions"><a class="nx-btn" href="{% url 'next-time' %}">◷ Zeiterfassung</a><a class="nx-btn nx-btn-primary" href="{% url 'field-quick-job' %}">＋ Projekt aufnehmen</a></div></div>
+
+  <a class="fa-quick-hero" href="{% url 'field-quick-job' %}"><span>＋</span><div><b>Neues Projekt beim Kunden aufnehmen?</b><small>Kunde → technische Aufnahme → Bürofreigabe → Kundenunterschrift → Projektstart.</small></div><i>→</i></a>
+
+  <section class="nx-field-flow-card"><b>Vor Ort in einem Ablauf</b><p>Auftrag und Preis mit dem Kunden freigeben, arbeiten, danach eine echte Sprachnotiz aufnehmen, von A+Bau KI in Bericht/Leistungen/Material umwandeln lassen, gemeinsam prüfen, unterschreiben und das Abschluss-PDF direkt übergeben.</p><div class="nx-field-flow-steps"><span>1 · Freigabe</span><span>2 · Arbeit</span><span>3 · Aufnahme</span><span>4 · KI-Bericht</span><span>5 · Unterschrift</span><span>6 · PDF</span></div></section>
+
+  <div data-tabs>
+    <div class="nx-mobile-tabs"><button class="is-active" type="button" data-tab="planned">Geplant <span class="nx-badge">{{ planned|length }}</span></button><button type="button" data-tab="overdue">Überfällig <span class="nx-badge nx-badge-warn">{{ overdue|length }}</span></button><button type="button" data-tab="documented">Dokumentiert <span class="nx-badge nx-badge-success">{{ documented|length }}</span></button></div>
+    <div class="nx-tab-panel is-active" data-tab-panel="planned">
+      {% for event in planned %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }} · {{ event.location|default:event.project.title }}{% else %}Interner Termin{% endif %}</p></div><span>›</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty"><b>Keine geplanten Einsätze.</b><br>Für neue Vor-Ort-Projekte oben „Projekt aufnehmen“ nutzen.</div>{% endfor %}
+    </div>
+    <div class="nx-tab-panel" data-tab-panel="overdue">
+      {% for event in overdue %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</p></div><span class="nx-badge nx-badge-warn">offen</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty"><b>Alles erledigt.</b><br>Keine überfällige Dokumentation.</div>{% endfor %}
+    </div>
+    <div class="nx-tab-panel" data-tab-panel="documented">
+      {% for event in documented %}<a class="nx-card nx-job-card" href="{% url 'next-appointment-detail' event.pk %}"><div class="nx-job-time">{{ event.starts_at|date:'H:i' }}<br><span class="nx-muted">{{ event.starts_at|date:'d.m.' }}</span></div><div><h3>{{ event.title }}</h3><p>{% if event.project %}{{ event.project.customer.display_name }}{% endif %}</p></div><span class="nx-badge nx-badge-success">✓</span></a>{% empty %}<div class="nx-card nx-card-pad nx-empty">Noch keine dokumentierten Einsätze.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+<link rel="stylesheet" href="{% static 'css/field-authorization.css' %}?v=20260811-1">
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Rechnungs-Compliance · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">Rechnung & E-Rechnung</div><h1>Unternehmens- und Compliance-Daten</h1><p>Diese Angaben werden als zentrale Quelle für Rechnungen, PDF und strukturierte E-Rechnungen verwendet.</p></div></div>
+<form method="post" class="nx-form">{% csrf_token %}
+<section class="nx-card nx-card-pad"><h2>Rechtliche Unternehmensdaten</h2><div class="nx-form-grid">
+<div class="nx-field"><label>Vollständiger Firmenname</label><input class="nx-control" name="legal_name" value="{{ org.legal_name }}" required></div>
+<div class="nx-field"><label>Rechtsform</label><input class="nx-control" name="legal_form" value="{{ legal.legal_form|default:'' }}"></div>
+<div class="nx-field nx-field-full"><label>Vollständige Anschrift</label><input class="nx-control" name="address" value="{{ org.address }}" required></div>
+<div class="nx-field"><label>Straße</label><input class="nx-control" name="street" value="{{ legal.street|default:'' }}"></div><div class="nx-field"><label>Hausnummer</label><input class="nx-control" name="house_number" value="{{ legal.house_number|default:'' }}"></div>
+<div class="nx-field"><label>PLZ</label><input class="nx-control" name="postal_code" value="{{ legal.postal_code|default:'' }}"></div><div class="nx-field"><label>Ort</label><input class="nx-control" name="city" value="{{ legal.city|default:'' }}"></div>
+<div class="nx-field"><label>Land</label><input class="nx-control" name="country" value="{{ legal.country|default:'DE' }}"></div><div class="nx-field"><label>E-Mail</label><input class="nx-control" type="email" name="email" value="{{ org.email }}"></div>
+<div class="nx-field"><label>Telefon</label><input class="nx-control" name="phone" value="{{ org.phone }}"></div><div class="nx-field"><label>Website</label><input class="nx-control" name="website" value="{{ legal.website|default:'' }}"></div>
+<div class="nx-field"><label>Steuernummer</label><input class="nx-control" name="tax_number" value="{{ legal.tax_number|default:org.tax_id }}"></div><div class="nx-field"><label>USt-IdNr.</label><input class="nx-control" name="vat_id" value="{{ legal.vat_id|default:'' }}"></div>
+<div class="nx-field"><label>Handelsregister</label><input class="nx-control" name="register" value="{{ legal.register|default:'' }}"></div><div class="nx-field"><label>Registernummer</label><input class="nx-control" name="register_number" value="{{ legal.register_number|default:'' }}"></div>
+<div class="nx-field"><label>Registergericht</label><input class="nx-control" name="register_court" value="{{ legal.register_court|default:'' }}"></div><div class="nx-field"><label>Geschäftsführer / Inhaber</label><input class="nx-control" name="managing_director" value="{{ legal.managing_director|default:'' }}"></div>
+</div></section>
+<section class="nx-card nx-card-pad"><h2>Bank & Rechnungsstandard</h2><div class="nx-form-grid">
+<div class="nx-field"><label>IBAN</label><input class="nx-control" name="iban" value="{{ org.iban }}"></div><div class="nx-field"><label>BIC</label><input class="nx-control" name="bic" value="{{ legal.bic|default:'' }}"></div><div class="nx-field"><label>Bank</label><input class="nx-control" name="bank_name" value="{{ legal.bank_name|default:'' }}"></div>
+<div class="nx-field"><label>Währung</label><input class="nx-control" name="invoice_currency" value="{{ settings.invoice_currency|default:'EUR' }}"></div><div class="nx-field"><label>Rechnungsnummer Prefix</label><input class="nx-control" name="invoice_number_prefix" value="{{ settings.invoice_number_prefix|default:'RE' }}"></div><div class="nx-field"><label>Stellen</label><input class="nx-control" type="number" min="3" max="12" name="invoice_number_digits" value="{{ settings.invoice_number_digits|default:5 }}"></div><div class="nx-field"><label>Startnummer</label><input class="nx-control" type="number" min="1" name="invoice_number_start" value="{{ settings.invoice_number_start|default:1 }}"></div>
+<div class="nx-field"><label>E-Rechnung Übergang bis</label><input class="nx-control" type="date" name="einvoice_transition_end" value="{{ settings.einvoice_transition_end|default:'2026-12-31' }}"></div><div class="nx-field nx-field-full"><label>Individueller Hinweis bei 0 % Steuer</label><input class="nx-control" name="invoice_tax_reason" value="{{ settings.invoice_tax_reason|default:'' }}"></div>
+</div><p class="nx-muted">XRechnung-Validator: {% if validator_configured %}<b>konfiguriert</b>{% else %}<b>nicht konfiguriert</b> – XML wird niemals fälschlich als VALID markiert.{% endif %}</p></section>
+<div class="nx-form-actions"><button class="nx-btn nx-btn-primary" type="submit">Speichern</button></div></form>
+{% endblock %}

@@ -1,0 +1,37 @@
+/* A+BAU TOOLTIME PHASE 12 APPOINTMENT MAP 2026-08-21 */
+.tt-appointment-subnav{display:grid;gap:2px;margin:-3px 0 8px 35px;padding:3px 0 3px 10px;border-left:1px solid rgba(108,118,129,.22)}
+.nx-nav .tt-appointment-subnav a{min-height:28px;padding:4px 8px;border-radius:7px;font-size:11.5px;font-weight:720;color:#7a8087}
+.nx-nav .tt-appointment-subnav a:hover{background:rgba(17,20,24,.045);color:#25292d}
+.nx-nav .tt-appointment-subnav a.is-active{background:transparent;color:#111418;font-weight:850}
+.tt-appointment-map{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);min-height:580px;border:1px solid #dedbd4;border-radius:20px;overflow:hidden;background:#fff}
+.tt-appointment-map-list{display:grid;grid-template-rows:auto minmax(0,1fr);min-width:0;border-right:1px solid #e5e2dc;background:#fff}
+.tt-appointment-map-list-head{display:grid;gap:7px;padding:17px 18px;border-bottom:1px solid #e9e6e0}
+.tt-appointment-map-list-head>div{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tt-appointment-map-list-head strong{font-size:14px}.tt-appointment-map-list-head span,.tt-appointment-map-list-head small{font-size:11.5px;color:#777d82}.tt-appointment-map-list-head>div span{padding:4px 8px;border-radius:999px;background:#f1f4f3;color:#4f5c59;font-weight:750}
+.tt-appointment-map-items{min-height:0;overflow:auto}
+.tt-appointment-map-item{display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:stretch;border-bottom:1px solid #eeece7}
+.tt-appointment-map-item>button{display:grid;grid-template-columns:31px minmax(0,1fr);gap:10px;width:100%;padding:14px 10px 14px 15px;border:0;background:transparent;text-align:left;cursor:pointer;color:#171a1d}
+.tt-appointment-map-item>button:hover,.tt-appointment-map-item>button.is-active{background:#f7faf9}
+.tt-map-pin{display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:#e7f5f2;color:#147c6e;font-size:16px;font-weight:900}
+.tt-map-copy{display:grid;gap:3px;min-width:0}.tt-map-copy time{font-size:10.5px;font-weight:800;color:#72797d}.tt-map-copy strong{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tt-map-copy>span{font-size:11.5px;color:#4d5759;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tt-map-copy small{font-size:10.5px;color:#8a8f92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-appointment-map-item>a{display:grid;place-items:center;color:#656b70;text-decoration:none;font-size:17px}.tt-appointment-map-item>a:hover{background:#f7f6f3;color:#111418}
+.tt-appointment-map-empty-list{display:grid;gap:6px;padding:28px 20px;color:#747a7e}.tt-appointment-map-empty-list b{color:#25292d;font-size:14px}.tt-appointment-map-empty-list span{font-size:12px;line-height:1.5}
+.tt-appointment-map-canvas{position:relative;min-width:0;min-height:580px;background:linear-gradient(135deg,#eef1ee,#e5ebe8)}
+.tt-appointment-map-canvas iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#edf0ed}
+.tt-appointment-map-placeholder{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:9px;padding:28px;text-align:center;color:#65706d;background-image:radial-gradient(circle at 20% 20%,rgba(255,255,255,.72),transparent 32%),linear-gradient(135deg,#eef1ee,#e5ebe8)}
+.tt-appointment-map-placeholder>span{display:grid;place-items:center;width:56px;height:56px;border-radius:50%;background:#fff;color:#147c6e;font-size:27px;box-shadow:0 8px 28px rgba(34,54,48,.09)}.tt-appointment-map-placeholder strong{font-size:17px;color:#222a27}.tt-appointment-map-placeholder p{max-width:380px;margin:0;font-size:12.5px;line-height:1.55}
+.tt-appointment-map-caption{position:absolute;left:16px;right:16px;bottom:16px;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:12px 13px 12px 15px;border:1px solid rgba(221,226,223,.95);border-radius:14px;background:rgba(255,255,255,.95);box-shadow:0 10px 30px rgba(24,35,31,.14);backdrop-filter:blur(10px)}
+.tt-appointment-map-caption>div{display:grid;gap:2px;min-width:0}.tt-appointment-map-caption small{font-size:9.5px;font-weight:850;text-transform:uppercase;letter-spacing:.06em;color:#858b88}.tt-appointment-map-caption strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tt-appointment-map-caption span{font-size:11px;color:#646c69;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:1000px){.tt-appointment-map{grid-template-columns:330px minmax(0,1fr)}}
+@media(max-width:760px){.tt-appointment-map{grid-template-columns:1fr;min-height:0}.tt-appointment-map-list{border-right:0;border-bottom:1px solid #e5e2dc}.tt-appointment-map-items{max-height:330px}.tt-appointment-map-canvas{min-height:440px}.nx-calendar-views{grid-template-columns:repeat(5,minmax(74px,1fr))!important;overflow-x:auto}.tt-appointment-map-caption{align-items:flex-start;flex-direction:column}.tt-appointment-map-caption .nx-btn{width:100%}}
+@media(max-width:520px){.tt-appointment-map{border-radius:15px}.tt-appointment-map-canvas{min-height:390px}.tt-appointment-map-item{grid-template-columns:minmax(0,1fr) 34px}.tt-appointment-map-item>button{padding-left:12px}}
+
+
+/* A+BAU TOOLTIME APPOINTMENT SIDEBAR NAV FIX 2026-08-21 */
+.nx-sidebar .tt-appt-nav-group{display:grid}
+.nx-sidebar .tt-appt-subnav{display:none!important}
+.nx-sidebar .tt-appointment-subnav{display:grid;gap:2px;margin:-3px 0 8px 35px;padding:3px 0 3px 10px;border-left:1px solid rgba(255,255,255,.10)}
+.nx-sidebar .tt-appointment-subnav a{min-height:28px!important;padding:5px 9px!important;border-radius:7px!important;background:transparent!important;color:#8e959d!important;font-size:11.5px!important;font-weight:720!important;box-shadow:none!important}
+.nx-sidebar .tt-appointment-subnav a:hover{background:rgba(255,255,255,.055)!important;color:#e7e9eb!important}
+.nx-sidebar .tt-appointment-subnav a.is-active{background:rgba(201,161,59,.13)!important;color:#fff!important;font-weight:850!important;box-shadow:inset 2px 0 #d0a536!important}
+@media(max-width:860px){.nx-sidebar .tt-appointment-subnav{margin-left:31px}.nx-sidebar .tt-appointment-subnav a{min-height:34px!important;padding:7px 9px!important}}

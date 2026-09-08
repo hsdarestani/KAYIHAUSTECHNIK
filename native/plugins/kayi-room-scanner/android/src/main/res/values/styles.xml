@@ -1,0 +1,1 @@
+<resources><style name="KayiScannerTheme" parent="Theme.AppCompat.DayNight.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#1769e0</item><item name="android:navigationBarColor">#07182e</item><item name="android:statusBarColor">#07182e</item></style></resources>

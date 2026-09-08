@@ -1,0 +1,115 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{{ customer.display_name }} · A+Bau{% endblock %}
+{% block content %}
+<div class="tt-customer-shell ab-v3-customer-cockpit" id="kundendaten" data-ab-v3-customer-detail>
+  <section class="ab-v3-entity-hero">
+    <div>
+      <div class="ab-v3-kicker">Kundenakte · {{ customer.number|default:'ohne Nummer' }}</div>
+      <h1>{{ customer.display_name }}</h1>
+      <p>{{ customer.get_type_display|default:'Kunde' }}{% if customer.city %} · {{ customer.city }}{% endif %}{% if customer.updated_at %} · zuletzt bewegt {{ customer.updated_at|date:'d.m.Y' }}{% endif %}</p>
+    </div>
+    <div class="ab-v3-entity-actions">
+      <a href="?edit=1&tab={{ active_tab }}#kundendaten">✎ Stammdaten</a>
+      <a href="?add_object=1#weitere-kontakte">＋ Objekt hinzufügen</a>
+      <a class="is-primary" href="{% url 'next-project-create' %}?customer={{ customer.pk }}">＋ Projekt starten</a>
+      {% if not field_user %}
+      <form class="ab-v3-inline-action" method="post" action="{% url 'next-customer-quote-create' customer.pk %}">{% csrf_token %}<button type="submit">＋ Angebot</button></form>
+      <form class="ab-v3-inline-action" method="post" action="{% url 'next-customer-invoice-create' customer.pk %}">{% csrf_token %}<button type="submit">＋ Rechnung</button></form>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="ab-v3-entity-layout">
+    <aside class="tt-customer-profile ab-v3-identity-stack">
+      <section class="ab-v3-identity-card">
+        <div class="ab-v3-identity-mark">{% if customer.type == 'business' or customer.company %}▦{% else %}⌂{% endif %}</div>
+        <h2>{{ customer.display_name }}</h2><small>{{ customer.get_type_display|default:'Kunde' }}</small>
+        <div class="ab-v3-identity-list">
+          <div class="ab-v3-identity-row"><span>Kundennr.</span><strong>{{ customer.customer_number|default:customer.number|default:'–' }}</strong></div>
+          <div class="ab-v3-identity-row"><span>Debitor</span><strong>{{ customer.debtor_number|default:'–' }}</strong></div>
+          <div class="ab-v3-identity-row"><span>Routing-ID</span><strong>{{ customer.routing_id|default:'–' }}</strong></div>
+          <div class="ab-v3-identity-row"><span>Lieferanten-ID</span><strong>{{ customer.supplier_id|default:'–' }}</strong></div>
+          <div class="ab-v3-identity-row"><span>USt-IdNr.</span><strong>{{ customer.vat_id|default:'–' }}</strong></div>
+          <div class="ab-v3-identity-row"><span>Telefon</span>{% if customer.mobile or customer.phone %}<a href="tel:{{ customer.mobile|default:customer.phone }}">{{ customer.mobile|default:customer.phone }}</a>{% else %}<strong>–</strong>{% endif %}</div>
+          <div class="ab-v3-identity-row"><span>E-Mail</span>{% if customer.email %}<a href="mailto:{{ customer.email }}">{{ customer.email }}</a>{% else %}<strong>–</strong>{% endif %}</div>
+        </div>
+      </section>
+
+      <section class="tt-address-map ab-v3-identity-card ab-v3-location-card">
+        <div class="ab-v3-kicker">Rechnungsadresse</div>
+        <strong>{{ customer.street|default:'Keine Straße hinterlegt' }}</strong><br><small>{{ customer.postal_code }} {{ customer.city }}</small>
+        {% if customer.street or customer.city %}<iframe title="Karte für {{ customer.display_name }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q={{ customer.street|urlencode }}%20{{ customer.postal_code|urlencode }}%20{{ customer.city|urlencode }}&output=embed"></iframe>{% endif %}
+      </section>
+
+      <section class="tt-more-card ab-v3-identity-card" id="weitere-kontakte">
+        <div class="tt-more-head ab-v3-section-head"><h3>Weitere Standorte & Kontakte</h3><a href="?add_object=1#weitere-kontakte">＋ Objekt hinzufügen</a></div>
+        <p style="margin:0 0 10px;color:#8d877d;font-size:9px;line-height:1.55">Standardmäßig wird die Kundenadresse im Projekt verwendet. Zusätzliche Adressen oder Einsatzorte können hier angelegt werden.</p>
+        {% if locations %}<div class="tt-location-list ab-v3-location-list">{% for location in locations %}<div class="tt-location-row ab-v3-location-item"><strong>{{ location.name|default:'Einsatzort' }}</strong><small>{{ location.street }}{% if location.street %}, {% endif %}{{ location.postal_code }} {{ location.city }}</small></div>{% endfor %}</div>{% else %}<div class="tt-more-empty ab-v3-empty">Noch kein zusätzlicher Einsatzort.</div>{% endif %}
+        {% if add_object_open or location_form.errors %}<form class="tt-location-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="add_location"><h3>Neuen Einsatzort erfassen</h3>{% for field in location_form %}<label>{{ field.label }}{{ field }}{{ field.errors }}</label>{% endfor %}<div class="tt-form-actions ab-v3-form-actions"><a href="?#weitere-kontakte">Abbrechen</a><button type="submit">Einsatzort speichern</button></div></form>{% endif %}
+      </section>
+    </aside>
+
+    <main class="tt-customer-main ab-v3-workspace-stack">
+      <div class="tt-kpis ab-v3-kpi-grid">
+        <div class="tt-kpi ab-v3-kpi"><small>Umsatz (netto)</small><strong>{{ revenue_net|floatformat:2 }} €</strong></div>
+        <div class="tt-kpi ab-v3-kpi"><small>Ausgaben (netto)</small><strong>{{ expenditure_net|floatformat:2 }} €</strong>{% if projects %}<a href="{% url 'next-expense-create' %}?project={{ projects.0.pk }}">Ausgabe hinzufügen</a>{% else %}<a href="{% url 'next-expense-create' %}">Ausgabe hinzufügen</a>{% endif %}</div>
+        <div class="tt-kpi ab-v3-kpi is-alert"><small>Offener Rechnungsbetrag (inkl. MwSt.)</small><strong class="tt-kpi-danger">{{ open_invoice_gross|floatformat:2 }} €</strong></div>
+      </div>
+
+      <section class="tt-cockpit ab-v3-work-card">
+        <nav class="tt-tabs ab-v3-tabs" aria-label="Kundenbereiche">
+          <a class="{% if active_tab == 'overview' %}is-active{% endif %}" href="?tab=overview">Übersicht</a>
+          <a class="{% if active_tab == 'tasks' %}is-active{% endif %}" href="?tab=tasks">Aufgaben{% if tasks %}<span>{{ tasks|length }}</span>{% endif %}</a>
+          <a class="{% if active_tab == 'documents' %}is-active{% endif %}" href="?tab=documents">Dokumente{% if documents %}<span>{{ documents|length }}</span>{% endif %}</a>
+        </nav>
+
+        {% if active_tab == 'overview' %}
+        <div class="tt-tab-panel">
+          <section class="tt-section ab-v3-work-section" data-ab-v3-customer-history>
+            <div class="tt-section-title ab-v3-section-head"><h3>Kundenverlauf <span>· {{ history|length }}</span></h3></div>
+            {% if history %}<div class="ab-v3-history-list">{% for row in history %}<article class="ab-v3-history-row"><time>{{ row.at|date:'d.m.Y' }}<small>{{ row.at|date:'H:i' }}</small></time><div class="ab-v3-history-copy">{% if row.kind == 'project' %}<a href="{% url 'next-project-detail' row.object.pk %}">{{ row.object.title }}</a><span>Projekt · {{ row.object.number }}</span>{% elif row.kind == 'appointment' %}<a href="{% url 'next-appointment-detail' row.object.pk %}">{{ row.object.title }}</a><span>Termin</span>{% elif row.kind == 'quote' %}<a href="{% url 'next-quote-edit' row.object.pk %}">{{ row.object.number|default:'Angebotsentwurf' }}</a><span>Angebot</span>{% elif row.kind == 'expense' %}<strong>{{ row.object.supplier|default:'Ausgabe' }}</strong><span>Ausgabe{% if row.object.description %} · {{ row.object.description }}{% endif %}</span>{% else %}<a href="{% url 'next-invoice-edit' row.object.pk %}">{{ row.object.number|default:'Rechnungsentwurf' }}</a><span>Rechnung</span>{% endif %}</div><span class="ab-v3-status">{{ row.status }}</span></article>{% endfor %}</div>{% else %}<div class="tt-empty ab-v3-empty">Noch keine Einträge im Kundenverlauf.</div>{% endif %}
+          </section>
+          <section class="tt-section ab-v3-work-section">
+            <div class="tt-section-title ab-v3-section-head"><h3>Projekte <span>· {{ projects|length }}</span></h3><a href="{% url 'next-project-create' %}?customer={{ customer.pk }}">＋ Projekt</a></div>
+            {% if projects %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Titel</th><th>Nr.</th><th>Status</th><th>Projektadresse</th><th></th></tr></thead><tbody>{% for project in projects %}<tr><td><a class="tt-row-title" href="{% url 'next-project-detail' project.pk %}">{{ project.title }}</a></td><td>{{ project.number }}</td><td><span class="tt-status tt-status-{{ project.status }} ab-v3-status {% if project.status == 'completed' or project.status == 'done' %}is-done{% elif project.status == 'cancelled' %}is-cancelled{% else %}is-active{% endif %}">{{ project.get_status_display }}</span></td><td>{% if project.object_location %}{{ project.object_location.street }}, {{ project.object_location.postal_code }} {{ project.object_location.city }}{% else %}{{ customer.street }}, {{ customer.postal_code }} {{ customer.city }}{% endif %}</td><td><a class="tt-more-link" href="{% url 'next-project-detail' project.pk %}">→</a></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Für diesen Kunden wurde noch kein Projekt angelegt.<br><a href="{% url 'next-project-create' %}?customer={{ customer.pk }}">Erstes Projekt anlegen →</a></div>{% endif %}
+          </section>
+
+          <section class="tt-section ab-v3-work-section">
+            <div class="tt-section-title ab-v3-section-head"><h3>Termine <span>· {{ appointments|length }}</span></h3></div>
+            {% if appointments %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Datum</th><th>Titel</th><th>Projekt</th><th>Status</th></tr></thead><tbody>{% for event in appointments %}<tr><td>{{ event.starts_at|date:'d.m.Y H:i' }}</td><td><a href="{% url 'next-appointment-detail' event.pk %}">{{ event.title }}</a></td><td>{{ event.project.title }}</td><td><span class="ab-v3-status">{{ event.get_type_display }}</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Noch keine Termine für diesen Kunden.</div>{% endif %}
+          </section>
+
+          <section class="tt-section ab-v3-work-section">
+            <div class="tt-section-title ab-v3-section-head"><h3>Angebote <span>· {{ quotes|length }}</span></h3>{% if projects %}<a href="{% url 'next-quote-create' %}?project={{ projects.0.pk }}">＋ Angebot</a>{% endif %}</div>
+            {% if quotes %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Nr.</th><th>Projekt</th><th>Status</th><th>Betrag</th></tr></thead><tbody>{% for quote in quotes %}<tr><td><a href="{% url 'next-quote-edit' quote.pk %}">{{ quote.number|default:'Entwurf' }}</a></td><td>{% if quote.project.title == direct_document_project_title %}Direkt für Kunde{% else %}{{ quote.project.title }}{% endif %}</td><td><span class="ab-v3-status is-quote">{{ quote.get_status_display }}</span></td><td>{{ quote.tt_totals.gross|floatformat:2 }} €</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Noch keine Angebote.</div>{% endif %}
+          </section>
+
+          <section class="tt-section ab-v3-work-section">
+            <div class="tt-section-title ab-v3-section-head"><h3>Rechnungen <span>· {{ invoices|length }}</span></h3>{% if projects %}<a href="{% url 'next-invoice-create' %}?project={{ projects.0.pk }}">＋ Rechnung</a>{% endif %}</div>
+            {% if invoices %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Nr.</th><th>Projekt</th><th>Status</th><th>Offen</th></tr></thead><tbody>{% for invoice in invoices %}<tr><td><a href="{% url 'next-invoice-edit' invoice.pk %}">{{ invoice.number|default:'Entwurf' }}</a></td><td>{% if invoice.project.title == direct_document_project_title %}Direkt für Kunde{% else %}{{ invoice.project.title }}{% endif %}</td><td><span class="ab-v3-status {% if invoice.status == 'paid' %}is-done{% elif invoice.status == 'overdue' %}is-danger{% else %}is-warn{% endif %}">{{ invoice.get_status_display }}</span></td><td>{{ invoice.tt_totals.open|floatformat:2 }} €</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Noch keine Rechnungen.</div>{% endif %}
+          </section>
+
+          <section class="tt-section tt-section-last ab-v3-work-section">
+            <div class="tt-section-title ab-v3-section-head"><h3>Belege <span>· {{ expenses|length }}</span></h3>{% if projects %}<a href="{% url 'next-expense-create' %}?project={{ projects.0.pk }}">＋ Beleg</a>{% endif %}</div>
+            {% if expenses %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Datum</th><th>Projekt</th><th>Betrag netto</th><th>Dokument</th></tr></thead><tbody>{% for expense in expenses %}<tr><td>{{ expense.expense_date|date:'d.m.Y' }}</td><td>{{ expense.project.title }}</td><td>{{ expense.amount_net|floatformat:2 }} €</td><td>{% if expense.document and expense.document.file %}<a href="{{ expense.document.file.url }}" target="_blank" rel="noopener">Öffnen ↗</a>{% else %}–{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Noch keine Belege.</div>{% endif %}
+          </section>
+        </div>
+        {% elif active_tab == 'tasks' %}
+        <div class="tt-tab-panel"><section class="tt-section tt-section-last ab-v3-work-section"><div class="tt-section-title ab-v3-section-head"><h3>Aufgaben <span>· {{ tasks|length }}</span></h3>{% if projects %}<a href="{% url 'next-task-create' %}?project={{ projects.0.pk }}">＋ Aufgabe</a>{% endif %}</div>{% if tasks %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Aufgabe</th><th>Projekt</th><th>Status</th><th>Fällig</th></tr></thead><tbody>{% for task in tasks %}<tr><td><a href="{% url 'next-task-edit' task.pk %}">{{ task.title }}</a></td><td>{{ task.project.title }}</td><td><span class="ab-v3-status">{{ task.get_status_display }}</span></td><td>{{ task.due_at|date:'d.m.Y'|default:'–' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Für diesen Kunden gibt es noch keine Aufgaben.</div>{% endif %}</section></div>
+        {% else %}
+        <div class="tt-tab-panel"><section class="tt-section tt-section-last ab-v3-work-section"><div class="tt-section-title ab-v3-section-head"><h3>Dokumente <span>· {{ documents|length }}</span></h3>{% if projects %}<a href="{% url 'next-project-detail' projects.0.pk %}#dokumente">＋ Dokument</a>{% endif %}</div>{% if documents %}<div class="tt-table-wrap ab-v3-work-table"><table class="tt-table"><thead><tr><th>Dokument</th><th>Kategorie</th><th>Projekt</th><th>Datum</th></tr></thead><tbody>{% for document in documents %}<tr><td>{% if document.file %}<a href="{{ document.file.url }}" target="_blank" rel="noopener">{{ document.title }}</a>{% else %}{{ document.title }}{% endif %}</td><td>{{ document.get_category_display }}</td><td>{{ document.project.title|default:'Kunde' }}</td><td>{{ document.created_at|date:'d.m.Y' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="tt-empty ab-v3-empty">Für diesen Kunden gibt es noch keine Dokumente.</div>{% endif %}</section></div>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+
+  {% if edit_mode %}
+  <div class="tt-editor-backdrop ab-v3-modal">
+    <section class="tt-editor ab-v3-modal-card" role="dialog" aria-modal="true" aria-labelledby="tt-editor-title">
+      <header><div><div class="ab-v3-kicker">Stammdaten</div><h2 id="tt-editor-title">{{ customer.display_name }}</h2></div><a href="?tab={{ active_tab }}#kundendaten" aria-label="Schließen">×</a></header>
+      <form method="post" class="tt-editor-form ab-v3-form-body">{% csrf_token %}<input type="hidden" name="action" value="update_customer"><div class="tt-editor-grid ab-v3-form-grid">{% for field in form %}<label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}</div><div class="tt-form-actions ab-v3-form-actions"><a href="?tab={{ active_tab }}#kundendaten">Abbrechen</a><button type="submit">Änderungen speichern</button></div></form>
+    </section>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'erp/base.html' %}{% load erp_extras %}
+{% block page_title %}Angebot & Kalkulation{% endblock %}{% block page_subtitle %}{{ project.number }} · Auftrag → Preis → Freigabe{% endblock %}
+{% block content %}
+<div class="page-head compact">
+  <div>
+    <div class="breadcrumb"><a href="{% url 'project-detail' project.pk %}">{{ project.number }}</a><span>/</span>Angebot & Kalkulation</div>
+    <h1>Alles für das Angebot an einem Ort</h1>
+    <p>Auftrags-PDF, passende Preisliste, Aufmaß und Angebotspositionen – Schritt für Schritt.</p>
+  </div>
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" data-smart-back data-back-fallback="{% url 'project-operations' project.pk %}">← Zurück</button>
+    <a class="btn btn-secondary" href="{% url 'project-detail' project.pk %}">Projektakte</a>
+    {% if current_quote %}<a class="btn btn-secondary" href="{% url 'quote-pdf' current_quote.pk %}" target="_blank">PDF anzeigen</a><a class="btn btn-primary" href="{% url 'quote-edit' current_quote.pk %}">Angebot öffnen</a>{% endif %}
+  </div>
+</div>
+
+<div class="pricing-summary-bar">
+  <div><span>Auftragsart</span><b>{{ project.get_job_type_display }}</b></div>
+  <div><span>Preisbasis</span><b>{{ project.price_source|default:'Noch wählen' }}</b></div>
+  <div><span>Aufmaß</span><b>{% if measurement %}{{ measurement.name }} · {{ measurement.floor_with_waste_m2 }} m²{% else %}Noch offen{% endif %}</b></div>
+  <div><span>Angebot</span><b>{% if current_quote %}{{ current_quote.number }} · {{ current_quote.gross_total|money }}{% else %}Noch nicht erstellt{% endif %}</b></div>
+</div>
+
+<div class="pricing-workspace" data-pricing-workspace>
+  <main class="pricing-flow">
+    <details class="pricing-step" {% if active_step == 1 %}open{% endif %}>
+      <summary><span>1</span><div><b>Auftrag / B&O-PDF</b><small>Originalauftrag speichern, ansehen und geprüfte Daten übernehmen.</small></div><i>⌄</i></summary>
+      <div class="pricing-step-body">
+        <form method="post" enctype="multipart/form-data" class="order-upload-card">
+          {% csrf_token %}<input type="hidden" name="action" value="upload-order-pdf">
+          <label><span>PDF-Auftrag auswählen</span><input class="form-control" type="file" name="order_pdf" accept="application/pdf" required></label>
+          <button class="btn btn-primary">PDF hochladen & auslesen</button>
+        </form>
+        {% for document in order_documents %}
+          <article class="order-document-card">
+            <div class="order-document-preview"><span>PDF</span><a href="{{ document.file.url }}" target="_blank" rel="noopener">Original öffnen ↗</a></div>
+            <div class="order-document-content">
+              <div class="panel-head"><div><h3>{{ document.title }}</h3><p>{{ document.created_at|date:'d.m.Y H:i' }}</p></div><span class="badge success">gespeichert</span></div>
+              <dl class="order-data-grid">
+                <div><dt>Auftrag</dt><dd>{{ document.parsed_order.auftrag|default:'–' }}</dd></div>
+                <div><dt>Mieter</dt><dd>{{ document.parsed_order.mieter|default:'–' }}</dd></div>
+                <div><dt>Adresse</dt><dd>{{ document.parsed_order.adresse|default:'–' }}</dd></div>
+                <div><dt>Etage / Raum</dt><dd>{{ document.parsed_order.etage|default:'–' }} {{ document.parsed_order.raum|default:'' }}</dd></div>
+                <div class="span-2"><dt>Schaden</dt><dd>{{ document.parsed_order.schaden|default:'Nicht eindeutig auslesbar – Original prüfen.' }}</dd></div>
+              </dl>
+              {% if document.parsed_order.schadstoff %}<div class="pricing-warning">⚠ Im Auftrag wurde ein Schadstoff-/Eternit-Hinweis erkannt. Vor Ausführung fachlich prüfen.</div>{% endif %}
+              <form method="post" class="actions">{% csrf_token %}<input type="hidden" name="action" value="apply-order-data"><input type="hidden" name="document_id" value="{{ document.pk }}"><button class="btn btn-secondary">Geprüfte Daten ins Projekt übernehmen</button></form>
+            </div>
+          </article>
+        {% empty %}
+          <div class="empty compact">Noch kein B&O-/Versicherungsauftrag hinterlegt. Das ist bei Privatprojekten optional.</div>
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="pricing-step" {% if active_step == 2 %}open{% endif %}>
+      <summary><span>2</span><div><b>Preisliste wählen</b><small>Nur Angebots- und Versicherungspreise; JOKA bleibt ausschließlich im Materialbereich.</small></div><i>⌄</i></summary>
+      <div class="pricing-step-body">
+        <form method="post" class="price-source-picker">{% csrf_token %}<input type="hidden" name="action" value="set-source">
+          <label><span>Preisbasis</span>
+            <select class="form-control" name="price_source" data-searchable="true" data-search-placeholder="B&O, Privat oder Leistungskatalog suchen …" required>
+              <option value="">Bitte auswählen …</option>
+              {% for source in sources %}<option value="{{ source.pk }}" {% if selected_source_id == source.pk %}selected{% endif %}>{{ source.name }} · {{ source.get_kind_display }} · {{ source.priced_item_count }} Preise</option>{% endfor %}
+            </select>
+          </label>
+          <div class="price-source-hint"><b>Materiallisten werden hier bewusst ausgeblendet.</b><small>JOKA und Raab Karcher nutzt du unter Material / Marketplace als Einkaufspreis.</small></div>
+          <button class="btn btn-primary">Preisliste verbinden</button>
+        </form>
+        {% if not sources %}<div class="pricing-warning">Keine verwendbare Preisliste mit Preisen gefunden. Der sichere Preisimport muss beim Deployment erfolgreich durchlaufen.</div>{% endif %}
+      </div>
+    </details>
+
+    <details class="pricing-step" {% if active_step == 3 %}open{% endif %}>
+      <summary><span>3</span><div><b>Leistungen auswählen</b><small>Es werden nur Positionen mit einem echten Preis angezeigt.</small></div><i>⌄</i></summary>
+      <div class="pricing-step-body">
+        {% if project.price_source %}
+          <div class="pricing-toolbar">
+            <div><b>{{ project.price_source }}</b><small>{{ items|length }} Positionen sichtbar{% if open_price_count %} · {{ open_price_count }} ohne Preis ausgeblendet{% endif %}</small></div>
+            <form method="get" class="inline-form"><input class="form-control" name="q" value="{{ q }}" placeholder="Code oder Leistung suchen"><button class="btn btn-secondary">Suchen</button>{% if q %}<a class="link-muted" href="?">Zurücksetzen</a>{% endif %}</form>
+          </div>
+          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="add-items">
+            <div class="price-select-table clean">
+              {% for item in items %}
+                <label><input type="checkbox" name="price_items" value="{{ item.pk }}"><span><b>{{ item.code|default:'–' }}</b><small>{{ item.description|truncatechars:150 }}</small></span><em>{{ item.resolved_price|money }}<small>{{ item.unit|default:'Stk.' }}</small></em></label>
+              {% empty %}<div class="empty">Keine bepreiste Position passt zur Suche.</div>{% endfor %}
+            </div>
+            <div class="actions pricing-actions"><button class="btn btn-primary">Ausgewählte Positionen ins Angebot übernehmen</button></div>
+          </form>
+        {% else %}<div class="empty">Bitte zuerst oben eine Preisliste auswählen.</div>{% endif %}
+      </div>
+    </details>
+
+    <details class="pricing-step" {% if active_step == 4 %}open{% endif %}>
+      <summary><span>4</span><div><b>Aufmaß & Neuberechnung</b><small>Mengen aus bestätigten Raummaßen übernehmen und Preise aktualisieren.</small></div><i>⌄</i></summary>
+      <div class="pricing-step-body">
+        {% if measurement %}
+          <dl class="measurement-summary-grid"><div><dt>Raum</dt><dd>{{ measurement.name }}</dd></div><div><dt>Boden inkl. Verschnitt</dt><dd>{{ measurement.floor_with_waste_m2 }} m²</dd></div><div><dt>Wand inkl. Verschnitt</dt><dd>{{ measurement.wall_with_waste_m2 }} m²</dd></div><div><dt>Umfang</dt><dd>{{ measurement.perimeter_m }} m</dd></div></dl>
+          <div class="actions"><a class="btn btn-secondary" href="{% url 'room-measurement-edit' project.pk measurement.pk %}">Aufmaß bearbeiten</a>{% if current_quote %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="recalculate"><button class="btn btn-primary">Angebot aus Aufmaß neu berechnen</button></form>{% endif %}</div>
+        {% else %}<div class="pricing-warning">Noch kein Aufmaß vorhanden. Neue Positionen erhalten vorerst Menge 1.</div><a class="btn btn-primary" href="{% url 'room-measurement-create' project.pk %}">Aufmaß starten</a>{% endif %}
+      </div>
+    </details>
+  </main>
+
+  <aside class="pricing-side">
+    <section class="panel pricing-next-card"><span>✓</span><h2>Nächster sinnvoller Schritt</h2>{% if current_quote %}<p>Positionen und Mengen prüfen. Das Angebots-PDF ist bereits erzeugbar und kann jederzeit neu geöffnet werden.</p><a class="btn btn-primary btn-block" href="{% url 'quote-pdf' current_quote.pk %}" target="_blank">PDF {{ current_quote.number }} öffnen</a><a class="btn btn-secondary btn-block top-gap" href="{% url 'quote-edit' current_quote.pk %}">Angebot bearbeiten</a>{% elif project.price_source %}<p>Wähle links die benötigten Leistungen aus. Das Angebot wird beim Übernehmen automatisch angelegt.</p>{% else %}<p>Verbinde zuerst die passende B&O- oder Privatpreisliste.</p>{% endif %}</section>
+    <section class="panel"><h2>Sicherheitslogik</h2><ul class="pricing-checks"><li>Keine JOKA-Liste im Angebot</li><li>Keine Position mit 0,00 €</li><li>KI darf keine Preise erfinden</li><li>Mengen bleiben prüfpflichtig</li></ul></section>
+  </aside>
+</div>
+{% endblock %}
