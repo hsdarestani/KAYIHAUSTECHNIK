@@ -225,5 +225,8 @@ python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py
 # Final user-reported production hotfix: direct mobile drawer state, separated +/AI
 # controls, V3 commercial visual layer, and storage-backed logo embedding in PDFs.
 python3 scripts/ab_bau_v3_finance_mobile_pdf_hotfix.py
+# Final mobile catalogue overflow guard runs after the V3 hotfix so the desktop table
+# header remains intact while card-mode phones do not lay out hidden TH columns.
+python3 scripts/ab_bau_v3_catalogue_mobile_header_overflow_fix.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
