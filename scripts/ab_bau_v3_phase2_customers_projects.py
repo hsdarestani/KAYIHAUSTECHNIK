@@ -153,14 +153,12 @@ class ABauV3Phase2Contract(SimpleTestCase):
         ):
             self.assertIn(marker, page)
         self.assertNotIn("{% url 'configurator' %}?project={{ project.pk }}", page)
-        finance_pos = page.find('data-tab-panel="finance"')
-        money_pos = page.find("Umsatz (netto)")
-        guard_pos = page.rfind("{% if not field_user %}", 0, finance_pos + 1)
-        self.assertGreaterEqual(finance_pos, 0)
-        self.assertGreaterEqual(money_pos, 0)
-        self.assertGreaterEqual(guard_pos, 0)
-        self.assertLess(guard_pos, finance_pos)
-        self.assertLess(guard_pos, money_pos)
+        finance_guard = '''{% if not field_user %}
+        <div class="tt-pd-panel" data-tab-panel="finance">'''
+        self.assertIn(finance_guard, page)
+        finance_block = page[page.index(finance_guard):]
+        self.assertIn("Umsatz (netto)", finance_block)
+        self.assertIn("Offener Betrag (brutto)", finance_block)
 
     def test_direct_customer_create_and_phase2_asset_are_live(self):
         form = self.read("templates/rebuild/customer_form.html")
@@ -172,6 +170,27 @@ class ABauV3Phase2Contract(SimpleTestCase):
 '''
     write(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py", test)
     compile(test, str(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py"), "exec")
+
+
+def align_legacy_regressions() -> None:
+    """Update stale generated assertions without restoring retired product routes.
+
+    `test_mobile_desktop_ux_regression.py` is unpacked from the historical source
+    payload before this final V3 hook runs. Its old project-detail assertion still
+    names the retired configurator route. Room Planner Pro is now the authoritative
+    route and is protected by the newer dedicated regression guard, so teach the
+    historical suite the same invariant instead of regressing production markup.
+    """
+    path = ROOT / "tests" / "test_mobile_desktop_ux_regression.py"
+    if not path.exists():
+        return
+    text = path.read_text(encoding="utf-8")
+    old = "{% url 'next-configurator' project.pk %}"
+    new = "{% url 'next-room-planner' project.pk %}"
+    if old in text:
+        text = text.replace(old, new)
+        path.write_text(text, encoding="utf-8")
+    compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
 
 def guard() -> None:
@@ -206,6 +225,7 @@ def main() -> None:
     install_templates()
     install_assets()
     install_contract_test()
+    align_legacy_regressions()
     guard()
     print(f"{MARKER}: customer and project directories/cockpits structurally rebuilt; server workflows preserved.")
 
