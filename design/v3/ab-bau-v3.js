@@ -11,23 +11,39 @@
   const search = palette?.querySelector('[data-ab-v3-command-search]');
   const items = palette ? [...palette.querySelectorAll('[data-ab-v3-command-item]')] : [];
 
+  const empty = palette?.querySelector('[data-ab-v3-command-empty]');
+  let previousFocus = null;
+  let previousOverflow = '';
+  let background = [];
+  const visibleItems = () => items.filter(item => !item.hidden);
+
   const openPalette = () => {
     if (!palette) return;
+    if (palette.classList.contains('is-open')) return;
+    previousFocus = document.activeElement;
+    previousOverflow = body.style.overflow;
+    background = [...body.children].filter(node => node !== palette && !node.contains(palette));
+    background = background.map(node => [node, node.inert]);
+    background.forEach(([node]) => { node.inert = true; });
     palette.classList.add('is-open');
     palette.setAttribute('aria-hidden', 'false');
     body.style.overflow = 'hidden';
     if (search) {
       search.value = '';
       items.forEach(item => { item.hidden = false; });
-      window.setTimeout(() => search.focus(), 30);
+      if (empty) empty.hidden = true;
+      search.focus();
     }
   };
 
   const closePalette = () => {
-    if (!palette) return;
+    if (!palette || !palette.classList.contains('is-open')) return;
     palette.classList.remove('is-open');
     palette.setAttribute('aria-hidden', 'true');
-    body.style.overflow = '';
+    body.style.overflow = previousOverflow;
+    background.forEach(([node, inert]) => { node.inert = inert; });
+    background = [];
+    if (previousFocus?.isConnected) previousFocus.focus();
   };
 
   document.querySelectorAll('[data-ab-v3-command-open]').forEach(button => {
@@ -44,19 +60,41 @@
   search?.addEventListener('input', () => {
     const term = (search.value || '').trim().toLocaleLowerCase('de-DE');
     items.forEach(item => {
-      const haystack = (item.dataset.search || item.textContent || '').toLocaleLowerCase('de-DE');
+      const haystack = ((item.dataset.search || '') + ' ' + (item.textContent || '')).toLocaleLowerCase('de-DE');
       item.hidden = Boolean(term && !haystack.includes(term));
     });
+    if (empty) empty.hidden = visibleItems().length > 0;
   });
 
   document.addEventListener('keydown', event => {
     const commandKey = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
-    if (commandKey) {
+    if (commandKey && palette) {
       event.preventDefault();
       palette?.classList.contains('is-open') ? closePalette() : openPalette();
       return;
     }
-    if (event.key === 'Escape' && palette?.classList.contains('is-open')) closePalette();
+    if (!palette?.classList.contains('is-open')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closePalette();
+    } else if (event.key === 'Tab') {
+      const controls = [...palette.querySelectorAll('input, button, a[href]')].filter(node => !node.hidden);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus();
+      }
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const choices = visibleItems();
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      const index = choices.indexOf(document.activeElement);
+      if (choices.length) choices[(index + direction + choices.length) % choices.length].focus();
+    } else if (event.key === 'Enter' && document.activeElement === search) {
+      event.preventDefault();
+      visibleItems()[0]?.click();
+    }
   });
 
   const clock = document.querySelector('[data-ab-v3-clock]');

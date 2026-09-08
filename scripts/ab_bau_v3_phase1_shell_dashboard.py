@@ -70,7 +70,7 @@ def patch_base_shell() -> None:
         context = '<div class="ab-v3-top-context" aria-label="Systemstatus"><span>LIVE</span><strong data-ab-v3-clock>--:--</strong></div>'
         text = text.replace(anchor, context + anchor, 1)
 
-    if "data-ab-v3-command" not in text:
+    if 'data-ab-v3-command aria-hidden=' not in text:
         if "</body>" not in text:
             raise RuntimeError("A+Bau V3 body end anchor missing")
         palette = r'''
@@ -78,7 +78,7 @@ def patch_base_shell() -> None:
 <button class="ab-v3-mobile-fab" type="button" data-ab-v3-command-open aria-label="Erstellen">＋</button>
 <div class="ab-v3-command-backdrop" data-ab-v3-command aria-hidden="true">
   <section class="ab-v3-command-panel" role="dialog" aria-modal="true" aria-label="Schnell erstellen">
-    <header class="ab-v3-command-head"><span aria-hidden="true">◇</span><input class="ab-v3-command-search" data-ab-v3-command-search placeholder="Was möchtest du erledigen?" autocomplete="off"><button class="ab-v3-command-esc" type="button" data-ab-v3-command-close>ESC</button></header>
+    <header class="ab-v3-command-head"><span aria-hidden="true">◇</span><input class="ab-v3-command-search" data-ab-v3-command-search aria-label="Aktion suchen" placeholder="Was möchtest du erledigen?" autocomplete="off"><button class="ab-v3-command-esc" type="button" data-ab-v3-command-close aria-label="Schließen">ESC</button></header>
     <div class="ab-v3-command-grid">
       <a class="ab-v3-command-item" data-ab-v3-command-item data-search="projekt auftrag kunde arbeit" href="{% url 'next-project-create' %}"><span class="ab-v3-command-icon">▣</span><span class="ab-v3-command-copy"><strong>Projekt starten</strong><small>Neuen Auftrag mit Kunde und Einsatzort anlegen.</small></span></a>
       <a class="ab-v3-command-item" data-ab-v3-command-item data-search="termin kalender einsatz appointment" href="{% url 'next-appointment-create' %}"><span class="ab-v3-command-icon">◫</span><span class="ab-v3-command-copy"><strong>Termin planen</strong><small>Einsatz terminieren und Team zuweisen.</small></span></a>
@@ -89,6 +89,7 @@ def patch_base_shell() -> None:
       <a class="ab-v3-command-item" data-ab-v3-command-item data-search="aufgabe task todo" href="{% url 'next-task-create' %}"><span class="ab-v3-command-icon">✓</span><span class="ab-v3-command-copy"><strong>Aufgabe anlegen</strong><small>Offenen Punkt direkt in die Ausführung geben.</small></span></a>
       <a class="ab-v3-command-item" data-ab-v3-command-item data-search="daten import csv xlsx tooltime" href="{% url 'next-tooltime-migration' %}"><span class="ab-v3-command-icon">⇄</span><span class="ab-v3-command-copy"><strong>Daten importieren</strong><small>Bestehende CSV/XLSX-Daten übernehmen.</small></span></a>
     </div>
+    <p class="ab-v3-command-empty" data-ab-v3-command-empty role="status" hidden>Keine passende Aktion. Versuche einen anderen Suchbegriff.</p>
     <footer class="ab-v3-command-foot"><span>⌘K öffnet dieses Menü überall im Büro.</span><span>A+Bau Operations</span></footer>
   </section>
 </div>
@@ -196,7 +197,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ABauV3Phase1Tests(SimpleTestCase):
     def test_shell_is_structurally_upgraded_without_losing_capabilities(self):
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        for marker in ("ab-v3", "ab-v3-workspace-chip", "ab-v3-create", "data-ab-v3-command", "ab-bau-v3.css?v=20260908-2", "ab-bau-v3.js?v=20260908-2"):
+        for marker in ("ab-v3", "ab-v3-workspace-chip", "ab-v3-create", 'data-ab-v3-command aria-hidden=', "ab-bau-v3.css?v=20260908-2", "ab-bau-v3.js?v=20260908-2"):
             self.assertIn(marker, base)
         for route in ("next-dashboard", "next-appointments", "next-projects", "next-customers", "next-tasks", "next-quotes", "next-invoices", "next-expenses", "next-time", "next-employees", "next-field", "next-tooltime-migration", "next-settings"):
             self.assertIn(route, base)
@@ -228,19 +229,12 @@ class ABauV3Phase1Tests(SimpleTestCase):
 
 def patch_browser_smoke() -> None:
     path = ROOT / "scripts/production_browser_smoke.py"
-    if not path.exists():
-        return
-    text = path.read_text(encoding="utf-8")
-    marker = "A+Bau V3 structural dashboard smoke"
-    if marker in text:
-        return
-    anchor = '            dismiss_first_run_tutorial(page)\n\n            checks = [\n'
-    if anchor not in text:
-        # Keep existing smoke untouched if a later product layer changed this exact
-        # internal location; static/Django contracts still protect the V3 surface.
-        return
-    block = '''            dismiss_first_run_tutorial(page)\n\n            # A+Bau V3 structural dashboard smoke\n            page.goto(base_url, wait_until="domcontentloaded", timeout=30_000)\n            if page.locator("[data-ab-v3-dashboard]").count() != 1:\n                fail("A+Bau V3 dashboard cockpit is missing")\n            if page.locator("[data-ab-v3-command-open]").count() == 0:\n                fail("A+Bau V3 global command trigger is missing")\n\n            checks = [\n'''
-    text = text.replace(anchor, block, 1)
+    text = read(path)
+    # Preserve the authenticated route smoke while replacing obsolete heading copy
+    # with the actual dashboard root. Interactive V3 checks run explicitly in CI.
+    text = text.replace('"Was steht an?"', '"data-ab-v3-dashboard"')
+    if "data-ab-v3-dashboard" not in text:
+        raise RuntimeError("V3 dashboard browser smoke anchor missing")
     path.write_text(text, encoding="utf-8")
     compile(text, str(path), "exec")
 
@@ -264,7 +258,7 @@ def guard() -> None:
     dashboard = read(DASHBOARD)
     css = read(CSS_TARGET)
     js = read(JS_TARGET)
-    for marker in ("ab-v3", "ab-v3-workspace-chip", "data-ab-v3-command", "ab-bau-v3.css?v=20260908-2", "ab-bau-v3.js?v=20260908-2"):
+    for marker in ("ab-v3", "ab-v3-workspace-chip", 'data-ab-v3-command aria-hidden=', "ab-bau-v3.css?v=20260908-2", "ab-bau-v3.js?v=20260908-2"):
         if marker not in base:
             raise RuntimeError(f"A+Bau V3 shell guard missing: {marker}")
     for marker in ("data-ab-v3-dashboard", "ab-v3-dashboard-hero", "ab-v3-ops-grid", "ab-v3-pipeline", "Daten importieren"):
