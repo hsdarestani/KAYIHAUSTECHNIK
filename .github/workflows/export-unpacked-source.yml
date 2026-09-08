@@ -16,11 +16,12 @@ jobs:
       - uses: actions/checkout@v5
       - name: Assemble source
         run: bash scripts/unpack-source.sh
-      - name: Package application source
+      - name: Package complete generated source
         run: |
           tar -czf /tmp/kayi-unpacked-source.tar.gz \
             config erp templates static tests manage.py requirements.txt \
-            Dockerfile .env.example
+            Dockerfile .env.example .dockerignore .gitignore SECURITY.md compose.yaml \
+            deploy docs mobile native scripts/next_test_contract.py
       - uses: actions/upload-artifact@v4
         with:
           name: kayi-unpacked-source-${{ github.run_id }}
