@@ -96,7 +96,10 @@ def main():
                     search.fill("Kunde anlegen")
                     search.press("Enter")
                     page.wait_for_url(base + reverse("next-customer-create"))
-                    expect(page.locator("form").first).to_be_visible()
+                    # Exclude the global assistant/search form: on mobile it is intentionally
+                    # hidden, and on desktop it must not satisfy the destination-form check.
+                    destination_form = page.locator("form:not([data-global-assistant-form])").first
+                    expect(destination_form).to_be_visible()
                     # All command destinations are server-backed and reachable.
                     for route in routes:
                         result = context.request.get(base + route)
