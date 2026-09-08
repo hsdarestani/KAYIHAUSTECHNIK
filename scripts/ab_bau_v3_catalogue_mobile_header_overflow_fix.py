@@ -7,7 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU V3 CATALOGUE MOBILE HEADER OVERFLOW FIX 2026-09-08"
 UPLOAD_MARKER = "A+BAU V3 SETTINGS LOGO MULTIPART FIX 2026-09-08"
 DASHBOARD_MARKER = "A+BAU V3 DASHBOARD HERO FLOW FIX 2026-09-08"
-CACHE_VERSION = "20260908-finance-mobile-pdf-4"
+QUOTE_MENU_MARKER = "A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08"
+CACHE_VERSION = "20260908-finance-mobile-pdf-5"
 CSS_REL = "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css"
 SETTINGS_REL = "templates/rebuild/tooltime_settings.html"
 BASE_REL = "templates/rebuild/base.html"
@@ -64,11 +65,48 @@ DASHBOARD_FIX = r"""
 }
 """
 
+QUOTE_MENU_FIX = r"""
+
+/* A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08
+   The Neues Angebot dropdown is taller than the commercial hero. The hero used
+   overflow:hidden for decoration, which clipped the open menu at its bottom edge.
+   Let the menu escape the hero, keep it above following content, and on phones make
+   it follow the full-width trigger column instead of escaping the viewport. */
+body.ab-apex .ttq-topbar{
+  overflow:visible!important;
+  z-index:30!important;
+}
+body.ab-apex .ttq-top-actions,
+body.ab-apex .ttq-new-menu{
+  position:relative!important;
+  z-index:40!important;
+}
+body.ab-apex .ttq-menu-card{
+  position:absolute!important;
+  top:calc(100% + 10px)!important;
+  right:0!important;
+  left:auto!important;
+  z-index:60!important;
+  min-width:220px!important;
+  max-width:min(320px,calc(100vw - 32px))!important;
+}
+@media(max-width:520px){
+  body.ab-apex .ttq-menu-card{
+    left:0!important;
+    right:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+"""
+
 
 def install_css() -> None:
     path = ROOT / CSS_REL
     if not path.exists():
-        raise RuntimeError(f"Catalogue/dashboard hotfix target missing: {CSS_REL}")
+        raise RuntimeError(f"Catalogue/dashboard/quotes hotfix target missing: {CSS_REL}")
     text = path.read_text(encoding="utf-8")
     changed = False
     if MARKER not in text:
@@ -77,6 +115,9 @@ def install_css() -> None:
     if DASHBOARD_MARKER not in text:
         text = text.rstrip() + DASHBOARD_FIX + "\n"
         changed = True
+    if QUOTE_MENU_MARKER not in text:
+        text = text.rstrip() + QUOTE_MENU_FIX + "\n"
+        changed = True
     if changed:
         path.write_text(text, encoding="utf-8")
 
@@ -84,11 +125,11 @@ def install_css() -> None:
 def bust_css_cache() -> None:
     path = ROOT / BASE_REL
     if not path.exists():
-        raise RuntimeError(f"Dashboard cache-bust target missing: {BASE_REL}")
+        raise RuntimeError(f"Final V3 cache-bust target missing: {BASE_REL}")
     text = path.read_text(encoding="utf-8")
     pattern = r'(/static/css/ab-bau-v3-finance-mobile-pdf-hotfix\.css\?v=)[^\"\']+'
     if not re.search(pattern, text):
-        raise RuntimeError("Dashboard cache-bust link for final V3 CSS is missing")
+        raise RuntimeError("Final V3 cache-bust link is missing")
     text = re.sub(pattern, rf'\g<1>{CACHE_VERSION}', text)
     path.write_text(text, encoding="utf-8")
 
@@ -156,9 +197,28 @@ class ABauV3CatalogueMobileHeaderOverflowFixTests(SimpleTestCase):
         self.assertIn("position:relative!important", css)
         self.assertIn("inset:auto!important", css)
 
-    def test_dashboard_hotfix_css_is_cache_busted(self):
+    def test_new_quote_menu_is_not_clipped_by_commercial_hero(self):
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn("A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08", css)
+        self.assertIn("body.ab-apex .ttq-topbar{", css)
+        self.assertIn("overflow:visible!important", css)
+        self.assertIn("z-index:30!important", css)
+        self.assertIn("body.ab-apex .ttq-menu-card{", css)
+        self.assertIn("top:calc(100% + 10px)!important", css)
+        self.assertIn("z-index:60!important", css)
+        self.assertIn("right:0!important", css)
+
+    def test_phone_quote_menu_stays_inside_full_width_trigger_column(self):
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn("@media(max-width:520px)", css)
+        self.assertIn("left:0!important", css)
+        self.assertIn("width:100%!important", css)
+        self.assertIn("min-width:0!important", css)
+        self.assertIn("max-width:100%!important", css)
+
+    def test_final_hotfix_css_is_cache_busted(self):
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-4", base)
+        self.assertIn("ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-5", base)
 ''',
         encoding="utf-8",
     )
@@ -174,13 +234,23 @@ def guard() -> None:
         "body.ab-v3 .ab-v3-metrics",
         "position:relative!important",
         "inset:auto!important",
+        QUOTE_MENU_MARKER,
+        "body.ab-apex .ttq-topbar{",
+        "overflow:visible!important",
+        "body.ab-apex .ttq-menu-card{",
+        "top:calc(100% + 10px)!important",
+        "z-index:60!important",
+        "@media(max-width:520px)",
+        "left:0!important",
+        "width:100%!important",
+        "max-width:100%!important",
     ):
         if marker not in css:
-            raise RuntimeError(f"Dashboard hero flow guard failed: {marker}")
+            raise RuntimeError(f"Final V3 layout guard failed: {marker}")
 
     base = (ROOT / BASE_REL).read_text(encoding="utf-8")
     if f"ab-bau-v3-finance-mobile-pdf-hotfix.css?v={CACHE_VERSION}" not in base:
-        raise RuntimeError("Dashboard hero hotfix CSS cache version was not installed")
+        raise RuntimeError("Final V3 hotfix CSS cache version was not installed")
 
     settings = (ROOT / SETTINGS_REL).read_text(encoding="utf-8")
     layout_marker = '<input type="hidden" name="section" value="layout">'
@@ -201,6 +271,7 @@ def main() -> None:
     print(f"{MARKER}: mobile catalogue table header removed from layout; desktop header preserved.")
     print(f"{UPLOAD_MARKER}: Texte & Layout now submits logo/header uploads as multipart form data.")
     print(f"{DASHBOARD_MARKER}: dashboard greeting and KPI strip now remain in separate layout rows.")
+    print(f"{QUOTE_MENU_MARKER}: Neues Angebot dropdown renders fully above following content and stays inside phone viewport.")
 
 
 if __name__ == "__main__":
