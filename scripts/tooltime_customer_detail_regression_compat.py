@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,41 @@ def patch_css() -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def patch_receipt_generator_syntax() -> None:
+    """Keep re.sub replacement processing from collapsing a Windows-path escape."""
+    path = ROOT / "scripts" / "tooltime_receipt_create_parity.py"
+    text = path.read_text(encoding="utf-8")
+    bad = r'''safe_name = (getattr(upload, "name", "beleg") or "beleg").split("/")[-1].split("\\")[-1]'''
+    good = '''safe_name = (getattr(upload, "name", "beleg") or "beleg").rsplit("/", 1)[-1]'''
+    if bad in text:
+        text = text.replace(bad, good, 1)
+        path.write_text(text, encoding="utf-8")
+    elif good not in text:
+        raise RuntimeError("Receipt generator safe-name anchor missing")
+
+
+def patch_browser_smoke_receipt_contract() -> None:
+    """Preserve the expenses-list smoke contract while receipt creation is tested separately.
+
+    The list page intentionally keeps its existing ``Ausgabe erfassen`` CTA.  Only the
+    create page changed to the ToolTime-style ``Beleg erfassen`` flow, and that route is
+    covered by the dedicated Django receipt tests.  Replacing the marker globally made
+    the browser smoke expect the create-page title on ``/expenses/`` and caused a false
+    failure even though the new receipt flow itself was healthy.
+    """
+    path = ROOT / "scripts" / "production_browser_smoke.py"
+    if not path.exists():
+        raise RuntimeError("Browser smoke script missing after source assembly")
+    text = path.read_text(encoding="utf-8")
+    old = '("/expenses/new/", ("Ausgabe erfassen", "Speichern"))'
+    new = '("/expenses/new/", ("Beleg erfassen", "data-receipt-dropzone", "Speichern"))'
+    if old not in text and new not in text:
+        raise RuntimeError("Receipt create smoke route contract missing")
+    text = text.replace(old, new)
+
+    path.write_text(text, encoding="utf-8")
+
+
 def guard() -> None:
     template = read("templates/rebuild/customer_detail.html")
     views = read("erp/rebuild_views.py")
@@ -77,6 +113,13 @@ def main() -> None:
     patch_customer_template()
     patch_css()
     guard()
+    # Receipt creation is intentionally the final customer/finance handoff layer.
+    # It must run after the screenshot-exact customer cockpit so customer context
+    # and the upload-first ToolTime receipt flow cannot be overwritten downstream.
+    patch_receipt_generator_syntax()
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_create_parity.py"), run_name="__main__")
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_interaction_fix.py"), run_name="__main__")
+    patch_browser_smoke_receipt_contract()
     print("ToolTime customer detail regression compatibility applied.")
 
 
