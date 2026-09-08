@@ -222,5 +222,8 @@ python3 scripts/tooltime_document_workspace_regression_compat.py
 # Keep the screenshot-derived catalogue editor and Texte/Layout surface isolated from
 # the concurrent V3 customer/project work. This late hook wins only on those two pages.
 python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py
+# Final user-reported production hotfix: direct mobile drawer state, separated +/AI
+# controls, V3 commercial visual layer, and storage-backed logo embedding in PDFs.
+python3 scripts/ab_bau_v3_finance_mobile_pdf_hotfix.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
