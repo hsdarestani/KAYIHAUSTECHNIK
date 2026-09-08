@@ -49,6 +49,14 @@ assembly_anchor = "bash scripts/unpack-source.sh\n"
 hardening_command = "python3 scripts/final_production_hardening_20260821.py\n"
 installer_command = "python3 scripts/tooltime_user_settings_import.py\n"
 mobile_menu_fix_command = "python3 scripts/mobile_invoice_menu_fix.py\n"
+# Django intentionally keeps X_FRAME_OPTIONS=DENY globally, while the dedicated
+# PDF preview views opt into SAMEORIGIN. Caddy must not overwrite those per-view
+# headers with a blanket DENY after the response leaves Django.
+frame_header_fix_command = "test -f deploy/Caddyfile && sed -i '/X-Frame-Options \\\"DENY\\\"/d' deploy/Caddyfile && ! grep -Fq 'X-Frame-Options \\\"DENY\\\"' deploy/Caddyfile\n"
+if frame_header_fix_command not in text:
+    if assembly_anchor not in text:
+        raise SystemExit("Could not find source assembly anchor for PDF preview proxy header fix")
+    text = text.replace(assembly_anchor, assembly_anchor + frame_header_fix_command, 1)
 if hardening_command not in text:
     if assembly_anchor not in text:
         raise SystemExit("Could not find source assembly anchor for final production hardening")
@@ -94,6 +102,7 @@ required = (
     "name='A+Bau'",
     "'ORGANIZATION_NAME': 'A+Bau'",
     "Organization.objects.filter(name='A+Bau').first()",
+    frame_header_fix_command.strip(),
     hardening_command.strip(),
     installer_command.strip(),
     mobile_menu_fix_command.strip(),
