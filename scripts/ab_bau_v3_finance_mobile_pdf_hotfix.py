@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU V3 FINANCE + MOBILE + PDF HOTFIX 2026-09-08"
-VERSION = "20260908-finance-mobile-pdf-1"
+VERSION = "20260908-finance-mobile-pdf-2"
 
 
 def read(rel: str) -> str:
@@ -106,7 +106,10 @@ body.ab-apex .tt-document-form :where(.nx-btn-accent,.ab-primary-action,button[t
   body.ab-apex .tti-kpi{min-height:94px!important;padding:15px!important}
   body.ab-apex :where(.ttq-table-wrap,.tti-table-wrap,.ttc-table-wrap){border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
   body.ab-apex :where(.ttq-table,.tti-table,.ttc-table),body.ab-apex :where(.ttq-table,.tti-table,.ttc-table) tbody{display:block!important;background:transparent!important}
-  body.ab-apex :where(.ttq-table,.tti-table,.ttc-table) thead{display:none!important}
+  body.ab-apex :where(.ttq-table,.tti-table) thead{display:none!important}
+  body.ab-apex .ttc-table thead{display:block!important;position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important}
+  body.ab-apex .ttc-table thead tr{display:block!important}
+  body.ab-apex .ttc-table thead th{display:inline-block!important;width:auto!important;height:auto!important}
   body.ab-apex :where(.ttq-table tr[data-quote-row],.tti-table tr[data-invoice-row],.ttc-table tr[data-catalogue-row]){display:grid!important;grid-template-columns:1fr!important;gap:0!important;margin:0 0 10px!important;padding:15px 16px!important;border:1px solid #ddd5c8!important;border-radius:18px!important;background:linear-gradient(180deg,#fffefa,#fbf8f1)!important;box-shadow:0 10px 26px rgba(16,18,21,.05)!important}
   body.ab-apex :where(.ttq-table tr[data-quote-row],.tti-table tr[data-invoice-row],.ttc-table tr[data-catalogue-row]) td{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:14px!important;padding:7px 0!important;border:0!important;text-align:right!important;white-space:normal!important}
   body.ab-apex :where(.ttq-table tr[data-quote-row],.tti-table tr[data-invoice-row],.ttc-table tr[data-catalogue-row]) td:before{content:attr(data-label)!important;flex:0 0 38%;color:#9a9389!important;font-size:8px!important;font-weight:850!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-align:left!important}
@@ -257,8 +260,7 @@ def _file_data_uri(field):
 
 
 def install_tests() -> None:
-    write("tests/test_ab_bau_v3_finance_mobile_pdf_hotfix.py", r"""
-from pathlib import Path
+    write("tests/test_ab_bau_v3_finance_mobile_pdf_hotfix.py", r"""from pathlib import Path
 from django.test import SimpleTestCase
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -289,6 +291,12 @@ class ABauV3FinanceMobilePdfHotfixTests(SimpleTestCase):
         self.assertIn("bottom:calc(88px + env(safe-area-inset-bottom))", css)
         self.assertIn("right:78px", css)
 
+    def test_mobile_catalogue_keeps_semantic_headers_for_smoke_and_accessibility(self):
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn(".ttc-table thead{display:block!important;position:absolute!important", css)
+        self.assertIn(".ttc-table thead th{display:inline-block!important", css)
+        self.assertNotIn(":where(.ttq-table,.tti-table,.ttc-table) thead{display:none!important}", css)
+
     def test_logo_upload_auto_enables_and_pdf_embeds_storage_bytes(self):
         views = (ROOT / "erp/tooltime_parity_views.py").read_text(encoding="utf-8")
         helper = (ROOT / "erp/services/business_pdf_identity.py").read_text(encoding="utf-8")
@@ -316,7 +324,7 @@ def guard() -> None:
     for marker in ("ab-bau-v3-finance-mobile-pdf-hotfix.css", "ab-bau-v3-finance-mobile-pdf-hotfix.js"):
         if marker not in base:
             raise RuntimeError(f"V3 finance/mobile/PDF base contract missing: {marker}")
-    for marker in (MARKER, ".ttq-topbar", ".tti-topbar", ".ttc-topbar", ".tt-document-form", ".ab-v3-mobile-fab", ".nx-assistant-fab"):
+    for marker in (MARKER, ".ttq-topbar", ".tti-topbar", ".ttc-topbar", ".tt-document-form", ".ab-v3-mobile-fab", ".nx-assistant-fab", ".ttc-table thead{display:block!important"):
         if marker not in css:
             raise RuntimeError(f"V3 finance/mobile/PDF CSS contract missing: {marker}")
     for marker in ("[data-ab-open-menu]", "stopImmediatePropagation", "nx-menu-open"):
