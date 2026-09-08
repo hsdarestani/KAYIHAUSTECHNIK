@@ -21,28 +21,73 @@ jobs:
           password: ${{ secrets.PASS }}
           command_timeout: 5m
           script: |
-            set +e
+            set -eu
             echo '=== date / uptime ==='
             date -Is
             uptime
-            echo '=== memory ==='
-            free -h
-            echo '=== disk / inodes ==='
-            df -h
-            df -i
             echo '=== docker ==='
             systemctl is-active docker
-            docker version --format '{{.Server.Version}}'
-            docker system df
-            cd /opt/kayi 2>/dev/null || exit 0
-            if docker compose version >/dev/null 2>&1; then
-              docker compose ps -a
-              docker compose logs --tail=80 web db redis caddy worker beat
-            else
-              docker-compose ps -a
-              docker-compose logs --tail=80 web db redis caddy worker beat
-            fi
-            echo '=== recent kernel OOM / kills ==='
-            dmesg -T | grep -Ei 'out of memory|oom|killed process|i/o error|no space' | tail -80
-            echo '=== recent docker service ==='
-            journalctl -u docker --no-pager -n 100
+            cd /opt/kayi
+            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+            $DC ps -a
+            echo '=== deployed revision / assembled fix ==='
+            git rev-parse HEAD
+            grep -n 'number=base._unique_number(m.Invoice, org, "DRAFT")' erp/tooltime_parity_views.py
+            echo '=== quote 2 invoice rollback-only production smoke ==='
+            $DC exec -T web python manage.py shell <<'PY'
+            from pathlib import Path
+            from django.contrib.auth import get_user_model
+            from django.db import transaction
+            from django.test import Client
+            from erp import models as m
+
+            quote = m.Quote.objects.select_related("organization", "project").get(pk=2)
+            existing = m.Invoice.objects.filter(organization=quote.organization, quote=quote).order_by("pk").first()
+            blank_count = m.Invoice.objects.filter(organization=quote.organization, number="").count()
+            confirmation = None
+            for candidate in m.Document.objects.filter(
+                organization=quote.organization,
+                project=quote.project,
+                category="contract",
+            ).order_by("-pk")[:50]:
+                metadata = candidate.metadata or {}
+                if metadata.get("kind") == "order_confirmation" and str(metadata.get("quote_id")) == str(quote.pk):
+                    confirmation = candidate
+                    break
+
+            source = Path("erp/tooltime_parity_views.py").read_text(encoding="utf-8")
+            marker = 'number=base._unique_number(m.Invoice, org, "DRAFT")'
+            print("VERIFY_SOURCE_MARKER", marker in source)
+            print("VERIFY_QUOTE", quote.pk, quote.status, "existing_invoice", getattr(existing, "pk", None), "blank_invoice_rows", blank_count, "confirmation", getattr(confirmation, "pk", None))
+            assert marker in source, "deployed quote→invoice draft-number fix missing"
+
+            if existing is not None:
+                print("VERIFY_ROUTE_SKIPPED_EXISTING_INVOICE", existing.pk, existing.number)
+            else:
+                assert confirmation is not None, "quote #2 has no order confirmation; route smoke precondition missing"
+                User = get_user_model()
+                user = User.objects.filter(profile__organization=quote.organization, is_active=True).order_by("-is_superuser", "pk").first()
+                assert user is not None, "no active organization user available for rollback smoke"
+                with transaction.atomic():
+                    client = Client()
+                    client.force_login(user)
+                    response = client.post(
+                        f"/quotes/{quote.pk}/rechnung/",
+                        follow=False,
+                        secure=True,
+                        HTTP_HOST="kayi.smarbiz.sbs",
+                    )
+                    created = m.Invoice.objects.filter(organization=quote.organization, quote=quote).order_by("-pk").first()
+                    print("VERIFY_ROUTE_HTTP", response.status_code, response.get("Location", ""))
+                    print("VERIFY_ROUTE_CREATED", getattr(created, "pk", None), getattr(created, "number", None))
+                    assert response.status_code in (302, 303), f"unexpected quote→invoice status {response.status_code}"
+                    assert created is not None, "quote→invoice did not create a draft invoice"
+                    assert (created.number or "").startswith("DRAFT-"), f"unexpected draft number {created.number!r}"
+                    transaction.set_rollback(True)
+                assert not m.Invoice.objects.filter(organization=quote.organization, quote=quote).exists(), "rollback smoke leaked an invoice"
+                print("VERIFY_ROLLBACK_OK")
+
+            print("QUOTE_INVOICE_PRODUCTION_VERIFY_OK")
+            PY
+            echo '=== recent web errors after deploy ==='
+            $DC logs --tail=120 web | grep -Ei 'IntegrityError|unique_invoice_number|Internal Server Error|/quotes/2/rechnung/' || true
