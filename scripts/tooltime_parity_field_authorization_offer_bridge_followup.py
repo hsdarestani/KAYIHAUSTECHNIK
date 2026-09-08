@@ -15,7 +15,9 @@ def read(rel: str) -> str:
 
 
 def write(rel: str, text: str) -> None:
-    (ROOT / rel).write_text(text, encoding="utf-8")
+    path = ROOT / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
 
 
 # Resolve the ToolTime context from the actual appointment/event instead of a
@@ -31,7 +33,9 @@ template = template.replace(
 
 # Merge the ToolTime form class into an existing class attribute if a later field
 # layer already added one; duplicate class attributes are invalid HTML and can
-# make selector behavior browser-dependent.
+# make selector behavior browser-dependent. The article search remains the exact
+# Angebot endpoint, but carries the current event so assigned field users can be
+# authorized without opening company pricing search globally to technicians.
 form_match = re.search(
     r'<form\b(?=[^>]*data-authorization-form)[^>]*>',
     template,
@@ -54,8 +58,11 @@ elif len(class_attrs) == 1 and "tt-document-form" not in class_attrs[0].split():
     form_tag = form_tag.replace(f'class="{class_attrs[0]}"', f'class="{merged}"', 1)
 elif not class_attrs:
     form_tag = form_tag[:-1] + ' class="tt-document-form">'
-if "data-article-search-url=" not in form_tag:
-    form_tag = form_tag[:-1] + ' data-article-search-url="{% url \'next-article-search\' %}">'
+article_value = "{% url 'next-article-search' %}?event={{ event.pk }}"
+if "data-article-search-url=" in form_tag:
+    form_tag = re.sub(r'data-article-search-url="[^"]*"', f'data-article-search-url="{article_value}"', form_tag, count=1)
+else:
+    form_tag = form_tag[:-1] + f' data-article-search-url="{article_value}">'
 template = template[: form_match.start()] + form_tag + template[form_match.end() :]
 if MARKER not in template:
     template = template.replace(
@@ -64,6 +71,145 @@ if MARKER not in template:
         1,
     )
 write(template_rel, template)
+
+
+# The final Angebot article search already knows all configured sources and the
+# exact result schema used by tooltime-parity-finance.js. Reuse that implementation
+# instead of copying a second catalog endpoint. Field users may access it only when
+# they provide an event that _event_for confirms is assigned to them.
+views_rel = "erp/tooltime_parity_views.py"
+views = read(views_rel)
+article_match = re.search(
+    r"def article_search\(request\):\n.*?(?=\n\n@login_required|\Z)",
+    views,
+    flags=re.S,
+)
+if not article_match:
+    raise RuntimeError("Final Angebot article_search function missing")
+article_block = article_match.group(0)
+old_guard = '    if base._is_field_user(request): return JsonResponse({"ok": False, "error": "Keine Preisberechtigung."}, status=403)\n'
+new_guard = '''    if base._is_field_user(request):
+        event_pk = (request.GET.get("event") or "").strip()
+        if not event_pk.isdigit():
+            return JsonResponse({"ok": False, "error": "Keine Preisberechtigung."}, status=403)
+        from .field_authorization_views import _event_for as _field_event_for
+        field_org, _field_event = _field_event_for(request, int(event_pk))
+        if field_org.pk != org.pk:
+            return JsonResponse({"ok": False, "error": "Keine Preisberechtigung."}, status=403)
+'''
+if new_guard not in article_block:
+    if old_guard not in article_block:
+        raise RuntimeError("Final Angebot field pricing permission guard changed")
+    article_block = article_block.replace(old_guard, new_guard, 1)
+    views = views[: article_match.start()] + article_block + views[article_match.end() :]
+write(views_rel, views)
+
+
+# Parse the exact Angebot position contract. The legacy item_price/item_tax POST
+# shape is retained only as a backend compatibility fallback for older mobile
+# clients and established regression tests; it is not rendered anywhere in the
+# final Termin UI. This lets one canonical visible form replace the old price table
+# without breaking signed authorizations created by a client that has not refreshed.
+service_rel = "erp/services/field_authorization.py"
+service = read(service_rel)
+parse_pattern = re.compile(
+    r"def parse_items\(post\) -> list\[dict\[str, Any\]\]:\n.*?(?=\n\ndef totals_for_items\()",
+    flags=re.S,
+)
+parse_replacement = r'''def parse_items(post) -> list[dict[str, Any]]:
+    descriptions = post.getlist("item_description")
+    quantities = post.getlist("item_quantity")
+    units = post.getlist("item_unit")
+    purchases = post.getlist("item_purchase_price")
+    markups = post.getlist("item_markup_percent")
+    item_types = post.getlist("item_type")
+    details = post.getlist("item_detail")
+    groups = post.getlist("item_group")
+    service_models = post.getlist("item_service_model")
+    catalog_ids = post.getlist("item_catalog_id")
+    legacy_prices = post.getlist("item_price")
+    legacy_taxes = post.getlist("item_tax")
+    discount_type = (post.get("discount_type") or "percent").strip()
+    discount_value = max(Decimal("0"), money(post.get("discount_value") or "0"))
+    tax_code = (post.get("document_tax_code") or "19").strip()
+    document_tax_rate = Decimal("19") if tax_code == "19" else (Decimal("7") if tax_code == "7" else Decimal("0"))
+    items: list[dict[str, Any]] = []
+    for index, description in enumerate(descriptions):
+        description = (description or "").strip()
+        if not description:
+            continue
+        qty = max(Decimal("0"), money(quantities[index] if index < len(quantities) else "1"))
+        angebot_contract = index < len(purchases) or index < len(markups)
+        if angebot_contract:
+            purchase = max(Decimal("0"), money(purchases[index] if index < len(purchases) else "0"))
+            markup = money(markups[index] if index < len(markups) else "0")
+            unit_price = (purchase * (Decimal("1") + markup / Decimal("100"))).quantize(MONEY, rounding=ROUND_HALF_UP)
+            tax_rate = document_tax_rate
+        else:
+            # Compatibility only: pre-integration clients posted the displayed
+            # sales price directly. The new HTML never emits this old contract.
+            unit_price = max(Decimal("0"), money(legacy_prices[index] if index < len(legacy_prices) else "0"))
+            purchase = unit_price
+            markup = Decimal("0")
+            tax_rate = max(Decimal("0"), money(legacy_taxes[index] if index < len(legacy_taxes) else document_tax_rate))
+        line_net = (qty * unit_price).quantize(MONEY, rounding=ROUND_HALF_UP)
+        line_tax = (line_net * tax_rate / Decimal("100")).quantize(MONEY, rounding=ROUND_HALF_UP)
+        service_model = ((service_models[index] if index < len(service_models) else "normal") or "normal").strip()
+        items.append({
+            "position": len(items) + 1,
+            "description": description[:500],
+            "detail": ((details[index] if index < len(details) else "") or "")[:4000],
+            "quantity": str(qty),
+            "unit": ((units[index] if index < len(units) else "Stk.") or "Stk.")[:30],
+            "purchase_price": str(purchase),
+            "markup_percent": str(markup),
+            "unit_price": str(unit_price),
+            "tax_rate": str(tax_rate),
+            "net": str(line_net),
+            "tax": str(line_tax),
+            "gross": str(line_net + line_tax),
+            "item_type": ((item_types[index] if index < len(item_types) else "material") or "material")[:30],
+            "group": ((groups[index] if index < len(groups) else "") or "")[:240],
+            "service_model": service_model[:30],
+            "catalog_id": ((catalog_ids[index] if index < len(catalog_ids) else "") or "").strip(),
+            "included_in_total": service_model == "normal",
+            "discount_type": discount_type,
+            "discount_value": str(discount_value),
+            "document_tax_rate": str(document_tax_rate),
+            "pricing_contract": "angebot" if angebot_contract else "legacy",
+        })
+    return items
+'''
+service, count = parse_pattern.subn(parse_replacement.rstrip(), service, count=1)
+if count != 1:
+    raise RuntimeError("Shared Angebot authorization parse_items function changed")
+
+totals_pattern = re.compile(
+    r"def totals_for_items\(items: Iterable\[dict\[str, Any\]\]\) -> dict\[str, str\]:\n.*?(?=\n\ndef decode_signature\()",
+    flags=re.S,
+)
+totals_replacement = r'''def totals_for_items(items: Iterable[dict[str, Any]]) -> dict[str, str]:
+    rows = list(items)
+    if not rows:
+        return {"net": "0.00", "tax": "0.00", "gross": "0.00"}
+    included = [item for item in rows if item.get("included_in_total", True)]
+    if included and all(item.get("pricing_contract") == "legacy" for item in included):
+        net = sum((money(item.get("net")) for item in included), Decimal("0")).quantize(MONEY, rounding=ROUND_HALF_UP)
+        tax = sum((money(item.get("tax")) for item in included), Decimal("0")).quantize(MONEY, rounding=ROUND_HALF_UP)
+        return {"net": str(net), "tax": str(tax), "gross": str((net + tax).quantize(MONEY, rounding=ROUND_HALF_UP))}
+    base_net = sum((money(item.get("net")) for item in included), Decimal("0"))
+    discount_type = str(rows[0].get("discount_type") or "percent")
+    discount_value = max(Decimal("0"), money(rows[0].get("discount_value") or "0"))
+    discount = min(base_net, discount_value) if discount_type == "fixed" else (base_net * discount_value / Decimal("100"))
+    taxable = max(Decimal("0"), base_net - discount).quantize(MONEY, rounding=ROUND_HALF_UP)
+    rate = money(rows[0].get("document_tax_rate") or "19")
+    tax = (taxable * rate / Decimal("100")).quantize(MONEY, rounding=ROUND_HALF_UP)
+    return {"net": str(taxable), "tax": str(tax), "gross": str((taxable + tax).quantize(MONEY, rounding=ROUND_HALF_UP))}
+'''
+service, count = totals_pattern.subn(totals_replacement.rstrip(), service, count=1)
+if count != 1:
+    raise RuntimeError("Shared Angebot authorization totals_for_items function changed")
+write(service_rel, service)
 
 
 # The old field-only pricing widget owned the Festpreis/Schätzung/Aufwand toggle.
@@ -90,12 +236,74 @@ if cap_marker not in js:
 write(js_rel, js)
 
 
+# Align the older pricing-hardening regression with the deliberate replacement of
+# its field-only catalog picker. The security assertions remain; only the visible
+# UI contract now points at the exact shared Angebot editor/article browser.
+legacy_test_rel = "tests/test_final_form_voice_pricing_hardening.py"
+if (ROOT / legacy_test_rel).exists():
+    legacy_test = read(legacy_test_rel)
+    old_assert = '        self.assertIn("data-fa-catalog-picker", template)\n'
+    new_assert = '''        self.assertIn("rebuild/_tooltime_services_editor.html", template)
+        self.assertIn("rebuild/_tooltime_article_modal.html", template)
+        self.assertNotIn("data-price-table", template)
+'''
+    if old_assert in legacy_test:
+        legacy_test = legacy_test.replace(old_assert, new_assert, 1)
+    elif "rebuild/_tooltime_services_editor.html" not in legacy_test:
+        raise RuntimeError("Final form/pricing regression test compatibility anchor changed")
+    write(legacy_test_rel, legacy_test)
+
+
+# Final bridge-specific regression contract. The existing functional field tests
+# still post the legacy payload and therefore exercise the compatibility fallback,
+# while this source contract ensures the rendered surface itself can never regress
+# back to a separately maintained pricing form.
+write("tests/test_field_authorization_angebot_bridge_final.py", r'''from pathlib import Path
+
+from django.test import SimpleTestCase
+
+
+class FieldAuthorizationAngebotBridgeFinalTests(SimpleTestCase):
+    def test_termin_uses_the_same_angebot_editor_surface(self):
+        template = Path("templates/rebuild/appointment_detail.html").read_text(encoding="utf-8")
+        for marker in (
+            "rebuild/_tooltime_services_editor.html",
+            "rebuild/_tooltime_calculation_summary.html",
+            "rebuild/_tooltime_article_modal.html",
+            "tt-document-form",
+            "next-article-search",
+            "?event={{ event.pk }}",
+        ):
+            self.assertIn(marker, template)
+        self.assertNotIn("data-price-table", template)
+        self.assertNotIn("data-add-price-row", template)
+
+    def test_field_article_search_reuses_angebot_backend_with_event_scope(self):
+        views = Path("erp/tooltime_parity_views.py").read_text(encoding="utf-8")
+        self.assertIn('event_pk = (request.GET.get("event") or "").strip()', views)
+        self.assertIn("_field_event_for(request, int(event_pk))", views)
+        self.assertIn("Keine Preisberechtigung.", views)
+
+    def test_backend_accepts_offer_contract_and_old_clients_only_as_fallback(self):
+        service = Path("erp/services/field_authorization.py").read_text(encoding="utf-8")
+        for marker in (
+            'purchases = post.getlist("item_purchase_price")',
+            'markups = post.getlist("item_markup_percent")',
+            'legacy_prices = post.getlist("item_price")',
+            '"pricing_contract": "angebot" if angebot_contract else "legacy"',
+        ):
+            self.assertIn(marker, service)
+''')
+
+
 final_template = read(template_rel)
 final_js = read(js_rel)
+final_views = read(views_rel)
+final_service = read(service_rel)
 for needle in (
     "{% tooltime_context request event 'authorization' as tt %}",
     'class="tt-document-form',
-    "data-article-search-url",
+    'data-article-search-url="{% url \'next-article-search\' %}?event={{ event.pk }}"',
     "rebuild/_tooltime_services_editor.html",
     "rebuild/_tooltime_calculation_summary.html",
     "rebuild/_tooltime_article_modal.html",
@@ -104,7 +312,15 @@ for needle in (
         raise RuntimeError(f"Shared Angebot Termin form missing: {needle}")
 if final_template.count('class="tt-document-form') != 1:
     raise RuntimeError("Authorization form must expose exactly one ToolTime document-form class")
+if "data-price-table" in final_template or "data-add-price-row" in final_template:
+    raise RuntimeError("Legacy Termin pricing table survived the Angebot integration")
 if "A+BAU ANGEBOT PRICING MODE CAP 2026-09-08" not in final_js:
     raise RuntimeError("Termin pricing-mode cap behavior missing after Angebot integration")
+for needle in ("_field_event_for(request, int(event_pk))", "Keine Preisberechtigung."):
+    if needle not in final_views:
+        raise RuntimeError(f"Event-scoped Angebot article search missing: {needle}")
+for needle in ('item_purchase_price', 'item_markup_percent', 'legacy_prices', 'pricing_contract'):
+    if needle not in final_service:
+        raise RuntimeError(f"Shared Angebot authorization parser missing: {needle}")
 
-print("Angebot/Freigabe bridge followup verified: shared editor remains canonical and Termin-only cap behavior is preserved.")
+print("Angebot/Freigabe bridge followup verified: one canonical Angebot editor, event-scoped article search, legacy POST fallback and Termin-only cap behavior are complete.")
