@@ -11,12 +11,14 @@ class ABauV3HistoryLifecycleCloseoutSourceTests(SimpleTestCase):
 
     def test_closeout_is_wired_before_phase2_source_copy(self):
         customer_compat = self.read("scripts/tooltime_customer_detail_regression_compat.py")
-        self.assertIn("ab_bau_v3_history_lifecycle_closeout.py", customer_compat)
+        runner = self.read("scripts/ab_bau_v3_history_lifecycle_closeout_runner.py")
+        self.assertIn("ab_bau_v3_history_lifecycle_closeout_runner.py", customer_compat)
         self.assertIn("tooltime_receipt_interaction_fix.py", customer_compat)
         self.assertLess(
             customer_compat.index("tooltime_receipt_interaction_fix.py"),
-            customer_compat.index("ab_bau_v3_history_lifecycle_closeout.py"),
+            customer_compat.index("ab_bau_v3_history_lifecycle_closeout_runner.py"),
         )
+        self.assertIn("ab_bau_v3_history_lifecycle_closeout.py", runner)
 
     def test_closeout_augments_current_v3_instead_of_restoring_stale_templates(self):
         closeout = self.read("scripts/ab_bau_v3_history_lifecycle_closeout.py")
