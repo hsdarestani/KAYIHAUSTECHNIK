@@ -3,7 +3,7 @@
 {% block content %}
 <div class="ab-v3-form-page" data-ab-v3-customer-form>
   <header class="ab-v3-form-page-head">
-    <div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer ist für neue Kunden vorbelegt und kann in den Details geprüft werden.</p></div>
+    <div><div class="ab-v3-kicker">Kundenstamm · {% if mode == 'create' %}Kunde anlegen{% else %}Datensatz{% endif %}</div><h1>{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer ist für neue Kunden vorbelegt und kann in den Details geprüft werden.</p></div>
     <a class="ab-v3-directory-secondary" href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">← {% if next_target == 'project' %}Projekt{% else %}Kunden{% endif %}</a>
   </header>
 
