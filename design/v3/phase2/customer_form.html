@@ -9,10 +9,14 @@
 
   <form method="post" class="ab-v3-form-card" data-customer-form novalidate>{% csrf_token %}
     {% if form.errors or location_form.errors %}
-      <div class="tt-form-error ab-v3-form-error-summary" role="alert" data-customer-error-summary>
+      <div class="tt-form-error ab-v3-form-error-summary" data-form-error-summary role="alert" aria-live="assertive">
         <strong>Kunde konnte nicht gespeichert werden.</strong>
-        <span>Bitte prüfe die markierten Felder und versuche es erneut.</span>
-        {{ form.non_field_errors }}{% if location_form %}{{ location_form.non_field_errors }}{% endif %}
+        <p>Bitte prüfe die markierten Felder. Es wurde noch kein Kunde angelegt.</p>
+        <div class="nx-form-error-list">
+          {% for field in form %}{% for error in field.errors %}<div><strong>{{ field.label }}:</strong> {{ error }}</div>{% endfor %}{% endfor %}
+          {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          {% if location_form %}{% for field in location_form %}{% for error in field.errors %}<div><strong>Einsatzort · {{ field.label }}:</strong> {{ error }}</div>{% endfor %}{% endfor %}{% for error in location_form.non_field_errors %}<div><strong>Einsatzort:</strong> {{ error }}</div>{% endfor %}{% endif %}
+        </div>
       </div>
     {% endif %}
 
@@ -42,12 +46,16 @@
     </details>
 
     {% if location_form %}
-      <details class="ab-v3-customer-progressive" data-customer-site-details {% if location_form.errors %}open{% endif %}>
+      <details class="ab-v3-customer-progressive" data-customer-site-details {% if location_requested or location_form.errors %}open{% endif %}>
         <summary><span class="is-closed">Einsatzort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
         <div class="ab-v3-customer-progressive-body">
           <div class="ab-v3-kicker">Optional · Einsatzort</div>
           <p class="ab-v3-form-help">Nur ausfüllen, wenn der Einsatzort von der Kunden- bzw. Rechnungsadresse abweicht.</p>
-          <div class="ab-v3-form-grid">{% for field in location_form %}<label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>{% endfor %}</div>
+          <div class="ab-v3-form-grid">
+            {% for field in location_form %}
+              <label><span>{% if field.name == 'name' %}Bezeichnung{% elif field.name == 'street' %}Straße{% elif field.name == 'postal_code' %}PLZ{% elif field.name == 'city' %}Ort{% elif field.name == 'floor' %}Etage{% elif field.name == 'access_notes' %}Hinweise zum Zugang{% else %}{{ field.label }}{% endif %}</span>{{ field }}{{ field.errors }}</label>
+            {% endfor %}
+          </div>
         </div>
       </details>
     {% endif %}
