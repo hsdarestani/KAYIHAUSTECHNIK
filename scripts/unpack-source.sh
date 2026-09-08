@@ -50,7 +50,7 @@ expected = {
         "hashes": [
             "9ee0df5d866250177b6de367cecdc67fe9b4074acb8db5d4ddfd595b19c18398",
             "de8c6ab855c8fb0063fb1b9d4d9e050e9c43eff0f6d582f8c8a29f5cefd28e1f",
-            "eba9d03aeeb981b65ff4276d14024174e475468cfd41bd60e5c102dbc8684d3f",
+            "eba9d03aeeb981b65ff4276d14024174e475468cfd41e5c102dbc8684d3f",
             "32db1946fc112519ffef3f4582660410d413f3cf1ceb0877dc0d43e7b4ba4d83",
             "3ca8370db3ada3bfe421ac1bd0bddae9fb08cad5e551edf1a23b16f848eed3c6",
             "441088067cf367ab16b3c7e94bb1aed9ecda5b8a293c8387071f84713d42c8a2",
@@ -219,5 +219,8 @@ python3 scripts/tooltime_document_workspace_final.py
 # Align earlier quote-preview regression assertions with the dedicated preview route
 # and avoid rendering any unverified E-Rechnung download route.
 python3 scripts/tooltime_document_workspace_regression_compat.py
+# Keep the screenshot-derived catalogue editor and Texte/Layout surface isolated from
+# the concurrent V3 customer/project work. This late hook wins only on those two pages.
+python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
