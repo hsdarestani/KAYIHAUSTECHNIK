@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -154,11 +155,21 @@ def guard() -> None:
         raise RuntimeError("Existing quote editor runtime fix is missing before singleton layer")
 
 
+def install_global_table_row_navigation() -> None:
+    script = ROOT / "scripts/ab_bau_global_table_row_navigation.py"
+    if not script.exists():
+        raise RuntimeError("Final global table-row navigation installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
 def main() -> None:
     install_runtime_asset()
     patch_document_template()
     install_test()
     guard()
+    # This script is the last source-assembly layer. Keep cross-table row navigation
+    # here so later ToolTime/V3 overlays cannot remove its global cache-busted assets.
+    install_global_table_row_navigation()
     print(f"{MARKER}: Vorlagen uses one canonical modal and both finance/singleton runtimes are cache-busted.")
 
 
