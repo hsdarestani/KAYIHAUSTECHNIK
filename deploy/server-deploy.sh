@@ -50,7 +50,7 @@ cd /opt/kayi
 git fetch origin main
 git reset --hard origin/main
 git clean -fdx -e .env
-bash scripts/unpack-source.sh
+bash scripts/verify-canonical-source.sh
 
 umask 077
 if [ ! -f .env ]; then

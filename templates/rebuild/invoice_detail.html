@@ -1,0 +1,43 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}Rechnung {{ invoice.number }} · A+Bau{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/tooltime-document-workspace.css' %}?v=20260908-1">
+<div class="ttdw-page" data-tooltime-invoice-detail>
+  <header class="ttdw-head">
+    <div>
+      <a class="ttdw-back" href="{% url 'next-invoices' %}">‹ Rechnungen</a>
+      <div class="ttdw-title-line"><div><span class="ttdw-eyebrow">Rechnung</span><h1>{{ invoice.number|default:compliance.final_number }}</h1></div><span class="ttdw-state ttdw-state-{{ status_key }}">{{ status_label }}</span></div>
+      <p>{{ customer_name }}{% if project %} · {{ project_label }}{% endif %}</p>
+    </div>
+    <div class="ttdw-head-actions"><a class="nx-btn" href="{% url 'invoice-compliance-pdf' invoice.pk %}">Original-PDF herunterladen</a></div>
+  </header>
+
+  <div class="ttdw-layout">
+    <main class="ttdw-document-column">
+      <section class="ttdw-paper-card">
+        <div class="ttdw-paper-head"><div><span class="ttdw-eyebrow">Dokument</span><h2>Finale Rechnung</h2></div><a class="ttdw-link" href="{% url 'next-invoice-preview' invoice.pk %}" target="_blank" rel="noopener">In neuem Tab öffnen ↗</a></div>
+        <div class="ttdw-preview"><iframe title="PDF-Vorschau Rechnung {{ invoice.number }}" src="{% url 'next-invoice-preview' invoice.pk %}#toolbar=0&navpanes=0" loading="eager"></iframe><div class="ttdw-preview-fallback">Falls die Vorschau im Browser deaktiviert ist: <a href="{% url 'invoice-compliance-pdf' invoice.pk %}">Original-PDF herunterladen</a></div></div>
+      </section>
+    </main>
+
+    <aside class="ttdw-side">
+      <section class="ttdw-card ttdw-amount-card"><span class="ttdw-eyebrow">Offener Betrag</span><h2>{{ open_amount|floatformat:2 }} €</h2><div class="ttdw-mini-total"><span>Gesamt</span><strong>{{ gross|floatformat:2 }} €</strong></div><div class="ttdw-mini-total"><span>Bezahlt</span><strong>{{ paid|floatformat:2 }} €</strong></div></section>
+
+      <section class="ttdw-card"><span class="ttdw-eyebrow">Kunde & Projekt</span><h3>{{ customer_name }}</h3>{% if customer_address %}<p>{{ customer_address }}</p>{% endif %}{% if customer.email %}<p><a class="ttdw-link" href="mailto:{{ customer.email }}">{{ customer.email }}</a></p>{% endif %}{% if customer.phone %}<p>{{ customer.phone }}</p>{% endif %}<hr>{% if project %}<strong>{{ project_label }}</strong>{% else %}<span class="ttdw-muted">Ohne Projekt</span>{% endif %}</section>
+
+      <section class="ttdw-card"><span class="ttdw-eyebrow">Rechnungsdetails</span><dl><div><dt>Status</dt><dd><span class="ttdw-state ttdw-state-{{ status_key }}">{{ status_label }}</span></dd></div><div><dt>Rechnungsdatum</dt><dd>{{ invoice.issue_date|date:'d.m.Y' }}</dd></div>{% if invoice.due_date %}<div><dt>Fällig am</dt><dd>{{ invoice.due_date|date:'d.m.Y' }}</dd></div>{% endif %}<div><dt>Netto</dt><dd>{{ net|floatformat:2 }} €</dd></div><div><dt>MwSt.</dt><dd>{{ tax|floatformat:2 }} €</dd></div><div><dt>Gesamt</dt><dd>{{ gross|floatformat:2 }} €</dd></div>{% if compliance.e_invoice_format %}<div><dt>E-Rechnung</dt><dd>{{ compliance.e_invoice_format }} · {{ compliance.get_e_invoice_status_display }}</dd></div>{% endif %}</dl></section>
+
+      {% if open_amount > 0 %}<section class="ttdw-card"><span class="ttdw-eyebrow">Zahlung</span><h3>Zahlung erfassen</h3><form class="ttdw-pay-form" method="post" action="{% url 'next-invoice-payment' invoice.pk %}">{% csrf_token %}<label>Betrag<input class="nx-control" type="number" min="0.01" step="0.01" max="{{ open_amount }}" name="amount" value="{{ open_amount }}" required></label><div class="ttdw-two"><label>Zahlungsdatum<input class="nx-control" type="date" name="paid_at" value="{{ today|date:'Y-m-d' }}"></label><label>Methode<select class="nx-control" name="method"><option>Überweisung</option><option>Bar</option><option>Karte</option><option>Lastschrift</option><option>Sonstiges</option></select></label></div><label>Referenz<input class="nx-control" name="reference" maxlength="240" placeholder="Optional"></label><button class="nx-btn nx-btn-accent" type="submit">Zahlung speichern</button></form></section>{% endif %}
+
+      <section class="ttdw-card"><span class="ttdw-eyebrow">Kommunikation</span><h3>Rechnung senden</h3><form class="ttdw-mail-form" method="post" action="{% url 'next-invoice-send-email' invoice.pk %}">{% csrf_token %}<label>Empfänger<input class="nx-control" type="email" name="recipient_email" value="{{ recipient_email }}" required></label><label>Betreff<input class="nx-control" name="subject" value="Rechnung {{ invoice.number }} · {{ invoice.organization.name }}" required></label><label>Nachricht<textarea class="nx-control" name="message" rows="4">Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie die Rechnung {{ invoice.number }} als PDF.
+
+Mit freundlichen Grüßen
+{{ invoice.organization.name }}</textarea></label><button class="nx-btn" type="submit">PDF per E-Mail senden</button></form>{% if deliveries %}<div class="ttdw-history"><strong>Versandverlauf</strong>{% for delivery in deliveries %}<div><span>{{ delivery.recipient_email }}</span><small>{{ delivery.created_at|date:'d.m.Y H:i' }} · {{ delivery.get_status_display }}</small></div>{% endfor %}</div>{% endif %}</section>
+
+      <section class="ttdw-card ttdw-meta"><span class="ttdw-eyebrow">Dokumenthistorie</span><dl>{% if invoice.created_at %}<div><dt>Erstellt am</dt><dd>{{ invoice.created_at|date:'d.m.Y H:i' }}</dd></div>{% endif %}{% if invoice.created_by %}<div><dt>Erstellt von</dt><dd>{{ invoice.created_by.get_full_name|default:invoice.created_by.username }}</dd></div>{% endif %}{% if invoice.updated_at %}<div><dt>Letzte Änderung</dt><dd>{{ invoice.updated_at|date:'d.m.Y H:i' }}</dd></div>{% endif %}{% if compliance.finalized_at %}<div><dt>Finalisiert</dt><dd>{{ compliance.finalized_at|date:'d.m.Y H:i' }}</dd></div>{% endif %}</dl></section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

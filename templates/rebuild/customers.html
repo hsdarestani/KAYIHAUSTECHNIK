@@ -1,0 +1,111 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Kunden · A+Bau{% endblock %}
+{% block content %}
+<div class="tt-customers-page ab-v3-directory" data-ab-v3-customers data-customer-modal-open="{% if customer_modal_open %}1{% else %}0{% endif %}">
+  <section class="ab-v3-directory-hero">
+    <div>
+      <div class="ab-v3-kicker">Beziehungen · Kundenstamm</div>
+      <h1>Kunden.</h1>
+      <p>Alle Auftraggeber, Standorte und laufenden Beziehungen in einer operativen Übersicht. Öffne einen Kunden und arbeite ohne Zwischenwege direkt in Projekten, Dokumenten und Finanzen weiter.</p>
+    </div>
+    <div class="ab-v3-directory-actions">
+      <a class="ab-v3-directory-secondary" href="{% url 'next-suppliers' %}">Lieferanten</a>
+      <button class="ab-v3-directory-primary" type="button" data-customer-modal-show>＋ Neuer Kunde</button>
+    </div>
+  </section>
+
+  <section class="ab-v3-directory-strip" aria-label="Kundenkennzahlen">
+    <div class="ab-v3-directory-stat"><small>Kundenstamm</small><strong>{{ total_count }}</strong><span>aktive Datensätze</span></div>
+    <div class="ab-v3-directory-stat"><small>Ansicht</small><strong>{{ customers|length }}</strong><span>Einträge auf dieser Seite</span></div>
+    <div class="ab-v3-directory-stat"><small>Sortierung</small><strong>{% if sort_type == 'PROJECTS' %}Projekte{% elif sort_type == 'LAST_CHANGE' %}Aktivität{% else %}Name{% endif %}</strong><span>{% if sort_order == 'DESCENDING' %}absteigend{% else %}aufsteigend{% endif %}</span></div>
+  </section>
+
+  <div class="ab-v3-directory-toolbar">
+    <form method="get" class="tt-customer-search ab-v3-directory-search" role="search">
+      <input type="hidden" name="sortType" value="{{ sort_type }}"><input type="hidden" name="sortOrder" value="{{ sort_order }}">
+      <span aria-hidden="true">⌕</span><input name="keyword" value="{{ keyword }}" placeholder="Kunden, Nummer, Ort oder Kontakt suchen" autocomplete="off" aria-label="Kunden suchen">
+    </form>
+    <div class="ab-v3-directory-filters">
+      <a class="ab-v3-page-button" href="?keyword={{ keyword|urlencode }}&sortType=NAME&sortOrder={{ name_sort_next }}&offset=0">Name {% if sort_type == 'NAME' %}{% if sort_order == 'ASCENDING' %}↑{% else %}↓{% endif %}{% endif %}</a>
+      <a class="ab-v3-page-button" href="?keyword={{ keyword|urlencode }}&sortType=PROJECTS&sortOrder={{ projects_sort_next }}&offset=0">Projekte {% if sort_type == 'PROJECTS' %}{% if sort_order == 'ASCENDING' %}↑{% else %}↓{% endif %}{% endif %}</a>
+      <a class="ab-v3-page-button" href="?keyword={{ keyword|urlencode }}&sortType=LAST_CHANGE&sortOrder={{ last_change_sort_next }}&offset=0">Aktivität {% if sort_type == 'LAST_CHANGE' %}{% if sort_order == 'ASCENDING' %}↑{% else %}↓{% endif %}{% endif %}</a>
+    </div>
+  </div>
+
+  <section class="tt-customer-table-card ab-v3-ledger">
+    <header class="ab-v3-ledger-head"><div><h2>Kundenregister</h2><span>Adress- und Projektkontext bleiben gemeinsam sichtbar.</span></div><span>{{ total_count }} Einträge</span></header>
+    <div class="tt-customer-table-wrap ab-v3-ledger-scroll">
+      <table class="tt-customer-table">
+        <thead><tr><th>Name</th><th>Adresse</th><th>Projekte</th><th>Zuletzt geändert</th><th></th></tr></thead>
+        <tbody>
+        {% for customer in customers %}
+          <tr data-customer-row data-href="{% url 'next-customer-detail' customer.pk %}" tabindex="0">
+            <td><div class="tt-customer-name ab-v3-ledger-name"><span class="tt-customer-kind ab-v3-ledger-symbol">{% if customer.type == 'business' or customer.company %}▦{% else %}⌂{% endif %}</span><div><strong>{{ customer.display_name }}</strong><small>{{ customer.number|default:'ohne Kundennummer' }}</small></div></div></td>
+            <td><span>{{ customer.street|default:'–' }}</span><small>{% if customer.postal_code or customer.city %} · {{ customer.postal_code }} {{ customer.city }}{% endif %}</small></td>
+            <td><strong>{{ customer.projects_count }}</strong></td>
+            <td>{{ customer.updated_at|date:'d.m.Y' }}</td>
+            <td>
+              <details class="tt-row-menu ab-v3-row-menu" data-row-menu><summary aria-label="Aktionen">•••</summary><div><a href="{% url 'next-customer-detail' customer.pk %}">Kunde öffnen</a><a href="{% url 'next-project-create' %}?customer={{ customer.pk }}">Projekt anlegen</a></div></details>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5"><div class="nx-empty ab-v3-empty"><b>Keine Kunden gefunden.</b><br>Suche ändern oder einen neuen Kunden anlegen.</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="tt-customer-pagination ab-v3-pagination">
+      <span>{% if total_count %}{{ offset|add:'1' }}–{% if has_next %}{{ offset|add:page_size }}{% else %}{{ total_count }}{% endif %} von {{ total_count }}{% else %}0 Einträge{% endif %}</span>
+      <div>
+        {% if has_prev %}<a class="ab-v3-page-button" href="?keyword={{ keyword|urlencode }}&sortType={{ sort_type }}&sortOrder={{ sort_order }}&offset={{ prev_offset }}">← Zurück</a>{% else %}<span class="ab-v3-page-button is-disabled">← Zurück</span>{% endif %}
+        {% if has_next %}<a class="ab-v3-page-button" href="?keyword={{ keyword|urlencode }}&sortType={{ sort_type }}&sortOrder={{ sort_order }}&offset={{ next_offset }}">Weiter →</a>{% else %}<span class="ab-v3-page-button is-disabled">Weiter →</span>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="tt-customer-modal ab-v3-modal" data-customer-modal hidden>
+    <button type="button" class="tt-modal-backdrop" data-customer-modal-close aria-label="Schließen"></button>
+    <section class="tt-customer-dialog ab-v3-modal-card" role="dialog" aria-modal="true" aria-labelledby="tt-create-customer-title">
+      <form method="post" action="{% url 'next-customer-create' %}?modal=1" data-customer-modal-form>{% csrf_token %}<input type="hidden" name="modal" value="1">
+        <header><div><div class="ab-v3-kicker">Neuer Datensatz</div><h2 id="tt-create-customer-title">Kunde anlegen</h2></div><button type="button" data-customer-modal-close aria-label="Schließen">×</button></header>
+        <div class="tt-customer-dialog-body ab-v3-form-body">
+          {% if create_form.non_field_errors %}<div class="tt-form-error">{{ create_form.non_field_errors }}</div>{% endif %}
+          <div class="tt-type-radios">{{ create_form.type }}{{ create_form.type.errors }}</div>
+          <div class="tt-field tt-company-only" data-company-only><label for="{{ create_form.company.id_for_label }}">Firmenname</label>{{ create_form.company }}{{ create_form.company.errors }}</div>
+          <div class="tt-private-only tt-two-col" data-private-only>
+            <div class="tt-field"><label for="{{ create_form.first_name.id_for_label }}">Vorname</label>{{ create_form.first_name }}{{ create_form.first_name.errors }}</div>
+            <div class="tt-field"><label for="{{ create_form.last_name.id_for_label }}">Nachname</label>{{ create_form.last_name }}{{ create_form.last_name.errors }}</div>
+          </div>
+
+          <details class="tt-customer-details" open data-customer-details><summary><span data-details-label>Details ausblenden</span></summary><div class="tt-customer-details-body">
+            <div class="tt-field"><label for="{{ create_form.notes.id_for_label }}">Beschreibung</label>{{ create_form.notes }}{{ create_form.notes.errors }}</div>
+            <div class="tt-two-col">
+              <div class="tt-field"><label for="{{ create_form.customer_number.id_for_label }}">Kundennummer</label>{{ create_form.customer_number }}{{ create_form.customer_number.errors }}</div>
+              <div class="tt-field"><label for="{{ create_form.debtor_number.id_for_label }}">Debitorennummer</label>{{ create_form.debtor_number }}{{ create_form.debtor_number.errors }}</div>
+              <div class="tt-field"><label for="{{ create_form.routing_id.id_for_label }}">Routing-ID</label>{{ create_form.routing_id }}{{ create_form.routing_id.errors }}</div>
+              <div class="tt-field"><label for="{{ create_form.supplier_id.id_for_label }}">Lieferanten-ID</label>{{ create_form.supplier_id }}{{ create_form.supplier_id.errors }}</div>
+              <div class="tt-field"><label for="{{ create_form.vat_id.id_for_label }}">USt-IdNr.</label>{{ create_form.vat_id }}{{ create_form.vat_id.errors }}</div>
+            </div>
+          </div></details>
+
+          <h3>Rechnungsadresse</h3>
+          <div class="tt-field"><label for="{{ create_form.street.id_for_label }}">Hausnummer, Straße</label>{{ create_form.street }}{{ create_form.street.errors }}</div>
+          <div class="tt-two-col tt-address-grid"><div class="tt-field"><label for="{{ create_form.postal_code.id_for_label }}">PLZ</label>{{ create_form.postal_code }}{{ create_form.postal_code.errors }}</div><div class="tt-field"><label for="{{ create_form.city.id_for_label }}">Ort</label>{{ create_form.city }}{{ create_form.city.errors }}</div></div>
+          <div class="tt-field"><label for="{{ create_form.country.id_for_label }}">Land</label>{{ create_form.country }}{{ create_form.country.errors }}</div>
+
+          <h3>Kontakt</h3>
+          <div class="tt-two-col">
+            <div class="tt-field"><label for="{{ create_form.salutation.id_for_label }}">Anrede</label>{{ create_form.salutation }}{{ create_form.salutation.errors }}</div>
+            <div class="tt-field tt-company-contact"><label for="{{ create_form.first_name.id_for_label }}">Vorname</label>{{ create_form.first_name }}{{ create_form.first_name.errors }}</div>
+            <div class="tt-field tt-company-contact"><label for="{{ create_form.last_name.id_for_label }}">Nachname</label>{{ create_form.last_name }}{{ create_form.last_name.errors }}</div>
+            <div class="tt-field"><label for="{{ create_form.email.id_for_label }}">E-Mail</label>{{ create_form.email }}{{ create_form.email.errors }}</div>
+            <div class="tt-field"><label for="{{ create_form.phone.id_for_label }}">Telefon</label>{{ create_form.phone }}{{ create_form.phone.errors }}</div>
+            <div class="tt-field"><label for="{{ create_form.mobile.id_for_label }}">Mobil</label>{{ create_form.mobile }}{{ create_form.mobile.errors }}</div>
+          </div>
+        </div>
+        <footer><button class="nx-btn" type="button" data-customer-modal-close>Abbrechen</button><button class="nx-btn nx-btn-primary" type="submit">Kunde anlegen</button></footer>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

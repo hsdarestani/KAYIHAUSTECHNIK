@@ -1,0 +1,25 @@
+name: Legacy source reproducibility
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 0'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Rebuild legacy source explicitly
+        run: bash scripts/rebuild-legacy-source.sh
+      - name: Compare regenerated output with canonical source
+        run: |
+          git diff --exit-code -- \
+            config erp templates static tests manage.py requirements.txt \
+            Dockerfile .env.example .dockerignore .gitignore SECURITY.md compose.yaml \
+            deploy/Caddyfile deploy/entrypoint.sh docs/ARCHITECTURE.md docs/store-compliance.md \
+            mobile native scripts/next_test_contract.py

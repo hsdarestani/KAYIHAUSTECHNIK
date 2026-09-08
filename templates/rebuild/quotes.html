@@ -1,0 +1,44 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}Angebote · A+Bau{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/tooltime-parity-finance.css' %}?v=20260821-quotes-exact">
+<script src="{% static 'js/tooltime-quotes-exact.js' %}?v=20260821-quotes-exact" defer></script>
+<div class="ttq-page" data-tooltime-quotes-exact>
+  <div class="ttq-topbar">
+    <div class="ttq-heading"><h1>Angebote</h1><span class="ttq-help" title="Angebote verwalten">?</span></div>
+    <div class="ttq-top-actions">
+      <form class="ttq-search" method="get" role="search">
+        <input type="hidden" name="status" value="{{ status_filter }}"><input type="hidden" name="period" value="{{ period_filter }}"><input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="amount" value="{{ amount }}">
+        <span aria-hidden="true">⌕</span><input type="search" name="q" value="{{ q }}" placeholder="Suchen" aria-label="Angebote suchen"><button type="submit" class="sr-only">Suchen</button>
+      </form>
+      <details class="ttq-new-menu"><summary>Neues Angebot <span aria-hidden="true">▾</span></summary><div class="ttq-menu-card"><a href="{% url 'next-quote-create' %}"><strong>Leeres Angebot</strong><small>Direkt ein neues Angebot erstellen</small></a><a href="{% url 'next-projects' %}"><strong>Aus Projekt erstellen</strong><small>Projekt öffnen und Angebot anlegen</small></a></div></details>
+    </div>
+  </div>
+
+  <form class="ttq-filters tt-list-toolbar" method="get" data-auto-filter>
+    <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="amount" value="{{ amount }}">
+    <label class="ttq-select"><span class="sr-only">Status</span><select name="status" aria-label="Status"><option value="all" {% if status_filter == 'all' %}selected{% endif %}>Alle Angebote</option><option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Entwurf</option><option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Ausstehend</option><option value="accepted" {% if status_filter == 'accepted' %}selected{% endif %}>Angenommen</option><option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Abgelehnt</option></select></label>
+    <label class="ttq-select"><span class="sr-only">Zeitraum</span><select name="period" aria-label="Zeitraum"><option value="any" {% if period_filter == 'any' %}selected{% endif %}>Beliebiger Zeitraum</option><option value="7d" {% if period_filter == '7d' %}selected{% endif %}>Letzte 7 Tage</option><option value="30d" {% if period_filter == '30d' %}selected{% endif %}>Letzte 30 Tage</option><option value="90d" {% if period_filter == '90d' %}selected{% endif %}>Letzte 90 Tage</option><option value="year" {% if period_filter == 'year' %}selected{% endif %}>Dieses Jahr</option></select></label>
+    <label class="tt-mobile-sort"><span>Sortieren</span><select name="sort" aria-label="Sortieren"><option value="last_change_desc" {% if sort == 'last_change_desc' %}selected{% endif %}>Letzte Änderung ↓</option><option value="last_change_asc" {% if sort == 'last_change_asc' %}selected{% endif %}>Letzte Änderung ↑</option><option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Angebotsdatum ↓</option><option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Angebotsdatum ↑</option><option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>Betrag ↓</option><option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>Betrag ↑</option></select></label>
+    <button class="sr-only" type="submit">Anwenden</button>
+  </form>
+
+  <div class="ttq-table-wrap">
+    <table class="ttq-table">
+      <thead><tr><th>Angebotsdatum</th><th>Nr.</th><th>Status</th><th>Angebotstitel</th><th>Kunde</th><th class="ttq-money">Betrag</th><th><a class="ttq-sort-link" data-last-change-sort href="?{{ last_change_query }}&offset=0">Letzte Änderung <span aria-hidden="true">{% if sort == 'last_change_asc' %}↑{% else %}↓{% endif %}</span></a></th><th aria-label="Aktionen"></th></tr></thead>
+      <tbody>{% for row in rows %}<tr data-quote-row>
+        <td data-label="Angebotsdatum"><strong>{{ row.quote.issue_date|date:'d.m.Y' }}</strong></td>
+        <td data-label="Nr."><strong>{% if row.quote.number %}{{ row.quote.number }}{% else %}–{% endif %}</strong></td>
+        <td data-label="Status"><span class="ttq-status ttq-status-{{ row.status_key }}">{{ row.status }}</span></td>
+        <td data-label="Angebotstitel"><a class="ttq-title" href="{% url 'next-quote-edit' row.quote.pk %}">{{ row.quote_title }}</a></td>
+        <td data-label="Kunde"><span class="ttq-customer-icon" aria-hidden="true">⌂</span>{% if row.customer_label %}{{ row.customer_label }}{% else %}—{% endif %}</td>
+        <td data-label="Betrag" class="ttq-money"><strong>{{ row.total|floatformat:2 }} €</strong></td>
+        <td data-label="Letzte Änderung" class="ttq-last-change">{{ row.last_change_label }}</td>
+        <td class="ttq-actions-cell"><details class="ttq-row-menu"><summary aria-label="Aktionen für Angebot">•••</summary><div class="ttq-menu-card ttq-row-menu-card"><a href="{% url 'next-quote-edit' row.quote.pk %}">Öffnen</a>{% if row.finalized %}{% if row.status_key != 'accepted' %}<form method="post" action="{% url 'next-quote-status' row.quote.pk %}">{% csrf_token %}<button name="action" value="accepted">Annehmen</button></form>{% endif %}{% if row.status_key != 'accepted' and row.status_key != 'rejected' %}<form method="post" action="{% url 'next-quote-status' row.quote.pk %}">{% csrf_token %}<button name="action" value="rejected">Ablehnen</button></form>{% endif %}{% if row.status_key == 'rejected' %}<form method="post" action="{% url 'next-quote-status' row.quote.pk %}">{% csrf_token %}<button name="action" value="pending">Zurücksetzen</button></form>{% endif %}<form method="post" action="{% url 'next-quote-to-invoice' row.quote.pk %}">{% csrf_token %}<button type="submit">In Rechnung</button></form>{% endif %}</div></details></td>
+      </tr>{% empty %}<tr><td colspan="8"><div class="ttq-empty"><strong>Keine Angebote gefunden.</strong><span>Filter anpassen oder ein neues Angebot erstellen.</span></div></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+
+  <div class="ttq-pagination" aria-label="Seitennavigation"><span>{% if total_count %}{{ first_item }}–{{ last_item }} von {{ total_count }}{% else %}0 von 0{% endif %}</span><label>Pro Seite<select name="amount" data-page-size><option value="20" {% if amount == 20 %}selected{% endif %}>20</option><option value="50" {% if amount == 50 %}selected{% endif %}>50</option><option value="100" {% if amount == 100 %}selected{% endif %}>100</option></select></label><div>{% if offset > 0 %}<a aria-label="Vorherige Seite" href="?{{ query_tail }}&offset={{ prev_offset }}">‹</a>{% else %}<span aria-disabled="true">‹</span>{% endif %}{% if next_offset != None %}<a aria-label="Nächste Seite" href="?{{ query_tail }}&offset={{ next_offset }}">›</a>{% else %}<span aria-disabled="true">›</span>{% endif %}</div></div>
+</div>
+{% endblock %}

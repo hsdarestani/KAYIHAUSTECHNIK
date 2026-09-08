@@ -3,8 +3,8 @@ set -eu
 
 # Production still uses the established technical paths/domain (/opt/kayi,
 # kayi.smarbiz.sbs), but the tenant visible to the application is now A+Bau.
-# Patch a disposable copy of the proven deployment script so its internal
-# git reset cannot undo the rebrand compatibility changes while it is running.
+# Patch a disposable copy of the proven deployment script for tenant/runtime
+# compatibility only. Application source itself is now canonical and tracked.
 TMP_SCRIPT="$(mktemp /tmp/ab-bau-server-deploy.XXXXXX.sh)"
 cleanup() {
   rm -f "$TMP_SCRIPT"
@@ -42,34 +42,8 @@ if forced_anchor in text:
 elif "'ORGANIZATION_NAME': 'A+Bau'" not in text:
     raise SystemExit("Could not install A+Bau ORGANIZATION_NAME into deployment environment")
 
-# Captured ToolTime account values are deliberately not rendered as constants.
-# Build the importer and the final screenshot-review hardening into the assembled
-# source before Docker builds the production image.
-assembly_anchor = "bash scripts/unpack-source.sh\n"
-hardening_command = "python3 scripts/final_production_hardening_20260821.py\n"
-installer_command = "python3 scripts/tooltime_user_settings_import.py\n"
-mobile_menu_fix_command = "python3 scripts/mobile_invoice_menu_fix.py\n"
-if hardening_command not in text:
-    if assembly_anchor not in text:
-        raise SystemExit("Could not find source assembly anchor for final production hardening")
-    text = text.replace(assembly_anchor, assembly_anchor + hardening_command, 1)
-if installer_command not in text:
-    hardening_anchor = assembly_anchor + hardening_command
-    if hardening_anchor in text:
-        text = text.replace(hardening_anchor, hardening_anchor + installer_command, 1)
-    elif assembly_anchor in text:
-        text = text.replace(assembly_anchor, assembly_anchor + installer_command, 1)
-    else:
-        raise SystemExit("Could not find source assembly anchor for ToolTime settings importer")
-if mobile_menu_fix_command not in text:
-    installer_anchor = hardening_command + installer_command
-    if installer_anchor in text:
-        text = text.replace(installer_anchor, hardening_command + installer_command + mobile_menu_fix_command, 1)
-    elif installer_command in text:
-        text = text.replace(installer_command, installer_command + mobile_menu_fix_command, 1)
-    else:
-        raise SystemExit("Could not find production assembly anchor for mobile invoice menu fix")
-
+# Canonical source is already committed and verified before Docker builds.
+# Historical source installers are deliberately not injected into routine deploys.
 organization_anchor = (
     "dc run --rm web python manage.py shell -c \"from erp.models import Organization; "
     "Organization.objects.get_or_create(name='A+Bau', defaults={'settings': {}})\"\n"
@@ -94,9 +68,7 @@ required = (
     "name='A+Bau'",
     "'ORGANIZATION_NAME': 'A+Bau'",
     "Organization.objects.filter(name='A+Bau').first()",
-    hardening_command.strip(),
-    installer_command.strip(),
-    mobile_menu_fix_command.strip(),
+    "bash scripts/verify-canonical-source.sh",
     settings_command.strip(),
     mobile_smoke.strip(),
 )

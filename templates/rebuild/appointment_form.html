@@ -1,0 +1,326 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{% if mode == 'edit' %}Termin bearbeiten{% else %}Neuer Termin{% endif %} · A+Bau{% endblock %}
+{% block content %}
+<div class="tt-appt-create" data-appointment-create data-appointment-mode="{{ mode|default:'create' }}"
+     data-initial-customer="{{ selected_customer_id|default:'' }}"
+     data-initial-project="{{ selected_project_id|default:'' }}">
+  <form method="post" class="tt-appt-form" data-appointment-form novalidate>{% csrf_token %}
+    <div class="tt-appt-sticky-head">
+      <div class="tt-appt-title-row">
+        <a class="tt-appt-back" href="{% if mode == 'edit' %}{% url 'next-appointment-detail' event.pk %}{% else %}{% url 'next-appointments' %}{% endif %}" aria-label="Zurück">←</a>
+        <div><span>{% if mode == 'edit' %}Terminplanung{% else %}Termin erstellen{% endif %}</span><h1>{% if mode == 'edit' %}Termin bearbeiten{% else %}Neuer Termin{% endif %}</h1></div>
+      </div>
+      <div class="tt-appt-head-actions">
+        <a class="nx-btn tt-appt-cancel" href="{% if mode == 'edit' %}{% url 'next-appointment-detail' event.pk %}{% else %}{% url 'next-appointments' %}{% endif %}">Abbrechen</a>
+        <button class="nx-btn nx-btn-primary" type="submit">Speichern</button>
+      </div>
+    </div>
+
+    {% if form.errors %}<div class="tt-appt-alert" role="alert"><strong>Termin konnte nicht gespeichert werden.</strong><span> Bitte die markierten Felder prüfen.</span></div>{% endif %}
+    {% if form.non_field_errors %}<div class="tt-appt-alert">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="tt-appt-layout">
+      <main class="tt-appt-main">
+        <section class="tt-appt-card">
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">01</span><h2>Kunde oder Projekt auswählen</h2></div><small>Projekt ist optional.</small></div>
+          <div class="tt-appt-grid tt-appt-grid-2">
+            <div class="tt-appt-field">
+              <label for="appointment-customer-filter">Kunde</label>
+              <input class="next-control" type="search" data-customer-search placeholder="Kunde suchen …" autocomplete="off">
+              <select class="next-control" id="appointment-customer-filter" name="customer_filter" data-appointment-customer>
+                <option value="">Kein Kunde ausgewählt</option>
+                {% for customer in form.appointment_customers %}
+                <option value="{{ customer.pk }}" data-address="{{ customer.street|default:''|escape }}{% if customer.postal_code or customer.city %}, {{ customer.postal_code|default:''|escape }} {{ customer.city|default:''|escape }}{% endif %}">{{ customer.display_name }}</option>
+                {% endfor %}
+              </select>
+              <small>Wähle zuerst den Kunden, um passende Projekte einzugrenzen.</small>
+            </div>
+            <div class="tt-appt-field">
+              <label for="appointment-project">Projekt <span>optional</span></label>
+              <input class="next-control" type="search" data-project-search placeholder="Projekt suchen …" autocomplete="off">
+              <select class="next-control" id="appointment-project" name="project" data-appointment-project-select>
+                <option value="">Kein Projekt ausgewählt</option>
+                {% for project in form.appointment_projects %}
+                <option value="{{ project.pk }}" data-customer-id="{{ project.customer_id|default:'' }}" data-address="{% if project.object_location_id %}{{ project.object_location.street|default:''|escape }}, {{ project.object_location.postal_code|default:''|escape }} {{ project.object_location.city|default:''|escape }}{% elif project.customer_id %}{{ project.customer.street|default:''|escape }}, {{ project.customer.postal_code|default:''|escape }} {{ project.customer.city|default:''|escape }}{% endif %}">{{ project.number }} · {{ project.title }}{% if project.customer_id %} · {{ project.customer.display_name }}{% endif %}</option>
+                {% endfor %}
+              </select>
+              {{ form.project.errors }}
+              <small>Ohne Projekt bleibt der Termin allgemein; der Kunde dient dann der Planung und Adressvorschau.</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="tt-appt-card">
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">02</span><h2>Termindetails</h2></div></div>
+          <div class="tt-appt-grid tt-appt-grid-2">
+            <div class="tt-appt-field tt-appt-span-2"><label for="{{ form.title.id_for_label }}">Terminname</label>{{ form.title }}{{ form.title.errors }}</div>
+            <div class="tt-appt-field"><label for="{{ form.type.id_for_label }}">Terminart</label>{{ form.type }}{{ form.type.errors }}</div>
+            <div class="tt-appt-field">
+              <label for="appointment-repeat">Wiederholung</label>
+              <select class="next-control" id="appointment-repeat" name="repeat_rule" data-repeat-rule {% if mode == 'edit' %}disabled{% endif %}>
+                <option value="none" {% if selected_repeat_rule == 'none' %}selected{% endif %}>Einmalig</option>
+                <option value="daily" {% if selected_repeat_rule == 'daily' %}selected{% endif %}>Täglich</option>
+                <option value="weekdays" {% if selected_repeat_rule == 'weekdays' %}selected{% endif %}>Werktags</option>
+                <option value="weekly" {% if selected_repeat_rule == 'weekly' %}selected{% endif %}>Wöchentlich</option>
+                <option value="biweekly" {% if selected_repeat_rule == 'biweekly' %}selected{% endif %}>Alle zwei Wochen</option>
+                <option value="monthly" {% if selected_repeat_rule == 'monthly' %}selected{% endif %}>Monatlich</option>
+                <option value="half_yearly" {% if selected_repeat_rule == 'half_yearly' %}selected{% endif %}>Halbjährlich</option>
+                <option value="yearly" {% if selected_repeat_rule == 'yearly' %}selected{% endif %}>Jährlich</option>
+                <option value="custom" {% if selected_repeat_rule == 'custom' %}selected{% endif %}>Benutzerdefiniert …</option>
+              </select>
+              <div class="tt-appt-repeat-count" data-repeat-count-row hidden>
+                <label for="appointment-repeat-count">Anzahl Termine</label>
+                <input class="next-control" id="appointment-repeat-count" name="repeat_count" type="number" min="2" max="52" value="{{ repeat_count|default:4 }}" data-repeat-count>
+              </div>
+              <div class="tt-appt-custom-repeat" data-custom-repeat hidden>
+                <div><label for="appointment-repeat-interval">Rhythmus</label><div class="tt-appt-custom-rhythm"><span>Alle</span><input class="next-control" id="appointment-repeat-interval" name="repeat_interval" type="number" min="1" max="52" value="{{ repeat_interval|default:1 }}" data-repeat-interval><select class="next-control" name="repeat_unit" data-repeat-unit><option value="day" {% if repeat_unit == 'day' %}selected{% endif %}>Tag(e)</option><option value="weekday" {% if repeat_unit == 'weekday' %}selected{% endif %}>Werktag(e)</option><option value="week" {% if repeat_unit == 'week' %}selected{% endif %}>Woche(n)</option><option value="month" {% if repeat_unit == 'month' %}selected{% endif %}>Monat(e)</option><option value="year" {% if repeat_unit == 'year' %}selected{% endif %}>Jahr(e)</option></select></div></div>
+                <div><label for="appointment-repeat-end-mode">Serie endet</label><select class="next-control" id="appointment-repeat-end-mode" name="repeat_end_mode" data-repeat-end-mode><option value="count">Nach Anzahl</option><option value="date">An einem Datum</option></select></div>
+                <div data-repeat-until-row hidden><label for="appointment-repeat-until">Enddatum</label><input class="next-control" id="appointment-repeat-until" name="repeat_until" type="date" value="{{ repeat_until|default:'' }}" data-repeat-until></div>
+              </div>
+              <small>{% if mode == 'edit' and event.recurrence_series %}Dieser Termin gehört zu einer Serie. Wähle unten, für welche Termine Deine Änderungen gelten sollen.{% elif mode == 'edit' %}Wiederholung wird nur beim Erstellen einer Terminserie festgelegt.{% else %}Bei einer Wiederholung werden eigenständige, dauerhaft gespeicherte Termine erzeugt. Maximal 52 Termine pro Serie.{% endif %}</small>
+              {% if mode == 'edit' and event.recurrence_series %}
+              <div class="tt-appt-series-scope" data-series-scope>
+                <label for="appointment-series-scope">Änderungen anwenden auf</label>
+                <select class="next-control" id="appointment-series-scope" name="series_scope">
+                  <option value="single">Nur diesen Termin</option>
+                  <option value="following">Diesen und alle folgenden Termine</option>
+                  <option value="all">Alle Termine der Serie</option>
+                </select>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="tt-appt-time-grid">
+            <div class="tt-appt-time-group"><strong>Von</strong><div><label>Datum<input class="next-control" type="date" data-start-date></label><label>Startzeit<input class="next-control" type="time" data-start-time step="300"></label></div></div>
+            <span class="tt-appt-time-arrow">→</span>
+            <div class="tt-appt-time-group"><strong>Bis</strong><div><label>Datum<input class="next-control" type="date" data-end-date></label><label>Endzeit<input class="next-control" type="time" data-end-time step="300"></label></div></div>
+          </div>
+          <div class="tt-appt-native-time" hidden>{{ form.starts_at }}{{ form.ends_at }}{{ form.starts_at.errors }}{{ form.ends_at.errors }}</div>
+
+          <label class="tt-appt-toggle" for="{{ form.all_day.id_for_label }}"><span><strong>Ganztägig</strong><small>Zeiten ausblenden, der gespeicherte Zeitraum bleibt erhalten.</small></span>{{ form.all_day }}<i></i></label>
+
+          <div class="tt-appt-field tt-appt-location-input"><label for="{{ form.location.id_for_label }}">Terminort <span>optional überschreiben</span></label>{{ form.location }}{{ form.location.errors }}</div>
+        </section>
+
+        <section class="tt-appt-card">
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">03</span><h2>Team & Beschreibung</h2></div></div>
+          <div class="tt-appt-field">
+            <label for="appointment-team-search">Mitarbeiter hinzufügen</label>
+            <input class="next-control" id="appointment-team-search" type="search" data-team-search placeholder="Mitarbeiter suchen …" autocomplete="off">
+            {{ form.attendees }}{{ form.attendees.errors }}
+            <small>Mehrere Mitarbeiter können dem Termin zugewiesen werden.</small>
+          </div>
+          <div class="tt-appt-field"><label for="{{ form.notes.id_for_label }}">Beschreibung <span>nur intern</span></label>{{ form.notes }}{{ form.notes.errors }}<small>Diese Notiz dient der internen Vorbereitung des Teams.</small></div>
+        </section>
+
+        <section class="tt-appt-card tt-appt-services-editor" data-service-editor aria-label="Nach dem Speichern">
+          <input type="hidden" name="service_editor_present" value="1">
+          {% if source_quote %}<input type="hidden" name="source_quote" value="{{ source_quote.pk }}">{% endif %}
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">04</span><h2>Leistungen</h2></div><button class="nx-btn" type="button" data-add-service-group>＋ Leistungsgruppe hinzufügen</button></div>
+          {% if source_quote %}<div class="tt-appt-source-note">Alle Positionen aus dem angenommenen Angebot wurden übernommen und können für diesen Termin angepasst werden.</div>{% endif %}
+          <div class="tt-appt-service-groups" data-service-groups>
+            {% for group in appointment_service_groups %}
+            <div class="tt-appt-service-group" data-service-group data-group-index="{{ forloop.counter0 }}">
+              <div class="tt-appt-service-group-head"><input class="next-control" name="service_group_title" value="{{ group.title }}" placeholder="Leistungsgruppe"><button class="nx-btn" type="button" data-add-service-row>＋ Position hinzufügen</button><button class="nx-btn tt-danger-link" type="button" data-remove-service-group>Entfernen</button></div>
+              <div class="tt-appt-service-rows" data-service-rows>
+                {% for item in group.items %}
+                <div class="tt-appt-service-row" data-service-row>
+                  <input type="hidden" name="service_group_index" value="{{ forloop.parentloop.counter0 }}">
+                  <select class="next-control" name="service_kind" aria-label="Art"><option value="labour" {% if item.kind == 'labour' %}selected{% endif %}>Arbeitszeit</option><option value="material" {% if item.kind == 'material' %}selected{% endif %}>Material</option><option value="mixed" {% if item.kind == 'mixed' %}selected{% endif %}>Mischposition</option><option value="other" {% if item.kind == 'other' %}selected{% endif %}>Sonstiges</option></select>
+                  <input class="next-control" name="service_quantity" type="number" step="0.001" value="{{ item.quantity }}" aria-label="Menge">
+                  <input class="next-control" name="service_unit" value="{{ item.unit }}" aria-label="Einheit">
+                  <input class="next-control tt-service-description" name="service_description" value="{{ item.description }}" placeholder="Bezeichnung" aria-label="Bezeichnung">
+                  <select class="next-control" name="service_catalog_id" data-service-catalog aria-label="Katalog"><option value="">Katalog auswählen …</option>{% for c in appointment_catalog %}<option value="{{ c.pk }}" data-kind="{% if c.kind == 'service' %}labour{% elif c.kind == 'material' %}material{% else %}other{% endif %}" data-unit="{{ c.unit }}" data-description="{{ c.name|escape }}" data-purchase="{{ c.purchase_price }}" data-sales="{{ c.sales_price }}" data-tax="{{ c.tax_rate }}" {% if item.catalog_item_id == c.pk %}selected{% endif %}>{{ c.code }} · {{ c.name }}</option>{% endfor %}</select>
+                  <input type="hidden" name="service_purchase_price" value="{{ item.purchase_price }}"><input type="hidden" name="service_unit_price" value="{{ item.unit_price }}"><input type="hidden" name="service_tax_rate" value="{{ item.tax_rate }}"><input type="hidden" name="service_mixed_json" value="{{ item.mixed_json|escape }}"><input type="hidden" name="service_source_quote_item_id" value="{{ item.source_quote_item_id|default:'' }}">
+                  <button class="nx-btn tt-danger-link" type="button" data-remove-service-row aria-label="Position entfernen">×</button>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% empty %}<div class="tt-appt-empty" data-service-empty><span>＋</span><strong>Noch keine Leistungen</strong><p>Leistungsgruppe hinzufügen und Positionen mit Art, Menge, Einheit und Bezeichnung erfassen.</p></div>{% endfor %}
+          </div>
+        </section>
+
+        <section class="tt-appt-card">
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">05</span><h2>Arbeitsbericht</h2></div></div>
+          <textarea class="next-control" name="work_report" rows="5" placeholder="Details, die vor Ort geprüft oder im Arbeitsschein erwähnt werden sollen">{% if request.method == 'POST' %}{{ request.POST.work_report }}{% else %}{{ event.work_report|default:'' }}{% endif %}</textarea>
+          <small>Die Vorgabe kann vor Ort ergänzt werden und fließt in die Dokumentation ein.</small>
+        </section>
+
+        <section class="tt-appt-card tt-appt-after-save">
+          <div class="tt-appt-section-head"><div><span class="tt-appt-step">06</span><h2>Bilder</h2></div><button class="nx-btn" type="button" disabled>Bilder hochladen</button></div>
+          <div class="tt-appt-empty tt-appt-images-empty"><span>▧</span><strong>Noch keine Bilder</strong><p>Nach dem Anlegen können Bilder revisionssicher dem Termin bzw. Projekt zugeordnet werden.</p></div>
+        </section>
+      </main>
+
+      <aside class="tt-appt-side">
+        <section class="tt-appt-address-card" data-address-card>
+          <div class="tt-appt-pin">⌖</div>
+          <div><span>Adresse</span><strong data-address-title>Adresse auswählen</strong><p data-address-text>Wähle links einen Kunden oder ein Projekt. Die Einsatzadresse erscheint hier automatisch.</p></div>
+        </section>
+        <section class="tt-appt-side-note"><strong>{% if mode == 'edit' %}Planung aktualisieren{% else %}Planung auf einer Seite{% endif %}</strong><p>{% if mode == 'edit' %}Zeit, Projektbezug, Team und interne Beschreibung können hier angepasst werden. Einsatzfreigabe, Arbeitsbericht und Bilder bleiben im Termin dokumentiert.{% else %}Kein Assistent: Kunde/Projekt, Zeit, Team und interne Beschreibung werden direkt erfasst.{% endif %}</p>{% if mode == 'edit' %}<a class="nx-btn" href="{% url 'next-appointment-detail' event.pk %}">Einsatzdokumentation öffnen →</a>{% endif %}</section>
+      </aside>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const root = document.querySelector('[data-appointment-create]');
+  const form = root?.querySelector('[data-appointment-form]');
+  if (!root || !form) return;
+
+  const customer = form.querySelector('[data-appointment-customer]');
+  const project = form.querySelector('[data-appointment-project-select]');
+  const customerSearch = form.querySelector('[data-customer-search]');
+  const projectSearch = form.querySelector('[data-project-search]');
+  const teamSearch = form.querySelector('[data-team-search]');
+  const team = form.querySelector('select[name="attendees"]');
+  const nativeStart = form.querySelector('input[name="starts_at"]');
+  const nativeEnd = form.querySelector('input[name="ends_at"]');
+  const startDate = form.querySelector('[data-start-date]');
+  const startTime = form.querySelector('[data-start-time]');
+  const endDate = form.querySelector('[data-end-date]');
+  const endTime = form.querySelector('[data-end-time]');
+  const allDay = form.querySelector('input[name="all_day"]');
+  const repeatRule = form.querySelector('[data-repeat-rule]');
+  const repeatCountRow = form.querySelector('[data-repeat-count-row]');
+  const repeatCount = form.querySelector('[data-repeat-count]');
+  const customRepeat = form.querySelector('[data-custom-repeat]');
+  const repeatEndMode = form.querySelector('[data-repeat-end-mode]');
+  const repeatUntilRow = form.querySelector('[data-repeat-until-row]');
+  const repeatUntil = form.querySelector('[data-repeat-until]');
+  const manualLocation = form.querySelector('input[name="location"]');
+  const addressTitle = form.querySelector('[data-address-title]');
+  const addressText = form.querySelector('[data-address-text]');
+
+  const norm = (value) => String(value || '').trim().toLowerCase();
+  const splitNative = (value) => {
+    const text = String(value || '');
+    if (!text.includes('T')) return ['', ''];
+    const [date, time = ''] = text.split('T');
+    return [date, time.slice(0, 5)];
+  };
+  const [sd, st] = splitNative(nativeStart?.value);
+  const [ed, et] = splitNative(nativeEnd?.value);
+  if (startDate) startDate.value = sd;
+  if (startTime) startTime.value = st;
+  if (endDate) endDate.value = ed;
+  if (endTime) endTime.value = et;
+
+  const syncNativeTime = () => {
+    if (nativeStart && startDate?.value && startTime?.value) nativeStart.value = `${startDate.value}T${startTime.value}`;
+    if (nativeEnd && endDate?.value && endTime?.value) nativeEnd.value = `${endDate.value}T${endTime.value}`;
+  };
+
+  const initialProject = String(root.dataset.initialProject || '');
+  if (project && initialProject && [...project.options].some((option) => option.value === initialProject)) project.value = initialProject;
+  let initialCustomer = String(root.dataset.initialCustomer || '');
+  if (!initialCustomer && project?.selectedOptions[0]?.dataset.customerId) initialCustomer = project.selectedOptions[0].dataset.customerId;
+  if (customer && initialCustomer && [...customer.options].some((option) => option.value === initialCustomer)) customer.value = initialCustomer;
+
+  const selectedAddress = () => {
+    const manual = String(manualLocation?.value || '').trim();
+    if (manual) return {title: 'Manueller Terminort', address: manual};
+    const projectOption = project?.selectedOptions[0];
+    if (project?.value && projectOption?.dataset.address) return {title: projectOption.textContent.trim(), address: projectOption.dataset.address};
+    const customerOption = customer?.selectedOptions[0];
+    if (customer?.value && customerOption?.dataset.address) return {title: customerOption.textContent.trim(), address: customerOption.dataset.address};
+    return {title: 'Adresse auswählen', address: 'Wähle links einen Kunden oder ein Projekt. Die Einsatzadresse erscheint hier automatisch.'};
+  };
+
+  const updateAddress = () => {
+    const data = selectedAddress();
+    if (addressTitle) addressTitle.textContent = data.title;
+    if (addressText) addressText.textContent = data.address || 'Keine Adresse hinterlegt.';
+  };
+
+  const filterProjects = () => {
+    if (!project) return;
+    const customerId = customer?.value || '';
+    const query = norm(projectSearch?.value);
+    [...project.options].forEach((option, index) => {
+      if (index === 0) return;
+      const customerMatch = !customerId || option.dataset.customerId === customerId;
+      const queryMatch = !query || norm(option.textContent).includes(query);
+      option.hidden = !(customerMatch && queryMatch);
+    });
+    const selected = project.selectedOptions[0];
+    if (project.value && selected?.hidden) project.value = '';
+    updateAddress();
+  };
+
+  const filterCustomers = () => {
+    const query = norm(customerSearch?.value);
+    [...(customer?.options || [])].forEach((option, index) => {
+      if (index === 0) return;
+      option.hidden = Boolean(query) && !norm(option.textContent).includes(query);
+    });
+  };
+
+  const filterTeam = () => {
+    if (!team) return;
+    const query = norm(teamSearch?.value);
+    [...team.options].forEach((option) => { option.hidden = Boolean(query) && !norm(option.textContent).includes(query); });
+  };
+
+  const updateRepeatControls = () => {
+    if (!repeatCountRow || !repeatRule) return;
+    const editable = root.dataset.appointmentMode !== 'edit';
+    const recurring = repeatRule.value !== 'none' && editable;
+    const custom = repeatRule.value === 'custom' && editable;
+    repeatCountRow.hidden = !recurring || (custom && repeatEndMode?.value === 'date');
+    if (repeatCount) repeatCount.disabled = !recurring || (custom && repeatEndMode?.value === 'date');
+    if (customRepeat) customRepeat.hidden = !custom;
+    if (repeatUntilRow) repeatUntilRow.hidden = !custom || repeatEndMode?.value !== 'date';
+    if (repeatUntil) repeatUntil.disabled = !custom || repeatEndMode?.value !== 'date';
+  };
+  repeatRule?.addEventListener('change', updateRepeatControls);
+  repeatEndMode?.addEventListener('change', updateRepeatControls);
+  customer?.addEventListener('change', () => { filterProjects(); updateAddress(); });
+  project?.addEventListener('change', () => {
+    const customerId = project.selectedOptions[0]?.dataset.customerId;
+    if (customerId && customer && [...customer.options].some((option) => option.value === customerId)) customer.value = customerId;
+    filterProjects();
+    updateAddress();
+  });
+  customerSearch?.addEventListener('input', filterCustomers);
+  projectSearch?.addEventListener('input', filterProjects);
+  teamSearch?.addEventListener('input', filterTeam);
+  manualLocation?.addEventListener('input', updateAddress);
+  [startDate, startTime, endDate, endTime].forEach((input) => input?.addEventListener('change', syncNativeTime));
+  allDay?.addEventListener('change', () => {
+    [startTime, endTime].forEach((input) => { if (input) input.disabled = allDay.checked; });
+  });
+  form.addEventListener('submit', syncNativeTime);
+
+  updateRepeatControls();
+  filterCustomers();
+  filterProjects();
+  filterTeam();
+  updateAddress();
+  if (allDay?.checked) [startTime, endTime].forEach((input) => { if (input) input.disabled = true; });
+})();
+
+</script>
+<script>
+(() => {
+  const root = document.querySelector('[data-service-editor]');
+  if (!root) return;
+  const groups = root.querySelector('[data-service-groups]');
+  const catalogOptions = `{% for c in appointment_catalog %}<option value="{{ c.pk }}" data-kind="{% if c.kind == 'service' %}labour{% elif c.kind == 'material' %}material{% else %}other{% endif %}" data-unit="{{ c.unit|escapejs }}" data-description="{{ c.name|escapejs }}" data-purchase="{{ c.purchase_price }}" data-sales="{{ c.sales_price }}" data-tax="{{ c.tax_rate }}">{{ c.code|escapejs }} · {{ c.name|escapejs }}</option>{% endfor %}`;
+  const rowHtml = (index) => `<div class="tt-appt-service-row" data-service-row><input type="hidden" name="service_group_index" value="${index}"><select class="next-control" name="service_kind" aria-label="Art"><option value="labour">Arbeitszeit</option><option value="material">Material</option><option value="mixed">Mischposition</option><option value="other" selected>Sonstiges</option></select><input class="next-control" name="service_quantity" type="number" step="0.001" value="1" aria-label="Menge"><input class="next-control" name="service_unit" value="Stk." aria-label="Einheit"><input class="next-control tt-service-description" name="service_description" placeholder="Bezeichnung" aria-label="Bezeichnung"><select class="next-control" name="service_catalog_id" data-service-catalog aria-label="Katalog"><option value="">Katalog auswählen …</option>${catalogOptions}</select><input type="hidden" name="service_purchase_price" value="0"><input type="hidden" name="service_unit_price" value="0"><input type="hidden" name="service_tax_rate" value="19"><input type="hidden" name="service_mixed_json" value="[]"><input type="hidden" name="service_source_quote_item_id" value=""><button class="nx-btn tt-danger-link" type="button" data-remove-service-row>×</button></div>`;
+  const sync = () => [...groups.querySelectorAll('[data-service-group]')].forEach((group, index) => { group.dataset.groupIndex=String(index); group.querySelectorAll('input[name="service_group_index"]').forEach(input => input.value=String(index)); });
+  root.addEventListener('click', event => {
+    if (event.target.closest('[data-add-service-group]')) { const index=groups.querySelectorAll('[data-service-group]').length; const node=document.createElement('div'); node.className='tt-appt-service-group'; node.dataset.serviceGroup='1'; node.dataset.groupIndex=String(index); node.innerHTML=`<div class="tt-appt-service-group-head"><input class="next-control" name="service_group_title" placeholder="Leistungsgruppe"><button class="nx-btn" type="button" data-add-service-row>＋ Position hinzufügen</button><button class="nx-btn tt-danger-link" type="button" data-remove-service-group>Entfernen</button></div><div class="tt-appt-service-rows" data-service-rows>${rowHtml(index)}</div>`; groups.appendChild(node); sync(); return; }
+    const add=event.target.closest('[data-add-service-row]'); if(add){const group=add.closest('[data-service-group]');group.querySelector('[data-service-rows]').insertAdjacentHTML('beforeend',rowHtml(group.dataset.groupIndex||'0'));return;}
+    const remove=event.target.closest('[data-remove-service-row]'); if(remove){remove.closest('[data-service-row]')?.remove();return;}
+    const removeGroup=event.target.closest('[data-remove-service-group]'); if(removeGroup){removeGroup.closest('[data-service-group]')?.remove();sync();}
+  });
+  root.addEventListener('change', event => { const select=event.target.closest('[data-service-catalog]'); if(!select||!select.value)return; const option=select.selectedOptions[0], row=select.closest('[data-service-row]'); row.querySelector('[name="service_kind"]').value=option.dataset.kind||'other'; row.querySelector('[name="service_unit"]').value=option.dataset.unit||'Stk.'; row.querySelector('[name="service_description"]').value=option.dataset.description||option.textContent.trim(); row.querySelector('[name="service_purchase_price"]').value=option.dataset.purchase||'0'; row.querySelector('[name="service_unit_price"]').value=option.dataset.sales||'0'; row.querySelector('[name="service_tax_rate"]').value=option.dataset.tax||'19'; });
+  sync();
+})();
+</script>
+{% endblock %}

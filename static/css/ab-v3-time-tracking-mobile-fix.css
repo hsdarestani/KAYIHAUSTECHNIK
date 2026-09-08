@@ -1,0 +1,20 @@
+/* A+BAU V3 TIME TRACKING MOBILE FIX 2026-09-08 */
+@media (max-width:760px){
+  .ab-apex .nx-time-kpis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0 0 14px!important;width:100%!important;min-width:0!important}
+  .ab-apex .nx-time-kpis>.nx-time-card{min-width:0!important;min-height:138px!important;padding:16px!important;border-radius:18px!important;overflow:hidden!important}
+  .ab-apex .nx-time-kpis>.nx-time-card:nth-child(3),.ab-apex .nx-time-kpis>.nx-time-card-live{grid-column:1/-1!important;min-height:124px!important}
+  .ab-apex .nx-time-card :where(strong,b){font-size:clamp(28px,8.4vw,40px)!important;line-height:1.05!important;letter-spacing:-.035em!important}
+  .ab-apex .nx-time-filter-card{padding:16px!important;margin:0 0 18px!important;border-radius:18px!important;overflow:visible!important;min-width:0!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;width:100%!important;min-width:0!important;margin:0!important;align-items:stretch!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters>label{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important;width:100%!important;min-width:0!important;margin:0!important;padding:0!important;font-size:14px!important;line-height:1.25!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters :where(select,input[type=date],input[type=text]){display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:52px!important;margin:0!important;padding-left:16px!important;padding-right:16px!important;box-sizing:border-box!important;font-size:16px!important}
+  .ab-apex .nx-time-filter-actions{display:grid!important;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important;gap:10px!important;width:100%!important;min-width:0!important;margin:2px 0 0!important;align-items:stretch!important}
+  .ab-apex .nx-time-filter-actions :where(.nx-btn,button,a){display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:50px!important;margin:0!important;padding:10px 14px!important;white-space:nowrap!important}
+  .ab-apex .nx-time-table-card{margin-bottom:30px!important;overflow:hidden!important}
+  body.ab-apex:has(.nx-time-kpis) .nx-content{padding-bottom:calc(158px + env(safe-area-inset-bottom))!important}
+  body.ab-apex:has(.nx-time-kpis) .ab-v3-mobile-fab{right:16px!important;bottom:calc(96px + env(safe-area-inset-bottom))!important;z-index:64!important}
+}
+@media (max-width:380px){
+  .ab-apex .nx-time-filter-actions{grid-template-columns:1fr!important}
+  .ab-apex .nx-time-kpis>.nx-time-card{padding:14px!important}
+}

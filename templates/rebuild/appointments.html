@@ -1,0 +1,136 @@
+{% extends 'rebuild/base.html' %}
+{% load static %}
+{% block title %}Termine · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-pagehead nx-calendar-pagehead">
+  <div>
+    <div class="nx-kicker">Einsatzplanung</div>
+    <h1>Termine</h1>
+    <p>Termine flexibel nach Tag, Woche, Monat oder als Liste planen und Mitarbeiter zuweisen.</p>
+  </div>
+  <div class="nx-actions"><a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-create' %}">＋ Neuer Termin</a></div>
+</div>
+
+<section class="nx-calendar-shell tt-phase11-appointments" data-appointment-overview data-calendar-view="{{ calendar_view }}" data-calendar-dispatch="{% if can_dispatch %}1{% else %}0{% endif %}">
+  <div class="nx-calendar-toolbar">
+    <nav class="nx-calendar-views" aria-label="Kalenderansicht">
+      {% for item in view_links %}<a class="nx-calendar-view-btn {% if calendar_view == item.key %}is-active{% endif %}" href="{{ item.url }}" data-view="{{ item.key }}">{{ item.label }}</a>{% endfor %}
+    </nav>
+    <div class="nx-calendar-navigation">
+      <a class="nx-btn nx-btn-ghost nx-calendar-arrow" href="{{ prev_url }}" aria-label="Zurück">←</a>
+      <a class="nx-btn nx-btn-ghost" href="{{ today_url }}">Heute</a>
+      <a class="nx-btn nx-btn-ghost nx-calendar-arrow" href="{{ next_url }}" aria-label="Weiter">→</a>
+    </div>
+  </div>
+
+  <div class="nx-calendar-period">
+    {% if calendar_view == 'day' %}<strong>{{ anchor_date|date:'l, d.m.Y' }}</strong>
+    {% elif calendar_view == 'week' %}<strong>{{ range_start|date:'d.m.' }} – {{ range_end|date:'d.m.Y' }}</strong>
+    {% elif calendar_view == 'month' %}<strong>{{ month_first|date:'F Y' }}</strong>
+    {% else %}<strong>{{ range_start|date:'d.m.Y' }} – {{ range_end|date:'d.m.Y' }}</strong>{% endif %}
+    <span data-calendar-status>{% if can_dispatch and calendar_view == 'week' or can_dispatch and calendar_view == 'month' %}Termine können per Drag & Drop auf einen anderen Tag verschoben werden.{% endif %}</span>
+  </div>
+
+  <form class="nx-calendar-filters tt-phase11-filters" method="get" data-appointment-filters>
+    <input type="hidden" name="view" value="{{ calendar_view }}">
+    <input type="hidden" name="date" value="{{ anchor_date|date:'Y-m-d' }}">
+    <label class="tt-phase11-search"><span>Suche</span><input class="nx-control" type="search" name="q" value="{{ query_filter }}" placeholder="Termin, Projekt oder Kunde …" autocomplete="off"></label>
+    <label><span>Mitarbeiter</span><select class="nx-control" name="employee"><option value="">Alle Mitarbeiter</option>{% for employee in employees %}<option value="{{ employee.pk }}" {% if employee_filter == employee.pk|stringformat:'s' %}selected{% endif %}>{{ employee.first_name }} {{ employee.last_name }}</option>{% endfor %}</select></label>
+    <label><span>Projekt</span><select class="nx-control" name="project"><option value="">Alle Projekte</option>{% for project in projects %}<option value="{{ project.pk }}" {% if project_filter == project.pk|stringformat:'s' %}selected{% endif %}>{{ project.number }} · {{ project.title }}</option>{% endfor %}</select></label>
+    <label><span>Kunde</span><select class="nx-control" name="customer"><option value="">Alle Kunden</option>{% for customer in customers %}<option value="{{ customer.pk }}" {% if customer_filter == customer.pk|stringformat:'s' %}selected{% endif %}>{{ customer.display_name }}</option>{% endfor %}</select></label>
+    <div class="nx-calendar-filter-actions"><button class="nx-btn nx-btn-primary" type="submit">Filtern</button><a class="nx-btn nx-btn-ghost" href="{{ reset_query }}">Zurücksetzen</a></div>
+  </form>
+
+  {% if calendar_view == 'week' %}
+  <div class="nx-week nx-week-upgraded" data-calendar-grid>
+    {% for day in days %}
+    <section class="nx-day {% if day.is_today %}is-today{% endif %}" data-calendar-drop-date="{{ day.date|date:'Y-m-d' }}">
+      <div class="nx-day-head"><a href="{{ day.day_url }}">{{ day.date|date:'D' }}<small>{{ day.date|date:'d.m.Y' }}</small></a></div>
+      <div class="nx-day-events">
+      {% for event in day.events %}
+        <a class="nx-cal-event" data-calendar-event data-event-id="{{ event.pk }}" data-move-url="{% url 'next-appointment-move' event.pk %}" {% if can_dispatch %}draggable="true"{% endif %} href="{% url 'next-appointment-detail' event.pk %}">
+          <time>{% if event.all_day %}Ganztägig{% else %}{{ event.starts_at|date:'H:i' }} – {{ event.ends_at|date:'H:i' }}{% endif %}</time><b>{{ event.title }}</b><small>{{ event.ui_customer }}</small><span>{{ event.ui_attendees }}</span>
+        </a>
+      {% empty %}<div class="nx-calendar-empty">Keine Termine</div>{% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  {% elif calendar_view == 'month' %}
+  <div class="nx-month-scroll"><div class="nx-month" data-calendar-grid>
+    <div class="nx-month-weekdays"><span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span></div>
+    {% for week in month_weeks %}<div class="nx-month-week">{% for day in week %}
+      <section class="nx-month-day {% if not day.in_month %}is-outside{% endif %} {% if day.is_today %}is-today{% endif %}" data-calendar-drop-date="{{ day.date|date:'Y-m-d' }}">
+        <a class="nx-month-date" href="{{ day.day_url }}">{{ day.date|date:'j' }}</a>
+        <div class="nx-month-events">
+        {% for event in day.events %}<a class="nx-month-event" data-calendar-event data-event-id="{{ event.pk }}" data-move-url="{% url 'next-appointment-move' event.pk %}" {% if can_dispatch %}draggable="true"{% endif %} href="{% url 'next-appointment-detail' event.pk %}"><time>{% if not event.all_day %}{{ event.starts_at|date:'H:i' }}{% else %}Tag{% endif %}</time><b>{{ event.title }}</b></a>{% endfor %}
+        {% if day.extra_count %}<a class="nx-month-more" href="{{ day.day_url }}">+ {{ day.extra_count }} weitere</a>{% endif %}
+        </div>
+      </section>
+    {% endfor %}</div>{% endfor %}
+  </div></div>
+
+  {% elif calendar_view == 'day' %}
+  <div class="nx-day-view">
+    <div class="nx-day-view-head"><div><span>{{ anchor_date|date:'D' }}</span><strong>{{ anchor_date|date:'d' }}</strong></div><p>Alle Termine dieses Tages in zeitlicher Reihenfolge.</p></div>
+    <div class="nx-day-agenda">
+    {% for event in day_events %}
+      <a class="nx-day-agenda-event" href="{% url 'next-appointment-detail' event.pk %}">
+        <time>{% if event.all_day %}Ganztägig{% else %}{{ event.starts_at|date:'H:i' }}<small>bis {{ event.ends_at|date:'H:i' }}</small>{% endif %}</time>
+        <div><b>{{ event.title }}</b><span>{{ event.ui_project }}</span><small>{{ event.ui_customer }} · {{ event.ui_attendees }}{% if event.location %} · {{ event.location }}{% endif %}</small></div><i>→</i>
+      </a>
+    {% empty %}<div class="nx-calendar-big-empty"><b>Keine Termine an diesem Tag.</b><span>Du kannst direkt einen neuen Termin anlegen.</span><a class="nx-btn nx-btn-primary" href="{% url 'next-appointment-create' %}">＋ Neuer Termin</a></div>{% endfor %}
+    </div>
+  </div>
+
+  {% elif calendar_view == 'map' %}
+  <div class="tt-appointment-map" data-appointment-map>
+    <aside class="tt-appointment-map-list" aria-label="Termine mit Adresse">
+      <div class="tt-appointment-map-list-head">
+        <div><strong>Termine auf der Karte</strong><span>{{ map_events|length }} mit Adresse</span></div>
+        <small>Zeitraum {{ range_start|date:'d.m.' }} – {{ range_end|date:'d.m.Y' }}</small>
+      </div>
+      <div class="tt-appointment-map-items">
+        {% for event in map_events %}
+        <article class="tt-appointment-map-item">
+          <button type="button" data-map-select data-map-address="{{ event.ui_map_address|escape }}" data-map-label="{{ event.title|escape }}">
+            <span class="tt-map-pin" aria-hidden="true">⌖</span>
+            <span class="tt-map-copy">
+              <time>{% if event.all_day %}{{ event.starts_at|date:'d.m.Y' }} · Ganztägig{% else %}{{ event.starts_at|date:'d.m.Y · H:i' }}{% endif %}</time>
+              <strong>{{ event.title }}</strong>
+              <span>{{ event.ui_map_address }}</span>
+              <small>{{ event.ui_customer }} · {{ event.ui_attendees }}</small>
+            </span>
+          </button>
+          <a href="{% url 'next-appointment-detail' event.pk %}" aria-label="Termin {{ event.title }} öffnen">→</a>
+        </article>
+        {% empty %}
+        <div class="tt-appointment-map-empty-list"><b>Keine Termine mit Adresse.</b><span>Trage beim Termin einen Einsatzort ein, damit er hier auf der Karte verfügbar ist.</span></div>
+        {% endfor %}
+      </div>
+    </aside>
+    <section class="tt-appointment-map-canvas" aria-label="Kartenansicht">
+      <div class="tt-appointment-map-placeholder" data-map-placeholder>
+        <span aria-hidden="true">⌖</span>
+        <strong>Termin auswählen</strong>
+        <p>Wähle links einen Termin mit Adresse. Die externe Karte wird erst nach deiner Auswahl geladen.</p>
+      </div>
+      <iframe data-map-frame hidden title="Karte zum ausgewählten Termin" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <div class="tt-appointment-map-caption" data-map-caption hidden>
+        <div><small>Ausgewählter Termin</small><strong data-map-title></strong><span data-map-current-address></span></div>
+        <a class="nx-btn nx-btn-ghost" data-map-open href="#" target="_blank" rel="noopener noreferrer">In Karten öffnen ↗</a>
+      </div>
+    </section>
+  </div>
+
+  {% else %}
+  <div class="nx-calendar-list" data-list-view>
+    {% for day in list_days %}<section class="nx-calendar-list-day"><header><strong>{{ day.date|date:'l' }}</strong><span>{{ day.date|date:'d.m.Y' }}</span>{% if day.is_today %}<em>Heute</em>{% endif %}</header><div>
+      {% for event in day.events %}<a class="nx-calendar-list-event" href="{% url 'next-appointment-detail' event.pk %}"><time>{% if event.all_day %}Ganztägig{% else %}{{ event.starts_at|date:'H:i' }} – {{ event.ends_at|date:'H:i' }}{% endif %}</time><div><b>{{ event.title }}</b><span>{{ event.ui_project }}</span><small>{{ event.ui_customer }} · {{ event.ui_attendees }}</small></div><i>→</i></a>{% endfor %}
+    </div></section>{% empty %}<div class="nx-calendar-big-empty"><b>Keine Termine im gewählten Zeitraum.</b><span>Filter ändern oder einen neuen Termin anlegen.</span></div>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/kayi-calendar.js' %}?v=20260811-1" defer></script>{% endblock %}

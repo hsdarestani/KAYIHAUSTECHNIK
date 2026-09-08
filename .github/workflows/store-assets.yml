@@ -13,8 +13,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
-      - name: Assemble application source
-        run: bash scripts/unpack-source.sh
+      - name: Verify canonical application source
+        run: bash scripts/verify-canonical-source.sh
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'

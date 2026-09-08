@@ -1,0 +1,32 @@
+{
+    email admin@kayi.smarbiz.sbs
+}
+
+kayi.smarbiz.sbs {
+    encode zstd gzip
+    handle_path /media/* {
+        root * /srv/media
+        file_server
+    }
+    reverse_proxy web:8000
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        Permissions-Policy "camera=(self), geolocation=(self), microphone=()"
+        -Server
+    }
+}
+
+http://91.107.144.64 {
+    handle_path /media/* {
+        root * /srv/media
+        file_server
+    }
+    reverse_proxy web:8000
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        -Server
+    }
+}

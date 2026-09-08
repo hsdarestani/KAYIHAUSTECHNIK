@@ -1,0 +1,244 @@
+{% extends 'erp/base.html' %}
+{% block title %}Neues Projekt · A+Bau{% endblock %}
+{% block page_title %}Neues Projekt{% endblock %}
+{% block page_subtitle %}9-Schritte-Projektassistent{% endblock %}
+{% block body_class %}wizard-page{% endblock %}
+{% block content %}
+<div class="wizard-shell" data-project-wizard data-price-preview-url="{% url 'project-wizard-price-preview' %}" data-price-items-url="{% url 'project-wizard-price-items' %}">
+  <div class="wizard-intro"><span class="eyebrow">PROJEKTASSISTENT</span><h1>Neues Projekt</h1><p>Von Kundendaten und Fotoaufmaß bis Material, Vorschau und Angebot.</p></div>
+  {% if form.non_field_errors or form.errors %}<div class="alert error wizard-errors"><div><b>Bitte Eingaben prüfen.</b>{{ form.non_field_errors }}{% for field in form %}{% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}{% endfor %}</div></div>{% endif %}
+  <div class="wizard-progress" role="tablist">
+    <button type="button" class="active" data-step-target="1"><span>1</span><b>Art</b></button><i></i>
+    <button type="button" data-step-target="2"><span>2</span><b>Kunde</b></button><i></i>
+    <button type="button" data-step-target="3"><span>3</span><b>Grundlagen</b></button><i></i>
+    <button type="button" data-step-target="4"><span>4</span><b>Fotos & Aufmaß</b></button><i></i>
+    <button type="button" data-step-target="5"><span>5</span><b>Leistungen</b></button><i></i>
+    <button type="button" data-step-target="6"><span>6</span><b>Material</b></button><i></i>
+    <button type="button" data-step-target="7"><span>7</span><b>3D</b></button><i></i>
+    <button type="button" data-step-target="8"><span>8</span><b>Angebot</b></button><i></i>
+    <button type="button" data-step-target="9"><span>9</span><b>Übersicht</b></button>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="projectAssistentForm" class="panel wizard-card">
+    {% csrf_token %}
+    <input type="hidden" name="project_type" id="id_project_type" value="{{ form.project_type.value|default:'bathroom' }}">
+    <input type="hidden" name="measurement_confidence" id="measurementConfidence" value="0">
+    <input type="hidden" name="measurement_ai_summary" id="measurementAiSummary" value="">
+    <input type="hidden" name="measurement_ai_warnings" id="measurementAiWarnings" value="[]">
+    <input type="hidden" name="measurement_ai_payload" id="measurementAiPayload" value="{}">
+    <input type="hidden" name="room_model_state" id="roomModelState" value="">
+    <input type="hidden" name="room_model_touched" id="roomModelTouched" value="{{ request.POST.room_model_touched|default:'0' }}">
+
+    <section class="wizard-step active" data-step="1">
+      <div class="wizard-step-head"><span>01</span><div><h2>Welche Art von Projekt?</h2><p>Die Auswahl passt Aufmaß, Foto-Guide und Vorschläge an.</p></div></div>
+      <div class="project-type-grid">
+        <button type="button" class="project-type selected" data-project-type="bathroom"><span>🛁</span><b>Badsanierung</b><small>Komplettbad</small></button>
+        <button type="button" class="project-type" data-project-type="renovation"><span>🚿</span><b>Komplettsanierung</b><small>Mehrere Gewerke</small></button>
+        <button type="button" class="project-type" data-project-type="new_build"><span>🏠</span><b>Neubau</b><small>Erstinstallation</small></button>
+        <button type="button" class="project-type" data-project-type="heating"><span>🔥</span><b>Heizungstausch</b><small>Kessel / Wärmepumpe</small></button>
+        <button type="button" class="project-type" data-project-type="water_damage"><span>💧</span><b>Wasserschaden</b><small>Leckortung & Sanierung</small></button>
+        <button type="button" class="project-type" data-project-type="service"><span>🧰</span><b>Kundendienst</b><small>Wartung / Notdienst</small></button>
+      </div>
+      <div class="form-grid two top-gap"><label><span>{{ form.job_type.label }}</span>{{ form.job_type }}</label><label><span>{{ form.price_source.label }}</span>{{ form.price_source }}<small>Bei Versicherung/B&O die passende Versicherungsliste wählen; bei Privat die eigene Preisliste.</small></label></div>
+    </section>
+
+    <section class="wizard-step" data-step="2">
+      <div class="wizard-step-head"><span>02</span><div><h2>Kunde & Baustelle</h2><p>Bestehenden Kunden und optional ein Objekt auswählen.</p></div></div>
+      <div class="form-grid two"><label><span>{{ form.customer.label }}</span>{{ form.customer }}</label><label><span>{{ form.object_location.label }}</span>{{ form.object_location }}</label></div>
+      <div class="wizard-info-card"><span>◎</span><div><b>Kundendaten zentral verwenden</b><p>Telefon, E-Mail und Rechnungsadresse werden später automatisch in Angebot und Rechnung übernommen.</p></div><a href="{% url 'customer-create' %}" target="_blank">Neuen Kunden anlegen ↗</a></div>
+    </section>
+
+    <section class="wizard-step wizard-project-basics" data-step="3">
+      <div class="wizard-step-head"><span>03</span><div><h2>Projektgrundlagen</h2><p>Name, Zeitraum, Budget und verantwortliches Team.</p></div></div>
+      <div class="wizard-basics-section"><div class="wizard-section-title"><span>1</span><div><b>Projektdaten</b><small>Die wichtigsten Eckdaten kompakt anlegen.</small></div></div><div class="form-grid two"><label><span>{{ form.title.label }}</span>{{ form.title }}</label><label><span>Projektnummer</span><input class="form-control" value="wird automatisch vergeben" disabled></label></div><div class="form-grid four wizard-schedule-grid"><label><span>{{ form.planned_start.label }}</span>{{ form.planned_start }}</label><label><span>{{ form.planned_end.label }}</span>{{ form.planned_end }}</label><label><span>{{ form.budget.label }}</span>{{ form.budget }}</label><label><span>{{ form.priority.label }}</span>{{ form.priority }}</label></div><label class="form-field"><span>{{ form.description.label }}</span>{{ form.description }}</label></div>
+      <div class="wizard-basics-section wizard-team-section"><div class="wizard-section-title"><span>2</span><div><b>Verantwortliches Team</b><small>Projektleitung auswählen und Mitarbeiter dem Projekt zuordnen.</small></div></div><div class="form-grid two wizard-team-grid"><label><span>{{ form.manager.label }}</span>{{ form.manager }}<small>Eine verantwortliche Projektleitung auswählen.</small></label><label><span>{{ form.members.label }}</span>{{ form.members }}<small>Mehrfachauswahl möglich.</small></label></div><details class="wizard-inline-add"><summary>＋ Neuen Mitarbeiter direkt hinzufügen</summary><div class="form-grid two"><label><span>Name</span>{{ form.new_employee_name }}<small>{{ form.new_employee_name.help_text }}</small></label><label><span>{{ form.new_employee_email.label }}</span>{{ form.new_employee_email }}</label></div></details></div>
+    </section>
+
+    <section class="wizard-step" data-step="4">
+      <div class="wizard-step-head"><span>04</span><div><h2>Raum automatisch erfassen</h2><p>Einmal durch den Raum gehen – A+Bau übernimmt Maße, Öffnungen und das 3D-Grundmodell.</p></div></div>
+      <div class="scan-simple-grid">
+        <div class="scan-primary-card">
+          <span class="scan-primary-icon">⌁</span>
+          <div><span class="eyebrow">EMPFOHLEN</span><h3>Raumscan in der A+Bau App</h3><p>Projekt jetzt speichern, anschließend in der mobilen App öffnen und den Raum vollständig ablaufen. Die erkannten Maße und das 3D-Modell landen automatisch im Projekt.</p></div>
+          <button class="btn btn-primary btn-large" type="submit" name="action" value="scan">📷 Projekt speichern & Raumscan starten</button>
+          <small>iPhone/iPad mit LiDAR: Apple RoomPlan · Android: geführte ARCore-Depth-Erfassung. Jeder Messwert bleibt bis zur menschlichen Prüfung als Entwurf markiert.</small>
+        </div>
+        <div class="scan-preview-card">
+          <div class="room-preview scan-room-preview" id="wizardRoomPreview"><div class="room-back"><span class="room-window"></span><span class="room-shower"></span></div><div class="room-floor-plane"></div><div class="room-label"><b>Editierbares 3D-Modell</b><small>Maße, Türen, Fenster und Objekte später jederzeit ändern</small></div></div>
+          <div class="scan-result-strip"><span><i>1</i> Scannen</span><span><i>2</i> Prüfen</span><span><i>3</i> 3D bearbeiten</span></div>
+        </div>
+      </div>
+
+      <details class="scan-fallback-card">
+        <summary><span>📷</span><div><b>Kein kompatibles Gerät? Foto-Scan im Browser</b><small>Mehrere Fotos aufnehmen und einen prüfpflichtigen KI-Messentwurf erzeugen</small></div><i>⌄</i></summary>
+        <div class="scan-fallback-body">
+          <div class="visually-hidden-field">{{ form.measurement_method }}</div>
+          <div class="measurement-mode-bar"><div><b>Fotoaufmaß</b><small>Für echte Maße muss eine bekannte Referenz vollständig sichtbar sein.</small></div><div class="ai-measure-status" id="aiMeasureStatus"><i></i><span>Noch keine KI-Analyse</span></div></div>
+          <label class="camera-dropzone" for="roomPhotos"><span class="camera-orb">📷</span><b>Raumfotos aufnehmen oder auswählen</b><small>Von der Tür, Wände, Boden, Decke und Öffnungen · maximal 10 Fotos</small><input id="roomPhotos" type="file" name="room_photos" accept="image/jpeg,image/png,image/webp" capture="environment" multiple></label>
+          <div class="capture-previews" id="capturePreviews"></div>
+          <div class="form-grid three"><label><span>{{ form.reference_type.label }}</span>{{ form.reference_type }}</label><label><span>Breite (cm)</span>{{ form.reference_width_cm }}</label><label><span>Höhe (cm)</span>{{ form.reference_height_cm }}</label></div>
+          <button type="button" class="btn btn-ai" id="analyzeRoomPhotos">✦ Fotos automatisch auswerten</button>
+          <div class="ai-result" id="aiMeasurementResult" hidden></div>
+        </div>
+      </details>
+
+      <details class="scan-fallback-card">
+        <summary><span>📐</span><div><b>Maße manuell prüfen oder korrigieren</b><small>Optional – auch nach dem Scan im 3D-Editor möglich</small></div><i>⌄</i></summary>
+        <div class="scan-fallback-body">
+          <div class="measurement-title"><span>▣</span><label><b>Raumname</b>{{ form.room_name }}</label></div>
+          <div class="form-grid three dimension-inputs"><label><span>Länge (m)</span>{{ form.length_m }}</label><label><span>Breite (m)</span>{{ form.width_m }}</label><label><span>Höhe (m)</span>{{ form.height_m }}</label></div>
+          <div class="form-grid two"><label><span>{{ form.deductions_area_m2.label }}</span>{{ form.deductions_area_m2 }}</label><label><span>{{ form.waste_percent.label }}</span>{{ form.waste_percent }}</label></div>
+          <div class="measure-results"><div><span>Grundfläche</span><b data-calc="floor">–</b></div><div><span>Wandfläche</span><b data-calc="wall">–</b></div><div><span>Wand inkl. Verschnitt</span><b data-calc="wall-waste">–</b></div><div><span>Boden inkl. Verschnitt</span><b data-calc="floor-waste">–</b></div><div><span>Umfang</span><b data-calc="perimeter">–</b></div></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="wizard-step" data-step="5">
+      <div class="wizard-step-head"><span>05</span><div><h2>Welche Arbeiten werden gebraucht?</h2><p>Beschreibe das Vorhaben. A+Bau filtert den echten Leistungskatalog und schlägt passende Positionen vor.</p></div></div>
+      <div class="service-picker" data-service-picker data-endpoint="{% url 'project-service-suggestions' %}">
+        <div class="service-ai-box">
+          <div class="service-ai-title"><span>✦</span><div><b>Leistungen mit KI finden</b><small>Zum Beispiel: „Dach neu eindecken, alte Ziegel entfernen und Regenrinne erneuern“</small></div></div>
+          <textarea class="form-control" rows="3" data-service-prompt placeholder="Beschreibe kurz, was gemacht werden soll …"></textarea>
+          <div class="service-suggestion-chips" aria-label="Schnelle Vorschläge">
+            <button type="button" data-service-chip="Badezimmer komplett sanieren, alte Fliesen entfernen, neu fliesen und Silikonfugen herstellen">Komplettbad</button>
+            <button type="button" data-service-chip="Wasserschaden finden, beschädigte Leitungen reparieren und betroffene Flächen trocknen">Wasserschaden</button>
+            <button type="button" data-service-chip="Heizung austauschen und neue Heizkörper montieren">Heizung</button>
+            <button type="button" data-service-chip="Dach neu eindecken, alte Dachziegel entfernen und Dachrinne erneuern">Dacharbeiten</button>
+            <button type="button" data-service-chip="Boden vorbereiten und neuen Bodenbelag verlegen">Boden</button>
+          </div>
+          <div class="service-ai-actions">
+            <button type="button" class="btn btn-primary" data-service-analyze>✦ Vorschläge anzeigen</button>
+            <button type="button" class="btn btn-secondary" data-service-show-all>Alle Leistungen durchsuchen</button>
+          </div>
+          <div class="service-ai-feedback" data-service-feedback hidden></div>
+          <div class="service-ai-results" data-service-results hidden></div>
+        </div>
+        <div class="service-list-toolbar">
+          <label><span>Leistung suchen</span><input type="search" class="form-control" data-service-search placeholder="Code, Name oder Beschreibung …"></label>
+          <div><b data-service-visible-count>{{ form.fields.services.queryset|length }}</b><span> Treffer</span><strong><i data-service-selected-count>0</i> ausgewählt</strong></div>
+        </div>
+        <div class="service-price-source-note" data-price-service-note hidden><span>€</span><div><b data-price-service-source>Preisliste</b><small data-price-service-meta>Verkaufspreise werden direkt aus der gewählten Preisliste geladen.</small></div></div>
+        <div class="selection-list service-selection-list price-service-selection-list" data-price-service-list hidden></div>
+        <div class="selection-list service-selection-list" data-service-list>{% for item in form.fields.services.queryset %}<label class="selection-row" data-service-row data-service-id="{{ item.pk }}" data-search-text="{{ item.code|lower }} {{ item.name|lower }} {{ item.description|lower }}"><input type="checkbox" name="services" value="{{ item.pk }}" data-price="{{ item.sales_price }}"><span class="select-box">✓</span><div><b>{{ item.code }} · {{ item.name }}</b><small>{{ item.description|truncatechars:140 }}</small><small class="service-match-reason" data-service-reason hidden></small></div><em>{% if item.sales_price > 0 %}{{ item.sales_price }} € / {{ item.unit }}{% else %}Preis nach Preisliste{% endif %}</em></label>{% empty %}<div class="empty">Im Katalog sind noch keine Leistungen hinterlegt.</div>{% endfor %}</div>
+        <div class="service-empty-filter" data-service-empty hidden>Keine passende Leistung sichtbar. Beschreibung ändern oder alle Leistungen anzeigen.</div>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-step="6">
+      <div class="wizard-step-head"><span>06</span><div><h2>Material auswählen</h2><p>Materialpositionen werden direkt dem Projekt und optional dem Angebotsentwurf hinzugefügt.</p></div></div>
+      <div class="material-source-grid" aria-label="Materialquellen">
+        <a class="material-source-card" href="{% url 'import-center' %}" target="_blank"><span>⇧</span><div><b>Datei importieren</b><small>Excel, CSV oder Lieferantenliste im Import-Center einlesen</small></div><i>Öffnen ↗</i></a>
+        <a class="material-source-card" href="{% url 'model-create' 'catalog' %}" target="_blank"><span>＋</span><div><b>Material manuell anlegen</b><small>Artikel, Einheit, Einkauf und Verkauf direkt erfassen</small></div><i>Anlegen ↗</i></a>
+        <a class="material-source-card" href="{% url 'marketplace' %}" target="_blank"><span>◇</span><div><b>Marketplace durchsuchen</b><small>Freigegebene Preislisten und Katalogpositionen übernehmen</small></div><i>Suchen ↗</i></a>
+      </div>
+      {% if form.fields.materials.queryset %}
+      <div class="material-list-toolbar"><label><span>Material suchen</span><input type="search" class="form-control" data-material-search placeholder="Code, Artikel oder Lieferant …"></label><span><b data-material-visible-count>{{ form.fields.materials.queryset|length }}</b> Treffer</span></div>
+      <div class="selection-list material-selection-list" data-material-list>{% for item in form.fields.materials.queryset %}<label class="selection-row" data-material-row data-search-text="{{ item.code|lower }} {{ item.name|lower }} {{ item.supplier|default:''|lower }}"><input type="checkbox" name="materials" value="{{ item.pk }}" data-price="{{ item.sales_price }}" data-cost="{{ item.purchase_price }}"><span class="select-box">✓</span><div><b>{{ item.code }} · {{ item.name }}</b><small>{{ item.supplier|default:'Katalogmaterial' }} · {{ item.unit }}</small></div><em>{{ item.sales_price }} €</em></label>{% endfor %}</div>
+      <div class="service-empty-filter" data-material-empty hidden>Kein Material passt zur Suche.</div>
+      {% else %}
+      <div class="material-empty-state"><span>▦</span><div><b>Noch kein Materialkatalog vorhanden</b><p>Nutze eine der drei Quellen oben. Nach dem Anlegen erscheint das Material hier zur Auswahl.</p></div></div>
+      {% endif %}
+    </section>
+
+    <section class="wizard-step" data-step="7">
+      <div class="wizard-step-head"><span>07</span><div><h2>3D-Modell bearbeiten</h2><p>Geometrie, Öffnungen, Objekte, Farben, Fliesen und Licht direkt ändern – manuell oder per A+Bau KI.</p></div></div>
+      <div class="room-model-editor wizard-model-editor" data-room-model-editor data-inline-room-model="1" data-state-script="wizard-room-model-state" data-state-output="roomModelState" data-touched-output="roomModelTouched" data-ai-url="{% url 'project-room-model-suggestions' %}">
+        <section class="model-stage panel">
+          <div class="configurator-toolbar">
+            <div><b>Bearbeitbarer Projektentwurf</b><small>Alle Änderungen werden mit dem Projekt gespeichert und bleiben prüfpflichtig.</small></div>
+            <div class="view-buttons"><button class="active" type="button" data-model-view="perspective">Perspektive</button><button type="button" data-model-view="front">Front</button><button type="button" data-model-view="top">Grundriss</button></div>
+          </div>
+          <div class="editable-room-scene wizard-room-scene" data-model-scene data-view-mode="perspective">
+            <div class="model-ceiling"></div>
+            <div class="model-room-shell">
+              <div class="model-wall model-wall-back"><div class="model-openings" data-model-openings="back"></div></div>
+              <div class="model-wall model-wall-front"><div class="model-openings" data-model-openings="front"></div></div>
+              <div class="model-wall model-wall-left"><div class="model-openings" data-model-openings="left"></div></div>
+              <div class="model-wall model-wall-right"><div class="model-openings" data-model-openings="right"></div></div>
+              <div class="model-floor"><span></span></div>
+              <div class="model-fixtures" data-model-fixtures></div>
+            </div>
+            <div class="model-dimension model-dimension-length"><span data-model-dimension="length">–</span></div>
+            <div class="model-dimension model-dimension-width"><span data-model-dimension="width">–</span></div>
+            <div class="model-dimension model-dimension-height"><span data-model-dimension="height">–</span></div>
+            <div class="room-label"><b data-model-room-name>Raummodell</b><small data-model-summary>Modell wird geladen …</small></div>
+          </div>
+          <div class="model-stage-footer"><div><b>Live-Vorschau</b><p>Das Modell reagiert sofort auf Maße, Positionen, Größen, Farben und Licht. Der Rohscan wird dabei nie überschrieben.</p></div><div class="wizard-model-status" data-model-save-status>Wird zusammen mit dem Projekt gespeichert.</div></div>
+        </section>
+
+        <aside class="model-editor-sidebar panel wizard-model-sidebar">
+          <nav class="model-editor-tabs" aria-label="3D-Bearbeitung">
+            <button class="active" type="button" data-model-tab="room">Raum</button>
+            <button type="button" data-model-tab="openings">Öffnungen</button>
+            <button type="button" data-model-tab="materials">Material & Licht</button>
+            <button type="button" data-model-tab="objects">Objekte</button>
+            <button type="button" data-model-tab="ai">✦ KI</button>
+          </nav>
+
+          <div class="model-editor-pane active" data-model-pane="room">
+            <div class="panel-head"><div><h2>Raumgeometrie</h2><p>Maße und Blickwinkel millimetergenau korrigieren.</p></div></div>
+            <div class="form-grid three compact model-dimension-inputs">
+              <label><span>Länge m</span><input class="form-control" type="number" min="0.1" max="50" step="0.001" data-room-field="length_m"></label>
+              <label><span>Breite m</span><input class="form-control" type="number" min="0.1" max="50" step="0.001" data-room-field="width_m"></label>
+              <label><span>Höhe m</span><input class="form-control" type="number" min="0.1" max="12" step="0.001" data-room-field="height_m"></label>
+            </div>
+            <label class="range-field"><span><b>Modell drehen</b><output data-rotation-output>0°</output></span><input type="range" min="0" max="360" step="1" data-view-rotation></label>
+            <div class="model-calculations"><span><small>Grundfläche</small><b data-model-calc="floor">–</b></span><span><small>Wandfläche brutto</small><b data-model-calc="wall">–</b></span><span><small>Öffnungen</small><b data-model-calc="openings">–</b></span></div>
+          </div>
+
+          <div class="model-editor-pane" data-model-pane="openings">
+            <div class="section-title-row"><div><b>Türen, Fenster & Durchgänge</b><small>Wand, Position und Größe frei anpassen</small></div><div class="compact-actions"><button class="btn btn-secondary btn-small" type="button" data-add-opening="window">+ Fenster</button><button class="btn btn-secondary btn-small" type="button" data-add-opening="door">+ Tür</button><button class="btn btn-secondary btn-small" type="button" data-add-opening="opening">+ Öffnung</button></div></div>
+            <div class="opening-editor-list" data-opening-editor-list></div>
+          </div>
+
+          <div class="model-editor-pane" data-model-pane="materials">
+            <div class="panel-head"><div><h2>Oberflächen & Licht</h2><p>Jede Farbe frei wählen; Fliesenformat und Licht verändern die Vorschau.</p></div></div>
+            <div class="model-color-grid">
+              <label><span>Boden</span><input type="color" data-model-material="floor"><input class="form-control" data-model-material-text="floor" maxlength="7"></label>
+              <label><span>Wände</span><input type="color" data-model-material="wall"><input class="form-control" data-model-material-text="wall" maxlength="7"></label>
+              <label><span>Decke</span><input type="color" data-model-material="ceiling"><input class="form-control" data-model-material-text="ceiling" maxlength="7"></label>
+              <label><span>Akzent</span><input type="color" data-model-material="accent"><input class="form-control" data-model-material-text="accent" maxlength="7"></label>
+              <label><span>Fuge</span><input type="color" data-model-material="grout_color"><input class="form-control" data-model-material-text="grout_color" maxlength="7"></label>
+            </div>
+            <div class="model-preset-row"><button type="button" data-model-preset="bright">Hell & ruhig</button><button type="button" data-model-preset="warm">Warm & natürlich</button><button type="button" data-model-preset="contrast">Dunkler Kontrast</button><button type="button" data-model-preset="concrete">Betonlook</button></div>
+            <div class="model-pattern-picker"><span>Verlegemuster</span><div><button type="button" data-model-pattern="straight">Gerade</button><button type="button" data-model-pattern="diagonal">Diagonal</button><button type="button" data-model-pattern="herringbone">Fischgrät</button></div></div>
+            <div class="form-grid two compact"><label><span>Fliesenbreite cm</span><input class="form-control" type="number" min="1" max="300" step="1" data-material-number="tile_width_cm"></label><label><span>Fliesenhöhe cm</span><input class="form-control" type="number" min="1" max="300" step="1" data-material-number="tile_height_cm"></label></div>
+            <label class="range-field"><span><b>Helligkeit</b><output data-light-output="brightness">100%</output></span><input type="range" min="0.4" max="1.8" step="0.05" data-lighting-field="brightness"></label>
+            <label class="range-field"><span><b>Lichttemperatur</b><output data-light-output="warmth">35%</output></span><input type="range" min="0" max="100" step="1" data-lighting-field="warmth"></label>
+          </div>
+
+          <div class="model-editor-pane" data-model-pane="objects">
+            <div class="section-title-row"><div><b>Sanitär & Ausstattung</b><small>Objekte hinzufügen, verschieben, skalieren und einfärben</small></div></div>
+            <div class="fixture-add-grid"><button type="button" data-add-fixture="shower">＋ Dusche</button><button type="button" data-add-fixture="vanity">＋ Waschtisch</button><button type="button" data-add-fixture="toilet">＋ WC</button><button type="button" data-add-fixture="bathtub">＋ Badewanne</button><button type="button" data-add-fixture="radiator">＋ Heizkörper</button><button type="button" data-add-fixture="cabinet">＋ Schrank</button></div>
+            <div class="fixture-editor-list" data-fixture-editor-list></div>
+          </div>
+
+          <div class="model-editor-pane" data-model-pane="ai">
+            <div class="model-ai-card"><span class="model-ai-icon">✦</span><div><span class="eyebrow">A+Bau KI DESIGN</span><h3>Änderungen einfach beschreiben</h3><p>Beispiel: „Raum 4,2 × 3,1 × 2,6 m, Boden anthrazit 60 × 120 cm, warme Beleuchtung, Badewanne an die linke Wand.“</p></div></div>
+            <textarea class="form-control" rows="5" data-model-ai-prompt placeholder="Was soll am Raum geändert werden?"></textarea>
+            <div class="model-ai-chips"><button type="button" data-model-ai-chip="Boden anthrazit, Wände warmweiß, Fliesen 60 x 120 cm und warmes Licht">Modernes Bad</button><button type="button" data-model-ai-chip="Helles Bad mit beigen Fliesen, Holz-Waschtisch und mehr Helligkeit">Hell & warm</button><button type="button" data-model-ai-chip="Walk-in-Dusche, Waschtisch und WC sinnvoll im Raum verteilen">Sanitärobjekte</button><button type="button" data-model-ai-chip="Boden im Fischgrätmuster und dunkle Akzentwand">Fischgrät</button></div>
+            <button class="btn btn-ai btn-block" type="button" data-model-ai-apply>✦ Modell mit KI anpassen</button>
+            <div class="model-ai-feedback" data-model-ai-feedback hidden></div>
+            <small class="model-ai-warning">KI-Änderungen werden als Entwurf übernommen. Maße und Positionen vor Kalkulation oder Bestellung immer prüfen.</small>
+          </div>
+        </aside>
+      </div>
+      {{ wizard_model_state|json_script:"wizard-room-model-state" }}
+    </section>
+
+    <section class="wizard-step" data-step="8">
+      <div class="wizard-step-head"><span>08</span><div><h2>Angebot & Kalkulation</h2><p>Live-Zusammenfassung aus ausgewählten Leistungen und Materialien.</p></div></div>
+      <div class="wizard-price-status" data-wizard-price-status><span>€</span><div><b>Preise werden mit der gewählten Preisliste abgeglichen.</b><small>Ausgewählte Positionen erscheinen hier mit derselben Preisbasis wie im späteren Angebot.</small></div></div>
+      <div class="quote-preview-grid"><div class="quote-summary"><div><span>Leistungen netto</span><b data-quote="services">0,00 €</b></div><div><span>Material netto</span><b data-quote="materials">0,00 €</b></div><div><span>Zwischensumme</span><b data-quote="subtotal">0,00 €</b></div><div><span>zzgl. 19 % MwSt.</span><b data-quote="tax">0,00 €</b></div><div class="total"><span>Gesamt brutto</span><b data-quote="gross">0,00 €</b></div></div><div class="internal-calc"><span class="eyebrow">INTERNE KALKULATION</span><div><span>Materialkosten</span><b data-quote="cost">0,00 €</b></div><div><span>Deckungsbeitrag vor Lohn</span><b data-quote="margin">0,00 €</b></div><p>Der endgültige Angebotspreis und die Lohnkalkulation werden im Angebotseditor geprüft.</p><small>Das PDF wird nach „Projekt + Angebot erstellen“ erzeugt und ist anschließend direkt im Angebot verfügbar.</small></div></div>
+    </section>
+
+    <section class="wizard-step" data-step="9">
+      <div class="wizard-step-head"><span>09</span><div><h2>Übersicht & Projekt erstellen</h2><p>Alle Angaben bleiben vor dem Speichern bearbeitbar.</p></div></div>
+      <div class="final-review"><div class="review-list"><div><span>Projekt</span><b data-review="title">–</b></div><div><span>Kunde</span><b data-review="customer">–</b></div><div><span>Raum</span><b data-review="room">–</b></div><div><span>Aufmaß</span><b data-review="measurement">Noch offen</b></div><div><span>Fotos</span><b data-review="photos">0 Aufnahmen</b></div><div><span>Positionen</span><b data-review="items">0 ausgewählt</b></div></div><div class="final-amount"><span class="eyebrow">VORAUSSICHTLICHE SUMME</span><strong data-quote="gross">0,00 €</strong><p>inklusive 19 % MwSt. · vor Mengenanpassung</p><div class="review-badge"><span>✦</span> KI-Aufmaß bleibt bis zur Bestätigung markiert</div></div></div>
+      <div class="final-actions"><button class="btn btn-secondary" name="action" value="draft">Als Entwurf speichern</button><button class="btn btn-primary" name="action" value="project">✓ Projekt erstellen</button><button class="btn btn-ai" name="action" value="quote">✦ Projekt + Angebot erstellen</button></div>
+    </section>
+
+    <footer class="wizard-footer"><button type="button" class="btn btn-secondary" data-wizard-prev disabled>← Zurück</button><span><b data-current-step>1</b> / 9</span><button type="button" class="btn btn-primary" data-wizard-next>Weiter →</button></footer>
+  </form>
+</div>
+{% endblock %}

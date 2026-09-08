@@ -1,0 +1,153 @@
+{% load static %}
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>{% block title %}A+Bau{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/kayi-next.css' %}?v=20260818-scope-sidebar-ui-1">
+  <link rel="stylesheet" href="{% static 'css/kayi-next-field.css' %}?v=20260811-1">
+<link rel="stylesheet" href="/static/css/ab-bau-mobile-responsive.css?v=20260822-6">
+  <link rel="stylesheet" href="{% static 'css/tooltime-phase10-appointments.css' %}?v=20260820-1">
+  <link rel="stylesheet" href="{% static 'css/tooltime-phase11-appointments.css' %}?v=20260821-2">
+  <link rel="stylesheet" href="{% static 'css/tooltime-phase12-appointment-map.css' %}?v=20260821-1">
+  <link rel="stylesheet" href="/static/css/ab-bau-apex.css?v=20260908-2">
+  <link rel="stylesheet" href="/static/css/ab-bau-v3.css?v=20260908-2">
+  <link rel="stylesheet" href="/static/css/ab-bau-v3-phase2.css?v=20260908-v3-closeout1">
+  <link rel="stylesheet" href="/static/css/ab-bau-v3-phase2-mobile.css?v=20260908-v3-closeout1">
+  <link rel="stylesheet" href="/static/css/ab-bau-v3-field.css?v=20260908-3">
+  <link rel="stylesheet" href="/static/css/ab-v3-time-tracking-mobile-fix.css?v=20260908-1">
+  <link rel="stylesheet" href="/static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-3">
+<link rel="stylesheet" href="/static/css/ab-bau-production-hardening.css?v=20260821-1">
+</head>
+<body class="ab-v3 ab-apex nx-body {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}nx-field-role{% endif %}">
+<div class="nx-shell">
+  <aside class="nx-sidebar" id="nx-mobile-sidebar">
+    <a class="nx-brand ab-brand" href="{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}{% url 'next-field' %}{% else %}{% url 'next-dashboard' %}{% endif %}" style="display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:126px!important;margin:0!important;padding:8px 12px 18px!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;text-decoration:none!important;overflow:visible!important"><img class="ab-brand-logo-only" data-ab-brand-image src="{% static 'brand/ab-bau-logo.png' %}?v=20260812-logo-2" alt="A+Bau" style="display:block!important;width:188px!important;height:auto!important;max-width:100%!important;max-height:120px!important;margin:0 auto!important;padding:0!important;border:0!important;outline:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;object-fit:contain!important;object-position:center!important"></a>
+    <div class="ab-v3-workspace-chip" aria-label="Aktiver Arbeitsbereich">
+      <span class="ab-v3-workspace-dot" aria-hidden="true"></span>
+      <span><small>Workspace</small><strong>{{ request.user.profile.organization.name|default:'A+Bau' }}</strong></span>
+    </div>
+    {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}{% else %}
+    <button class="ab-v3-create" type="button" data-ab-v3-command-open><span><b>＋</b> Erstellen</span><kbd>⌘ K</kbd></button>
+    {% endif %}
+    <nav class="nx-nav">
+      {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}
+      <div class="nx-nav-label">Baustelle</div>
+      <a class="{% if request.resolver_match.url_name == 'next-field' %}is-active{% endif %}" href="{% url 'next-field' %}"><span class="nx-ico">◫</span>Termine</a>
+      <a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span class="nx-ico">◷</span>Zeiterfassung</a>
+      <a class="{% if request.resolver_match.url_name == 'next-account' %}is-active{% endif %}" href="{% url 'next-account' %}"><span class="nx-ico">◎</span>Konto</a>
+      {% else %}
+      <div class="nx-nav-label">Übersicht</div>
+      <a class="{% if request.resolver_match.url_name == 'next-dashboard' %}is-active{% endif %}" href="{% url 'next-dashboard' %}"><span class="nx-ico">⌂</span>Start</a>
+      <div class="tt-appt-nav-group" data-appointment-nav-group>
+      <a class="{% if 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-appointments' %}"><span class="nx-ico">◫</span>Termine</a>
+      <div class="tt-appointment-subnav" data-appointment-subnav>
+        <a class="{% if request.resolver_match.url_name == 'next-appointments' and calendar_view != 'map' and calendar_view != 'list' %}is-active{% endif %}" href="{% url 'next-appointments' %}?view=week">Kalender</a>
+        <a class="{% if request.resolver_match.url_name == 'next-appointments' and calendar_view == 'map' %}is-active{% endif %}" href="{% url 'next-appointments' %}?view=map">Karte</a>
+        <a class="{% if request.resolver_match.url_name == 'next-appointments' and calendar_view == 'list' %}is-active{% endif %}" href="{% url 'next-appointments' %}?view=list">Liste</a>
+      </div>
+      </div>
+      <a class="{% if 'project' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-projects' %}"><span class="nx-ico">▣</span>Projekte</a>
+      <div class="nx-nav-group nx-contacts-group" data-contacts-group>
+        <button type="button" class="nx-nav-parent {% if 'customer' in request.resolver_match.url_name or 'supplier' in request.resolver_match.url_name %}is-active{% endif %}" data-contacts-toggle><span class="nx-ico">▤</span><span>Kontakte</span><span class="nx-nav-chevron">⌃</span></button>
+        <div class="nx-nav-sub">
+          <a class="{% if 'customer' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-customers' %}"><span class="nx-sub-dot"></span>Kunden</a>
+          <a class="{% if 'supplier' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-suppliers' %}"><span class="nx-sub-dot"></span>Lieferanten</a>
+        </div>
+      </div>
+      <a class="{% if 'task' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-tasks' %}"><span class="nx-ico">✓</span>Aufgaben</a>
+      <div class="nx-nav-label">Büro</div>
+      <a class="{% if 'quote' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-quotes' %}"><span class="nx-ico">◇</span>Angebote</a>
+      <a class="{% if 'invoice' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-invoices' %}"><span class="nx-ico">€</span>Rechnungen</a>
+      <a class="{% if 'catalogue' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-catalogue' %}"><span class="nx-ico">▤</span>Katalog</a>
+      <a class="{% if 'field-review' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'field-review-queue' %}"><span class="nx-ico">✓</span>Einsatzprüfung</a>
+      <a class="{% if 'project-approval' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'project-approval-queue' %}"><span class="nx-ico">✓</span>Projektfreigaben</a>
+      <a class="{% if request.resolver_match.url_name == 'next-finance' %}is-active{% endif %}" href="{% url 'next-finance' %}"><span class="nx-ico">↗</span>Finanzen</a>
+      <a class="{% if 'expense' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-expenses' %}"><span class="nx-ico">↘</span>Ausgaben</a>
+      <a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span class="nx-ico">◷</span>Zeiterfassung</a>
+      <a class="{% if 'employee' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-employees' %}"><span class="nx-ico">◉</span>Mitarbeiter</a>
+      <div class="nx-nav-label">Werkzeuge</div>
+      <a href="{% url 'next-field' %}"><span class="nx-ico">⌁</span>Monteur-App</a>
+      <a class="{% if request.resolver_match.url_name == 'next-tooltime-migration' %}is-active{% endif %}" href="{% url 'next-tooltime-migration' %}"><span class="nx-ico">⇄</span>ToolTime-Datenimport</a>
+      {% if request.user.is_superuser or request.user.profile.role == 'owner' or request.user.profile.role == 'admin' or request.user.profile.role == 'office' or request.user.profile.role == 'accounting' %}<a class="{% if request.resolver_match.url_name == 'next-settings' %}is-active{% endif %}" href="{% url 'next-settings' %}"><span class="nx-ico">⚙</span>Einstellungen</a>{% endif %}
+      {% endif %}
+    </nav>
+    <div class="nx-sidebar-foot">A+Bau<br>{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}Für den Einsatz vor Ort.{% else %}Von der Baustelle bis zur Rechnung.{% endif %}</div>
+  </aside>
+  <button class="nx-menu-overlay" type="button" data-nx-menu-overlay aria-label="Menü schließen" tabindex="-1"></button>
+  <main class="nx-main">
+  <header class="nx-topbar">
+      <button class="nx-menu-btn" type="button" data-nx-menu aria-label="Menü" aria-expanded="false" aria-controls="nx-mobile-sidebar">☰</button>{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<a class="ab-mobile-wordmark" href="{% url 'next-field' %}">A+Bau</a>{% else %}<a class="ab-mobile-wordmark" href="{% url 'next-dashboard' %}">A+Bau</a>{% endif %}
+      <form class="nx-search nx-ai-omnibox" data-global-assistant-form>
+        <span class="nx-ai-star">✦</span><input data-global-assistant-input placeholder="A+Bau KI: Beschreibe, was du suchst oder erledigen willst …" autocomplete="off"><button type="submit">↵</button>
+      </form>
+      <div class="ab-v3-top-context" aria-label="Systemstatus"><span>LIVE</span><strong data-ab-v3-clock>--:--</strong></div><div class="nx-top-actions">
+        {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<a class="nx-btn nx-btn-ghost" href="{% url 'next-time' %}">◷ Zeit</a>{% else %}<a class="nx-btn nx-btn-ghost" href="{% url 'next-appointment-create' %}">＋ Termin</a><a class="nx-btn nx-btn-primary" href="{% url 'next-project-create' %}">＋ Projekt</a>{% endif %}
+        <div class="nx-profile" data-profile>
+          <button type="button" class="nx-avatar nx-avatar-button" data-profile-toggle aria-expanded="false" aria-label="Profilmenü">{{ request.user.username|slice:':2'|upper }}</button>
+          <div class="nx-profile-menu" data-profile-menu hidden>
+            <div class="nx-profile-name"><b>{{ request.user.get_full_name|default:request.user.username }}</b><small>{{ request.user.email|default:'A+Bau Konto' }}</small></div>
+            {% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<a href="{% url 'next-account' %}">◎ Konto</a>{% else %}<a href="{% url 'next-settings' %}">⚙ Einstellungen</a>{% endif %}
+            <a href="{% url 'next-field' %}">⌁ Monteur-App</a>
+            <form method="post" action="{% url 'next-logout' %}">{% csrf_token %}<button type="submit">↪ Abmelden</button></form>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="nx-content">{% if messages %}<div class="nx-messages">{% for message in messages %}<div class="nx-message">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</div>
+  </main>
+    <link rel="stylesheet" href="{% static 'css/kayi-readability.css' %}?v=20260907-tooltime-customer-detail1">
+</div>
+{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}{% else %}
+<nav class="ab-mobile-dock" aria-label="Hauptnavigation">
+  <a class="{% if request.resolver_match.url_name == 'next-dashboard' %}is-active{% endif %}" href="{% url 'next-dashboard' %}"><span class="ab-dock-ico">⌂</span><span>Start</span></a>
+  <a class="{% if 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-appointments' %}"><span class="ab-dock-ico">◫</span><span>Termine</span></a>
+  <a class="{% if 'project' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-projects' %}"><span class="ab-dock-ico">▣</span><span>Projekte</span></a>
+  <a class="{% if 'customer' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-customers' %}"><span class="ab-dock-ico">◎</span><span>Kunden</span></a>
+  <button type="button" data-ab-open-menu aria-label="Mehr Navigation"><span class="ab-dock-ico">•••</span><span>Mehr</span></button>
+</nav>
+{% endif %}
+{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}<nav class="nx-field-bottom"><a class="{% if request.resolver_match.url_name == 'next-field' or 'appointment' in request.resolver_match.url_name %}is-active{% endif %}" href="{% url 'next-field' %}"><span>◫</span>Termine</a><a class="{% if request.resolver_match.url_name == 'next-time' %}is-active{% endif %}" href="{% url 'next-time' %}"><span>◷</span>Zeit</a><a class="{% if request.resolver_match.url_name == 'next-account' %}is-active{% endif %}" href="{% url 'next-account' %}"><span>◎</span>Konto</a></nav>{% endif %}
+
+<button class="nx-assistant-fab" type="button" data-assistant-open aria-label="A+Bau KI öffnen">✦</button>
+<aside class="nx-assistant-drawer" data-assistant-drawer data-assistant-url="{% url 'next-assistant-command' %}" data-assistant-execute-url="{% url 'next-assistant-execute' %}" aria-hidden="true">
+  <div class="nx-assistant-head"><div><div class="nx-kicker">A+Bau KI</div><h3>A+Bau Agent</h3><p>Formulare bedienen und mehrstufige Abläufe über Kunden, Projekte, Angebote und Rechnungen vorbereiten.</p></div><button type="button" class="nx-assistant-close" data-assistant-close>×</button></div>
+  <div class="nx-assistant-chat" data-assistant-chat><div class="nx-assistant-msg is-ai">Sag, was erledigt werden soll. Für mehrstufige Änderungen zeige ich dir zuerst den kompletten Plan und führe ihn erst nach einer einzigen Bestätigung aus.</div></div>
+  <div class="nx-assistant-suggestions"><button type="button" data-assistant-suggestion="Fülle die sichtbaren Felder anhand meiner Beschreibung aus.">Formular ausfüllen</button><button type="button" data-assistant-suggestion="Hilf mir, den richtigen Kunden oder das richtige Projekt zu finden.">Kunde / Projekt finden</button><button type="button" data-assistant-suggestion="Wähle passende Positionen aus dem sichtbaren Katalog aus.">Katalog wählen</button></div>
+  <form class="nx-assistant-compose" data-assistant-form><textarea class="nx-control" data-assistant-input placeholder="z. B. Wähle Kunde Müller, Projekt Bad und Meier als Verantwortlichen …"></textarea><button class="nx-btn nx-btn-primary" type="submit">✦</button></form>
+</aside>
+<script src="{% static 'js/kayi-next.js' %}?v=20260818-scope-sidebar-ui-1" defer></script>
+<script src="{% static 'js/field-profile-runtime.js' %}?v=20260820-touch-1" defer data-field-profile-runtime></script>
+<script src="/static/js/ab-bau-apex.js?v=20260908-1" defer></script>
+<script src="/static/js/ab-bau-v3.js?v=20260908-2" defer></script>
+{% block scripts %}{% endblock %}
+<script src="{% static 'js/kayi-de-ui.js' %}?v=20260810-6" defer></script>
+<script src="{% static 'js/tooltime-phase12-appointment-map.js' %}?v=20260821-1" defer></script>
+
+{% if request.user.profile.role == 'technician' or request.user.profile.is_mobile_worker %}{% else %}
+<button class="ab-v3-mobile-fab" type="button" data-ab-v3-command-open aria-label="Erstellen">＋</button>
+<div class="ab-v3-command-backdrop" data-ab-v3-command aria-hidden="true">
+  <section class="ab-v3-command-panel" role="dialog" aria-modal="true" aria-label="Schnell erstellen">
+    <header class="ab-v3-command-head"><span aria-hidden="true">◇</span><input class="ab-v3-command-search" data-ab-v3-command-search aria-label="Aktion suchen" placeholder="Was möchtest du erledigen?" autocomplete="off"><button class="ab-v3-command-esc" type="button" data-ab-v3-command-close aria-label="Schließen">ESC</button></header>
+    <div class="ab-v3-command-grid">
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="projekt auftrag kunde arbeit" href="{% url 'next-project-create' %}"><span class="ab-v3-command-icon">▣</span><span class="ab-v3-command-copy"><strong>Projekt starten</strong><small>Neuen Auftrag mit Kunde und Einsatzort anlegen.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="termin kalender einsatz appointment" href="{% url 'next-appointment-create' %}"><span class="ab-v3-command-icon">◫</span><span class="ab-v3-command-copy"><strong>Termin planen</strong><small>Einsatz terminieren und Team zuweisen.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="kunde kontakt customer" href="{% url 'next-customer-create' %}"><span class="ab-v3-command-icon">◎</span><span class="ab-v3-command-copy"><strong>Kunde anlegen</strong><small>Kontakt und Objekt sauber erfassen.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="angebot quote kalkulation" href="{% url 'next-quote-create' %}"><span class="ab-v3-command-icon">◇</span><span class="ab-v3-command-copy"><strong>Angebot erstellen</strong><small>Leistungen kalkulieren und als Angebot vorbereiten.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="rechnung invoice faktura" href="{% url 'next-invoice-create' %}"><span class="ab-v3-command-icon">€</span><span class="ab-v3-command-copy"><strong>Rechnung erstellen</strong><small>Rechnung aus Projekt oder frei beginnen.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="ausgabe beleg receipt kosten" href="{% url 'next-expense-create' %}"><span class="ab-v3-command-icon">↘</span><span class="ab-v3-command-copy"><strong>Beleg erfassen</strong><small>Ausgabe hochladen und Projekt zuordnen.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="aufgabe task todo" href="{% url 'next-task-create' %}"><span class="ab-v3-command-icon">✓</span><span class="ab-v3-command-copy"><strong>Aufgabe anlegen</strong><small>Offenen Punkt direkt in die Ausführung geben.</small></span></a>
+      <a class="ab-v3-command-item" data-ab-v3-command-item data-search="daten import csv xlsx tooltime" href="{% url 'next-tooltime-migration' %}"><span class="ab-v3-command-icon">⇄</span><span class="ab-v3-command-copy"><strong>Daten importieren</strong><small>Bestehende CSV/XLSX-Daten übernehmen.</small></span></a>
+    </div>
+    <p class="ab-v3-command-empty" data-ab-v3-command-empty role="status" hidden>Keine passende Aktion. Versuche einen anderen Suchbegriff.</p>
+    <footer class="ab-v3-command-foot"><span>⌘K öffnet dieses Menü überall im Büro.</span><span>A+Bau Operations</span></footer>
+  </section>
+</div>
+{% endif %}
+
+<script src="/static/js/ab-bau-v3-finance-mobile-pdf-hotfix.js?v=20260908-finance-mobile-pdf-3" defer></script>
+<script src="/static/js/ab-bau-production-hardening.js?v=20260821-1" defer></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Angebot · A+Bau</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f7fa;color:#1c2734;margin:0}.wrap{max-width:900px;margin:40px auto;padding:20px}.card{background:#fff;border:1px solid #e5e9ef;border-radius:14px;padding:28px;margin-bottom:16px}.row{display:flex;justify-content:space-between;gap:20px;padding:10px 0;border-bottom:1px solid #eef1f4}.btn{border:0;border-radius:8px;padding:12px 18px;cursor:pointer;font-weight:700}.primary{background:#1268e8;color:white}.danger{background:#f2f4f7;color:#273444}.success{background:#edf9f1;border-color:#c8ead4}.warning{background:#fff8e8;border-color:#f0dda7}input[type=text],input[inputmode]{padding:12px;border:1px solid #ccd3dc;border-radius:8px;width:100%;box-sizing:border-box}.check{display:flex;align-items:flex-start;gap:10px;margin:14px 0}.check input{margin-top:3px}.legal{display:grid;gap:10px;margin:18px 0;padding:16px;border:1px solid #e5e9ef;border-radius:10px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}a{color:#0b63ce}@media(max-width:640px){.wrap{margin:12px auto;padding:12px}.card{padding:20px}.row{flex-direction:column;gap:5px}}
+</style>
+</head>
+<body><div class="wrap">
+{% if unavailable %}
+<div class="card"><h1>Diese Webansicht ist nicht verfügbar.</h1></div>
+{% elif not verified %}
+<div class="card"><h1>Angebot geschützt</h1><p>Bitte geben Sie zur Identitätsprüfung Ihre Postleitzahl ein.</p><form method="post">{% csrf_token %}<input name="postal_code" inputmode="numeric" autocomplete="postal-code" required><button class="btn primary" type="submit" style="margin-top:12px">Angebot öffnen</button></form></div>
+{% else %}
+<div class="card"><h1>{{ meta.document_title|default:'Angebot' }} {{ quote.number }}</h1><p>{{ meta.salutation }}</p><p>{{ quote.intro_text }}</p></div>
+<div class="card">{% for item in quote.items.all %}<div class="row"><span>{{ item.position }} · {{ item.description }}<br><small>{{ item.quantity }} {{ item.unit }}</small>{% if item.tooltime_asset %}<br><img src="{{ item.tooltime_asset.document.file.url }}" alt="Produktbild zu {{ item.description }}" style="max-width:160px;max-height:120px;margin-top:8px;border-radius:8px">{% endif %}</span><strong>{{ item.unit_price|floatformat:2 }} €</strong></div>{% endfor %}<div class="row"><strong>Gesamtbetrag</strong><strong>{{ totals.gross|floatformat:2 }} €</strong></div></div>
+
+{% if meta.withdrawn_at %}
+<div class="card warning"><h2>Online-Annahme widerrufen</h2><p>Der Widerruf wurde am {{ meta.withdrawn_at|date:'d.m.Y H:i' }} gespeichert. Das Angebot gilt in der Webansicht als abgelehnt.</p></div>
+{% elif meta.accepted_at %}
+<div class="card success"><h2>Angebot verbindlich angenommen</h2><p>Die Annahme wurde am {{ meta.accepted_at|date:'d.m.Y H:i' }} gespeichert{% if meta.acceptance_details.identity_name %} · bestätigt durch {{ meta.acceptance_details.identity_name }}{% endif %}.</p>{% if can_withdraw %}<div class="legal"><strong>Widerruf für Privatkunden</strong><span>Die Online-Annahme kann bis {{ withdraw_deadline|date:'d.m.Y H:i' }} über diese Webansicht widerrufen werden.</span>{% if withdrawal_document %}<a href="{{ withdrawal_document.file.url }}" target="_blank" rel="noopener">Widerrufsbelehrung öffnen</a>{% endif %}</div><form method="post">{% csrf_token %}<button class="btn danger" name="decision" value="withdraw" type="submit">Annahme widerrufen</button></form>{% endif %}</div>
+{% elif meta.rejected_at %}
+<div class="card"><h2>Angebot abgelehnt</h2><p>Die Entscheidung wurde am {{ meta.rejected_at|date:'d.m.Y H:i' }} gespeichert.</p></div>
+{% else %}
+<div class="card" data-online-quote-acceptance><h2>Angebot online annehmen</h2><p>Bitte bestätigen Sie Ihre Identität und – sofern hinterlegt – die rechtlichen Dokumente.</p>
+<form method="post">{% csrf_token %}
+{% if is_private %}<label class="check"><input type="checkbox" name="identity_confirmed" required><span>Ich bestätige, dass ich <strong>{{ customer_name }}</strong> bin bzw. für diesen Namen handele.</span></label>{% else %}<label>Name der annehmenden Person<input type="text" name="signer_name" autocomplete="name" required></label>{% endif %}
+{% if terms_document or withdrawal_document %}<div class="legal">{% if terms_document %}<a href="{{ terms_document.file.url }}" target="_blank" rel="noopener">AGB öffnen</a><label class="check"><input type="checkbox" name="terms_accepted" required><span>Ich habe die AGB gelesen und akzeptiere sie.</span></label>{% endif %}{% if withdrawal_document %}<a href="{{ withdrawal_document.file.url }}" target="_blank" rel="noopener">Widerrufsbelehrung öffnen</a><label class="check"><input type="checkbox" name="withdrawal_accepted" required><span>Ich habe die Widerrufsbelehrung gelesen.</span></label>{% endif %}</div>{% endif %}
+<div class="actions"><button class="btn primary" name="decision" value="accept" type="submit">Zahlungspflichtig bestellen</button><button class="btn danger" name="decision" value="reject" type="submit" formnovalidate>Angebot ablehnen</button></div>
+</form></div>
+{% endif %}
+{% endif %}
+</div></body></html>
