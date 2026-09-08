@@ -21,7 +21,11 @@ class ToolTimeCustomerDetailFunctionalE2E(TestCase):
             password="test-password-123",
             email="e2e@example.invalid",
         )
-        m.UserProfile.objects.create(user=self.user, organization=self.org, role="admin")
+        profile = self.user.profile
+        profile.organization = self.org
+        profile.role = m.UserProfile.Role.ADMIN
+        profile.is_mobile_worker = False
+        profile.save()
         self.client.force_login(self.user)
         self.customer = m.Customer.objects.create(
             organization=self.org,
@@ -160,7 +164,7 @@ class ToolTimeCustomerDetailFunctionalE2E(TestCase):
                 "item_description": ["Montageleistung E2E"],
                 "item_quantity": ["2"],
                 "item_unit": ["Std."],
-                "item_price": ["75.00"],
+                "item_sales_price": ["75.00"],
                 "item_tax": ["19"],
                 "action": "save",
             },
@@ -186,7 +190,7 @@ class ToolTimeCustomerDetailFunctionalE2E(TestCase):
                 "item_description": ["Rechnungsposition E2E"],
                 "item_quantity": ["1"],
                 "item_unit": ["Psch."],
-                "item_price": ["100.00"],
+                "item_sales_price": ["100.00"],
                 "item_tax": ["19"],
                 "action": "save",
             },
