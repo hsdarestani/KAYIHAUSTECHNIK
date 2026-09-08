@@ -45,9 +45,9 @@ class ABauV3FinanceMobilePdfHotfixTests(SimpleTestCase):
         self.assertIn("logo_src = _file_data_uri(org.logo)", helper)
         self.assertNotIn('_e(org.logo.url)', helper)
 
-    def test_hotfix_runs_after_v3_catalogue_parity(self):
-        unpack = (ROOT / "scripts/unpack-source.sh").read_text(encoding="utf-8")
+    def test_hotfix_runs_after_v3_catalogue_parity_in_legacy_rebuild(self):
+        legacy = (ROOT / "scripts/unpack-source-legacy.sh").read_text(encoding="utf-8")
         self.assertGreater(
-            unpack.rfind("python3 scripts/ab_bau_v3_finance_mobile_pdf_hotfix.py"),
-            unpack.rfind("python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py"),
+            legacy.rfind("python3 scripts/ab_bau_v3_finance_mobile_pdf_hotfix.py"),
+            legacy.rfind("python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py"),
         )
