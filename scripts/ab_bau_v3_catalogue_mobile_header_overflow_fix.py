@@ -8,9 +8,11 @@ MARKER = "A+BAU V3 CATALOGUE MOBILE HEADER OVERFLOW FIX 2026-09-08"
 UPLOAD_MARKER = "A+BAU V3 SETTINGS LOGO MULTIPART FIX 2026-09-08"
 DASHBOARD_MARKER = "A+BAU V3 DASHBOARD HERO FLOW FIX 2026-09-08"
 QUOTE_MENU_MARKER = "A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08"
-CACHE_VERSION = "20260908-finance-mobile-pdf-5"
+EINSATZ_MARKER = "A+BAU V3 EINSATZ DETAIL LAYOUT FIX 2026-09-08"
+CACHE_VERSION = "20260908-finance-mobile-pdf-6"
 CSS_REL = "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css"
 SETTINGS_REL = "templates/rebuild/tooltime_settings.html"
+APPOINTMENT_REL = "templates/rebuild/appointment_detail.html"
 BASE_REL = "templates/rebuild/base.html"
 TEST_REL = "tests/test_ab_bau_v3_catalogue_mobile_header_overflow_fix.py"
 
@@ -28,10 +30,8 @@ MOBILE_FIX = r"""
 DASHBOARD_FIX = r"""
 
 /* A+BAU V3 DASHBOARD HERO FLOW FIX 2026-09-08
-   The KPI strip used to be absolutely pinned to the hero bottom. At desktop zoom
-   levels and on shorter viewports that let the two-line greeting and intro copy
-   physically collide with the KPI labels. Keep both rows in normal layout flow so
-   the hero grows with its content instead of allowing any overlap. */
+   Keep the greeting/introduction and KPI strip in separate normal-flow rows so
+   desktop zoom and shorter viewports cannot make those two layers collide. */
 @media(min-width:1101px){
   body.ab-v3 .ab-v3-dashboard-hero{
     min-height:0!important;
@@ -68,10 +68,8 @@ DASHBOARD_FIX = r"""
 QUOTE_MENU_FIX = r"""
 
 /* A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08
-   The Neues Angebot dropdown is taller than the commercial hero. The hero used
-   overflow:hidden for decoration, which clipped the open menu at its bottom edge.
-   Let the menu escape the hero, keep it above following content, and on phones make
-   it follow the full-width trigger column instead of escaping the viewport. */
+   Allow the Neues Angebot dropdown to escape the commercial hero and stay inside
+   the phone viewport. */
 body.ab-apex .ttq-topbar{
   overflow:visible!important;
   z-index:30!important;
@@ -102,23 +100,185 @@ body.ab-apex .ttq-menu-card{
 }
 """
 
+EINSATZ_FIX = r"""
+
+/* A+BAU V3 EINSATZ DETAIL LAYOUT FIX 2026-09-08
+   Later workflow overlays keep the proven Termin summary/services markup but the
+   legacy grid/list geometry no longer survives the final V3 layer. Scope this
+   repair to the first appointment overview only; the Freigabe/Arbeit/Abschluss
+   workflow below is intentionally untouched. */
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview{
+  width:100%!important;
+  max-width:none!important;
+  margin:0 0 18px!important;
+  padding:0!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:16px!important;
+  align-items:stretch!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card{
+  position:relative!important;
+  min-width:0!important;
+  height:100%!important;
+  margin:0!important;
+  padding:20px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  overflow:hidden!important;
+  border:1px solid var(--v3-line,#ddd6ca)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#fffefa 0%,#fbf8f1 100%)!important;
+  box-shadow:0 12px 30px rgba(15,17,20,.045)!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card:before{
+  content:""!important;
+  position:absolute!important;
+  top:0!important;
+  left:20px!important;
+  width:38px!important;
+  height:2px!important;
+  background:var(--v3-gold,#c9a24a)!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-card-title{
+  display:block!important;
+  width:100%!important;
+  margin:0 0 14px!important;
+  padding:0 0 12px!important;
+  border-bottom:1px solid #e7e0d5!important;
+  color:#1b1d20!important;
+  font-size:14px!important;
+  line-height:1.3!important;
+  font-weight:800!important;
+  letter-spacing:-.02em!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card > :where(h2,h3,h4){
+  display:block!important;
+  margin:0 0 10px!important;
+  color:#24262a!important;
+  font-size:12px!important;
+  line-height:1.35!important;
+  font-weight:790!important;
+  letter-spacing:-.01em!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:0!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list > div{
+  min-width:0!important;
+  margin:0!important;
+  padding:10px 0!important;
+  display:grid!important;
+  grid-template-columns:minmax(118px,.42fr) minmax(0,1fr)!important;
+  gap:16px!important;
+  align-items:start!important;
+  border-bottom:1px solid #ece6dc!important;
+  line-height:1.45!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list > div:last-child{
+  border-bottom:0!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list > div > span{
+  display:block!important;
+  min-width:0!important;
+  color:#888177!important;
+  font-size:9px!important;
+  line-height:1.4!important;
+  font-weight:800!important;
+  letter-spacing:.06em!important;
+  text-transform:uppercase!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list > div > strong{
+  display:block!important;
+  min-width:0!important;
+  color:#27292c!important;
+  font-size:11px!important;
+  line-height:1.45!important;
+  font-weight:680!important;
+  overflow-wrap:anywhere!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card > form{
+  width:100%!important;
+  margin:16px 0 0!important;
+  padding:0!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview :where(.nx-btn,button,a.nx-btn){
+  max-width:100%!important;
+  white-space:normal!important;
+}
+:where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card > :where(p,.nx-muted){
+  margin:5px 0 0!important;
+  color:#777168!important;
+  font-size:10px!important;
+  line-height:1.55!important;
+}
+@media(max-width:980px){
+  :where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+  }
+  :where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card{
+    height:auto!important;
+  }
+}
+@media(max-width:640px){
+  :where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview > .nx-card{
+    padding:17px!important;
+    border-radius:16px!important;
+  }
+  :where(body.ab-v3,body.ab-apex) .ab-v3-einsatz-overview .nx-list > div{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:3px!important;
+    padding:9px 0!important;
+  }
+}
+"""
+
 
 def install_css() -> None:
     path = ROOT / CSS_REL
     if not path.exists():
-        raise RuntimeError(f"Catalogue/dashboard/quotes hotfix target missing: {CSS_REL}")
+        raise RuntimeError(f"Final V3 layout hotfix target missing: {CSS_REL}")
     text = path.read_text(encoding="utf-8")
     changed = False
-    if MARKER not in text:
-        text = text.rstrip() + MOBILE_FIX + "\n"
-        changed = True
-    if DASHBOARD_MARKER not in text:
-        text = text.rstrip() + DASHBOARD_FIX + "\n"
-        changed = True
-    if QUOTE_MENU_MARKER not in text:
-        text = text.rstrip() + QUOTE_MENU_FIX + "\n"
-        changed = True
+    for marker, block in (
+        (MARKER, MOBILE_FIX),
+        (DASHBOARD_MARKER, DASHBOARD_FIX),
+        (QUOTE_MENU_MARKER, QUOTE_MENU_FIX),
+        (EINSATZ_MARKER, EINSATZ_FIX),
+    ):
+        if marker not in text:
+            text = text.rstrip() + block + "\n"
+            changed = True
     if changed:
+        path.write_text(text, encoding="utf-8")
+
+
+def install_einsatz_overview_scope() -> None:
+    path = ROOT / APPOINTMENT_REL
+    if not path.exists():
+        raise RuntimeError(f"Einsatz detail template missing: {APPOINTMENT_REL}")
+    text = path.read_text(encoding="utf-8")
+    if "Terminübersicht" not in text:
+        raise RuntimeError("Einsatz detail overview anchor 'Terminübersicht' is missing")
+    if "ab-v3-einsatz-overview" not in text:
+        pattern = re.compile(
+            r'<div class="(?P<classes>[^"]*\bnx-grid\b[^"]*\bnx-grid-2\b[^"]*)">'
+        )
+
+        def add_scope(match: re.Match[str]) -> str:
+            classes = match.group("classes")
+            return f'<div class="{classes} ab-v3-einsatz-overview">'
+
+        text, count = pattern.subn(add_scope, text, count=1)
+        if count != 1:
+            raise RuntimeError("Could not scope the first nx-grid nx-grid-2 appointment overview")
         path.write_text(text, encoding="utf-8")
 
 
@@ -216,9 +376,24 @@ class ABauV3CatalogueMobileHeaderOverflowFixTests(SimpleTestCase):
         self.assertIn("min-width:0!important", css)
         self.assertIn("max-width:100%!important", css)
 
+    def test_einsatz_summary_cards_are_scoped_and_readable(self):
+        template = (ROOT / "templates/rebuild/appointment_detail.html").read_text(encoding="utf-8")
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn("ab-v3-einsatz-overview", template)
+        self.assertIn("A+BAU V3 EINSATZ DETAIL LAYOUT FIX 2026-09-08", css)
+        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))!important", css)
+        self.assertIn(".ab-v3-einsatz-overview .nx-list > div{", css)
+        self.assertIn("grid-template-columns:minmax(118px,.42fr) minmax(0,1fr)!important", css)
+
+    def test_einsatz_summary_stacks_cleanly_on_small_screens(self):
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn("@media(max-width:980px)", css)
+        self.assertIn("@media(max-width:640px)", css)
+        self.assertIn("grid-template-columns:minmax(0,1fr)!important", css)
+
     def test_final_hotfix_css_is_cache_busted(self):
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        self.assertIn("ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-5", base)
+        self.assertIn("ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-6", base)
 ''',
         encoding="utf-8",
     )
@@ -244,9 +419,18 @@ def guard() -> None:
         "left:0!important",
         "width:100%!important",
         "max-width:100%!important",
+        EINSATZ_MARKER,
+        ".ab-v3-einsatz-overview{",
+        ".ab-v3-einsatz-overview .nx-list > div{",
+        "grid-template-columns:minmax(118px,.42fr) minmax(0,1fr)!important",
+        "@media(max-width:980px)",
     ):
         if marker not in css:
             raise RuntimeError(f"Final V3 layout guard failed: {marker}")
+
+    appointment = (ROOT / APPOINTMENT_REL).read_text(encoding="utf-8")
+    if "ab-v3-einsatz-overview" not in appointment:
+        raise RuntimeError("Einsatz detail overview scope class was not installed")
 
     base = (ROOT / BASE_REL).read_text(encoding="utf-8")
     if f"ab-bau-v3-finance-mobile-pdf-hotfix.css?v={CACHE_VERSION}" not in base:
@@ -264,6 +448,7 @@ def guard() -> None:
 
 def main() -> None:
     install_css()
+    install_einsatz_overview_scope()
     bust_css_cache()
     install_settings_logo_multipart_fix()
     install_test()
@@ -272,6 +457,7 @@ def main() -> None:
     print(f"{UPLOAD_MARKER}: Texte & Layout now submits logo/header uploads as multipart form data.")
     print(f"{DASHBOARD_MARKER}: dashboard greeting and KPI strip now remain in separate layout rows.")
     print(f"{QUOTE_MENU_MARKER}: Neues Angebot dropdown renders fully above following content and stays inside phone viewport.")
+    print(f"{EINSATZ_MARKER}: Termin summary/services cards are separated, readable and responsive without touching the workflow below.")
 
 
 if __name__ == "__main__":
