@@ -49,6 +49,7 @@ assembly_anchor = "bash scripts/unpack-source.sh\n"
 hardening_command = "python3 scripts/final_production_hardening_20260821.py\n"
 installer_command = "python3 scripts/tooltime_user_settings_import.py\n"
 mobile_menu_fix_command = "python3 scripts/mobile_invoice_menu_fix.py\n"
+pdf_preview_hardening_command = "python3 scripts/pdf_preview_embed_hardening.py\n"
 # Django intentionally keeps X_FRAME_OPTIONS=DENY globally, while the dedicated
 # PDF preview views opt into SAMEORIGIN. Caddy must not overwrite those per-view
 # headers with a blanket DENY after the response leaves Django.
@@ -57,6 +58,14 @@ if frame_header_fix_command not in text:
     if assembly_anchor not in text:
         raise SystemExit("Could not find source assembly anchor for PDF preview proxy header fix")
     text = text.replace(assembly_anchor, assembly_anchor + frame_header_fix_command, 1)
+if pdf_preview_hardening_command not in text:
+    frame_anchor = assembly_anchor + frame_header_fix_command
+    if frame_anchor in text:
+        text = text.replace(frame_anchor, frame_anchor + pdf_preview_hardening_command, 1)
+    elif assembly_anchor in text:
+        text = text.replace(assembly_anchor, assembly_anchor + pdf_preview_hardening_command, 1)
+    else:
+        raise SystemExit("Could not find source assembly anchor for PDF preview response hardening")
 if hardening_command not in text:
     if assembly_anchor not in text:
         raise SystemExit("Could not find source assembly anchor for final production hardening")
@@ -103,6 +112,7 @@ required = (
     "'ORGANIZATION_NAME': 'A+Bau'",
     "Organization.objects.filter(name='A+Bau').first()",
     frame_header_fix_command.strip(),
+    pdf_preview_hardening_command.strip(),
     hardening_command.strip(),
     installer_command.strip(),
     mobile_menu_fix_command.strip(),
@@ -120,4 +130,22 @@ path.write_text(text, encoding="utf-8")
 PY
 
 chmod 700 "$TMP_SCRIPT"
-exec sh "$TMP_SCRIPT"
+sh "$TMP_SCRIPT"
+
+# The Caddyfile is a bind-mounted runtime config. Editing it on disk does not make
+# an already-running Caddy process re-read it. The previous PDF-preview fix changed
+# the file correctly, but production kept the old active DENY header because the
+# caddy container was intentionally not recreated by the normal web deployment.
+# Validate the mounted config and restart only Caddy after the application deploy so
+# the active proxy actually starts serving Django's per-view SAMEORIGIN response.
+if docker compose version >/dev/null 2>&1; then
+  dc() { docker compose "$@"; }
+else
+  dc() { docker-compose "$@"; }
+fi
+
+dc exec -T caddy sh -ec "test -f /etc/caddy/Caddyfile; ! grep -Fq 'X-Frame-Options' /etc/caddy/Caddyfile"
+dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+dc restart caddy
+sleep 2
+dc ps caddy
