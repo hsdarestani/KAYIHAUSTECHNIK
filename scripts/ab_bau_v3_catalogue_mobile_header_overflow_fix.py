@@ -142,7 +142,10 @@ body.ab-apex .tt-summary-card>.tt-link{padding-left:0!important;margin:0 0 6px!i
   body.ab-apex .tt-service-model{display:block!important;min-width:0!important}
 }
 @media(max-width:860px){
-  body.ab-apex .ttq-menu-card{width:min(320px,calc(100vw - 36px))!important;max-width:calc(100vw - 36px)!important}
+  /* The menu is right-aligned to its DETAILS trigger, whose right edge sits about
+     303px into the 390px smoke viewport. 320px therefore escaped 17px to the left.
+     Keep a ToolTime-like compact menu that remains fully inside that mobile frame. */
+  body.ab-apex .ttq-menu-card{width:min(280px,calc(100vw - 36px))!important;max-width:calc(100vw - 36px)!important}
 }
 """
 
@@ -463,6 +466,7 @@ class ABauV3CatalogueMobileHeaderOverflowFixTests(SimpleTestCase):
         self.assertIn("A+BAU V3 QUOTES NEW MENU OVERFLOW FIX 2026-09-08", css)
         self.assertIn("body.ab-apex .ttq-topbar{overflow:visible!important", css)
         self.assertIn("top:calc(100% + 10px)!important", css)
+        self.assertIn("width:min(280px,calc(100vw - 36px))!important", css)
 
     def test_position_service_model_is_readable_and_not_a_fourteenth_grid_cell(self):
         position = (ROOT / "templates/rebuild/_tooltime_position.html").read_text(encoding="utf-8")
@@ -516,6 +520,7 @@ def guard() -> None:
         "body.ab-apex .tt-service-model{",
         "min-width:190px!important",
         "body.ab-apex .ttq-menu-card{",
+        "width:min(280px,calc(100vw - 36px))!important",
     ):
         if required not in css:
             raise RuntimeError(f"Final V3 CSS guard failed: {required}")
