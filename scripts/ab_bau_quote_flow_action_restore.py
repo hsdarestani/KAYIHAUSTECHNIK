@@ -47,6 +47,39 @@ def patch_quote_detail_context() -> None:
     compile(text, str(ROOT / VIEW_REL), "exec")
 
 
+def patch_invoice_draft_numbers() -> None:
+    """Keep draft invoice rows unique without consuming a legal invoice number."""
+    text = read(VIEW_REL)
+    replacement = 'number=base._unique_number(m.Invoice, org, "DRAFT"),'
+    if replacement not in text:
+        anchors = (
+            (
+                '        number="",\n        status="draft",',
+                '        number=base._unique_number(m.Invoice, org, "DRAFT"),\n        status="draft",',
+            ),
+            (
+                '            number="",\n            status="draft",',
+                '            number=base._unique_number(m.Invoice, org, "DRAFT"),\n            status="draft",',
+            ),
+        )
+        replaced = 0
+        for old, new in anchors:
+            count = text.count(old)
+            if count:
+                text = text.replace(old, new)
+                replaced += count
+        if replaced == 0:
+            raise RuntimeError("Draft invoice number anchors missing")
+
+    # Draft placeholders are intentionally not official invoice numbers. The
+    # compliance finalizer overwrites them with the configured legal number range
+    # only when the Rechnung is finalized.
+    if 'number=base._unique_number(m.Invoice, org, "DRAFT"),' not in text:
+        raise RuntimeError("Draft invoice placeholder numbering was not installed")
+    write(VIEW_REL, text)
+    compile(text, str(ROOT / VIEW_REL), "exec")
+
+
 def patch_quote_detail_template() -> None:
     text = read(TEMPLATE_REL)
 
@@ -106,7 +139,7 @@ def patch_css() -> None:
 
 
 def install_test() -> None:
-    write(TEST_REL, f'''from pathlib import Path\nfrom django.test import SimpleTestCase\n\nROOT = Path(__file__).resolve().parents[1]\n\n\nclass ABauQuoteFlowActionRestoreTests(SimpleTestCase):\n    def test_postdraft_context_exposes_order_confirmation_and_invoice_state(self):\n        views = (ROOT / "{VIEW_REL}").read_text(encoding="utf-8")\n        for marker in (\n            "{MARKER}",\n            'context["order_confirmation"]',\n            'context["existing_invoice"]',\n            'metadata.get("kind") == "order_confirmation"',\n            'request.GET.get("return") == "1"',\n        ):\n            self.assertIn(marker, views)\n\n    def test_accepted_quote_exposes_confirmation_before_invoice(self):\n        detail = (ROOT / "{TEMPLATE_REL}").read_text(encoding="utf-8")\n        for marker in (\n            "data-quote-flow-actions",\n            "data-quote-flow-sidebar",\n            "next-quote-order-confirmation",\n            "Auftragsbestätigung erstellen",\n            "Auftragsbestätigung herunterladen",\n            "Nächster Schritt: Auftragsbestätigung",\n            "Rechnung öffnen",\n            "In Rechnung übernehmen",\n            "{{% if order_confirmation %}}",\n        ):\n            self.assertIn(marker, detail)\n        self.assertIn("?return=1", detail)\n\n    def test_invoice_action_stays_server_backed_and_conditionally_unlocked(self):\n        detail = (ROOT / "{TEMPLATE_REL}").read_text(encoding="utf-8")\n        self.assertIn("next-quote-to-invoice", detail)\n        self.assertIn("data-quote-flow-invoice", detail)\n        self.assertIn("{{% if existing_invoice %}}Rechnung öffnen{{% else %}}In Rechnung übernehmen{{% endif %}}", detail)\n\n    def test_flow_hint_is_styled(self):\n        css = (ROOT / "{CSS_REL}").read_text(encoding="utf-8")\n        self.assertIn(".ttqd-flow-state", css)\n''')
+    write(TEST_REL, f'''from pathlib import Path\nfrom django.test import SimpleTestCase\n\nROOT = Path(__file__).resolve().parents[1]\n\n\nclass ABauQuoteFlowActionRestoreTests(SimpleTestCase):\n    def test_postdraft_context_exposes_order_confirmation_and_invoice_state(self):\n        views = (ROOT / "{VIEW_REL}").read_text(encoding="utf-8")\n        for marker in (\n            "{MARKER}",\n            'context["order_confirmation"]',\n            'context["existing_invoice"]',\n            'metadata.get("kind") == "order_confirmation"',\n            'request.GET.get("return") == "1"',\n        ):\n            self.assertIn(marker, views)\n\n    def test_draft_invoice_rows_use_unique_internal_placeholders(self):\n        views = (ROOT / "{VIEW_REL}").read_text(encoding="utf-8")\n        self.assertIn('number=base._unique_number(m.Invoice, org, "DRAFT")', views)\n        self.assertNotIn('number="",\\n        status="draft"', views)\n        self.assertNotIn('number="",\\n            status="draft"', views)\n\n    def test_accepted_quote_exposes_confirmation_before_invoice(self):\n        detail = (ROOT / "{TEMPLATE_REL}").read_text(encoding="utf-8")\n        for marker in (\n            "data-quote-flow-actions",\n            "data-quote-flow-sidebar",\n            "next-quote-order-confirmation",\n            "Auftragsbestätigung erstellen",\n            "Auftragsbestätigung herunterladen",\n            "Nächster Schritt: Auftragsbestätigung",\n            "Rechnung öffnen",\n            "In Rechnung übernehmen",\n            "{{% if order_confirmation %}}",\n        ):\n            self.assertIn(marker, detail)\n        self.assertIn("?return=1", detail)\n\n    def test_invoice_action_stays_server_backed_and_conditionally_unlocked(self):\n        detail = (ROOT / "{TEMPLATE_REL}").read_text(encoding="utf-8")\n        self.assertIn("next-quote-to-invoice", detail)\n        self.assertIn("data-quote-flow-invoice", detail)\n        self.assertIn("{{% if existing_invoice %}}Rechnung öffnen{{% else %}}In Rechnung übernehmen{{% endif %}}", detail)\n\n    def test_flow_hint_is_styled(self):\n        css = (ROOT / "{CSS_REL}").read_text(encoding="utf-8")\n        self.assertIn(".ttqd-flow-state", css)\n''')
 
 
 def guard() -> None:
@@ -118,6 +151,7 @@ def guard() -> None:
         'context["order_confirmation"]',
         'context["existing_invoice"]',
         'request.GET.get("return") == "1"',
+        'number=base._unique_number(m.Invoice, org, "DRAFT")',
     ):
         if marker not in views:
             raise RuntimeError(f"Quote flow view guard failed: {marker}")
@@ -138,6 +172,7 @@ def guard() -> None:
 
 def main() -> None:
     patch_quote_detail_context()
+    patch_invoice_draft_numbers()
     patch_quote_detail_template()
     patch_css()
     install_test()
