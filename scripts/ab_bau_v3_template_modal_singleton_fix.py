@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -164,3 +165,8 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    # This is the final commercial-template layer in source assembly. Only here is
+    # the exact, fully patched Angebot editor canonical; reuse that final editor for
+    # the Termin customer-authorization pricing area instead of maintaining a copy.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge.py"), run_name="__main__")
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge_followup.py"), run_name="__main__")
