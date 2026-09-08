@@ -83,8 +83,12 @@ def patch_browser_smoke_receipt_contract() -> None:
     if not path.exists():
         raise RuntimeError("Browser smoke script missing after source assembly")
     text = path.read_text(encoding="utf-8")
-    if "Ausgabe erfassen" not in text:
-        raise RuntimeError("Browser smoke expenses-list marker could not be identified")
+    old = '("/expenses/new/", ("Ausgabe erfassen", "Speichern"))'
+    new = '("/expenses/new/", ("Beleg erfassen", "data-receipt-dropzone", "Speichern"))'
+    if old not in text and new not in text:
+        raise RuntimeError("Receipt create smoke route contract missing")
+    text = text.replace(old, new)
+
     path.write_text(text, encoding="utf-8")
 
 

@@ -21,11 +21,11 @@ def patch_ops() -> None:
     path = "erp/rebuild_ops.py"
     text = read(path)
 
-    if "from django.core.exceptions import ValidationError" not in text:
+    if "from django.core.exceptions import PermissionDenied, ValidationError" not in text:
         anchor = "from django.db import transaction\n"
         if anchor not in text:
             raise RuntimeError("Receipt parity: rebuild_ops import anchor missing")
-        text = text.replace(anchor, "from django.core.exceptions import ValidationError\n" + anchor, 1)
+        text = text.replace(anchor, "from django.core.exceptions import PermissionDenied, ValidationError\n" + anchor, 1)
 
     if "class ReceiptExpenseForm(forms.Form):" not in text:
         anchor = "\n\nclass EmployeeForm(StyledModelForm):"
@@ -43,8 +43,8 @@ class ReceiptExpenseForm(forms.Form):
     project = forms.ModelChoiceField(queryset=m.Project.objects.none(), required=False)
     supplier = forms.CharField(required=False, max_length=180)
     receipt_file = forms.FileField(required=True)
-    amount_net = forms.DecimalField(required=True, min_value=0, max_digits=14, decimal_places=2)
-    tax_rate = forms.DecimalField(required=True, min_value=0, max_value=100, max_digits=5, decimal_places=2, initial=19)
+    amount_net = forms.DecimalField(required=True, min_value=0, max_digits=14, decimal_places=2, localize=True)
+    tax_rate = forms.DecimalField(required=True, min_value=0, max_value=100, max_digits=5, decimal_places=2, initial=19, localize=True)
     expense_date = forms.DateField(required=True, initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}))
     category = forms.CharField(required=False, max_length=100)
     paid = forms.BooleanField(required=False)
@@ -130,14 +130,19 @@ def _receipt_context_customer(request, org):
 @require_http_methods(["GET", "POST"])
 def expense_edit(request, pk=None):
     org = _org(request)
+    from erp.services.permissions import role_for
+    if role_for(request.user) not in {"admin", "office", "project_manager", "accounting"}:
+        raise PermissionDenied("Belege sind nur für das Büro freigegeben.")
     expense = get_object_or_404(m.Expense, organization=org, pk=pk) if pk else None
 
     # Existing expenses keep the detailed accounting editor. New expenses use the
     # ToolTime receipt-first workflow and create the linked Document automatically.
-    if expense is not None:
+    if expense is not None or request.GET.get("mode") == "manual":
         form = ExpenseForm(request.POST or None, instance=expense, organization=org)
         if request.method == "POST" and form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.organization = org
+            obj.save()
             messages.success(request, "Ausgabe gespeichert.")
             return redirect("next-expenses")
         return render(request, "rebuild/ops_form.html", {"form": form, "kind": "expense", "object": expense})
@@ -163,7 +168,7 @@ def expense_edit(request, pk=None):
         if customer is None and project is not None:
             customer = project.customer
         upload = form.cleaned_data["receipt_file"]
-        safe_name = (getattr(upload, "name", "beleg") or "beleg").split("/")[-1].split("\\")[-1]
+        safe_name = (getattr(upload, "name", "beleg") or "beleg").rsplit("/", 1)[-1]
         description = (form.cleaned_data.get("description") or "").strip() or safe_name
         supplier = (form.cleaned_data.get("supplier") or "").strip()
 
@@ -227,9 +232,13 @@ def expense_edit(request, pk=None):
         "cancel_url": cancel_url,
     })
 '''
-    text, count = pattern.subn(replacement, text, count=1)
+    text, count = pattern.subn(lambda match: replacement, text, count=1)
     if count != 1:
         raise RuntimeError("Receipt parity: could not replace final expense_edit view")
+
+    list_anchor = "def expense_list(request):\n    org = _org(request)\n"
+    if list_anchor in text and list_anchor + '    from erp.services.permissions import role_for' not in text:
+        text = text.replace(list_anchor, list_anchor + '    from erp.services.permissions import role_for\n    if role_for(request.user) not in {"admin", "office", "project_manager", "accounting"}:\n        raise PermissionDenied("Belege sind nur für das Büro freigegeben.")\n', 1)
 
     compile(text, str(ROOT / path), "exec")
     write(path, text)
@@ -240,7 +249,7 @@ def write_template() -> None:
 {% block title %}Beleg erfassen · A+Bau{% endblock %}
 {% block content %}
 <style>
-  .tt-receipt-page{max-width:1480px;margin:-6px auto 0;color:#263445}.tt-receipt-form{display:block}.tt-receipt-toolbar{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;padding:8px 0 30px;border-bottom:1px solid #e8edf2}.tt-receipt-back{display:grid;place-items:center;width:30px;height:30px;text-decoration:none;color:#34495e;font-size:24px}.tt-receipt-toolbar h1{font-size:20px;line-height:1.2;margin:0;font-weight:700;color:#263445}.tt-receipt-actions{display:flex;gap:12px}.tt-receipt-action{border:1px solid #dbe2e9;border-radius:9px;background:#f5f7f9;padding:11px 18px;font:inherit;font-weight:650;color:#2d3947;text-decoration:none;cursor:pointer}.tt-receipt-action.primary{background:#177eea;border-color:#177eea;color:white;min-width:84px}.tt-receipt-action.primary:disabled{opacity:.45;cursor:not-allowed}.tt-receipt-grid{display:grid;grid-template-columns:minmax(0,2.05fr) minmax(330px,.95fr);gap:68px;padding:54px 28px 30px}.tt-receipt-upload-card{min-width:0;border-radius:10px;background:#f8fafc;padding:24px;min-height:650px}.tt-receipt-dropzone{min-height:600px;border:1.5px dashed #cbd6e1;border-radius:10px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px;cursor:pointer;transition:border-color .16s,background .16s,box-shadow .16s}.tt-receipt-dropzone:hover,.tt-receipt-dropzone.is-dragging{border-color:#2184e8;background:#f7fbff;box-shadow:0 0 0 3px rgba(33,132,232,.08)}.tt-receipt-dropzone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}.tt-receipt-upload-icon{width:116px;height:92px;position:relative;margin-bottom:24px}.tt-receipt-upload-icon .paper{position:absolute;width:65px;height:78px;border-radius:8px;background:linear-gradient(145deg,#eef2f5,#dfe7ee);left:32px;top:4px;transform:rotate(5deg);box-shadow:0 8px 18px rgba(44,65,82,.08)}.tt-receipt-upload-icon .photo{position:absolute;width:58px;height:46px;border:6px solid #eef2f5;border-radius:7px;background:#fff;left:4px;top:34px;transform:rotate(-4deg)}.tt-receipt-upload-icon .photo:after{content:'●▲';font-size:18px;letter-spacing:-5px;color:#0d3d5a;position:absolute;left:12px;top:8px}.tt-receipt-upload-icon .up{position:absolute;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0e486b;color:#fff;right:3px;bottom:1px;font-size:21px;font-weight:800}.tt-receipt-upload-button{display:inline-flex;align-items:center;gap:9px;border-radius:9px;background:#f1f4f7;color:#263445;padding:11px 18px;font-weight:700;margin-bottom:13px}.tt-receipt-help{font-size:14px;color:#8190a1;max-width:560px;line-height:1.55}.tt-receipt-file-state{display:none;margin-top:14px;padding:11px 15px;border-radius:8px;background:#eaf5ff;color:#145f9f;font-size:14px;font-weight:650;max-width:90%;overflow-wrap:anywhere}.tt-receipt-file-state.is-visible{display:block}.tt-receipt-side{padding-top:4px}.tt-receipt-customer{display:flex;align-items:center;gap:10px;color:#1479dc;text-decoration:none;font-weight:750;margin:0 0 18px 8px}.tt-receipt-customer-icon{font-size:20px}.tt-receipt-side-field{margin-bottom:16px}.tt-receipt-side-field label{display:block;font-size:12px;font-weight:700;color:#6c7b8b;margin:0 0 6px 4px}.tt-receipt-side-field select,.tt-receipt-side-field input{width:100%;min-height:44px;border:1px solid #d3dce5;border-radius:8px;background:#fff;padding:0 14px;font:inherit;color:#344253;box-sizing:border-box;outline:none}.tt-receipt-side-field select:focus,.tt-receipt-side-field input:focus{border-color:#2786e5;box-shadow:0 0 0 3px rgba(39,134,229,.1)}.tt-receipt-side-field input::placeholder{color:#8a99aa}.tt-receipt-error{margin:7px 3px 0;color:#bb3041;font-size:13px}.tt-receipt-details{display:none;margin-top:18px;padding:22px;border:1px solid #dce5ed;border-radius:10px;background:#fff;text-align:left;width:min(620px,100%);box-sizing:border-box}.tt-receipt-details.is-visible{display:block}.tt-receipt-details h2{font-size:16px;margin:0 0 5px}.tt-receipt-details>p{font-size:13px;color:#7b8a99;margin:0 0 17px}.tt-receipt-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tt-receipt-detail-grid .wide{grid-column:1/-1}.tt-receipt-detail-grid label{display:block;font-size:12px;font-weight:700;color:#596878;margin-bottom:6px}.tt-receipt-detail-grid input{width:100%;height:42px;border:1px solid #d3dce5;border-radius:8px;padding:0 11px;box-sizing:border-box;font:inherit}.tt-receipt-paid{display:flex!important;align-items:center;gap:9px;margin-top:5px}.tt-receipt-paid input{width:18px;height:18px}.tt-receipt-global-errors{margin-bottom:15px;padding:11px 14px;background:#fff0f2;border:1px solid #f0cbd0;border-radius:8px;color:#a92839;font-size:13px}.tt-receipt-drop-error{margin-top:10px;color:#b83242;font-size:13px}.tt-receipt-no-customer{margin:0 0 18px}.tt-receipt-no-customer select{width:100%;min-height:44px;border:1px solid #d3dce5;border-radius:8px;background:#fff;padding:0 14px;font:inherit}.tt-receipt-security{font-size:12px;color:#8a98a8;line-height:1.5;margin:22px 8px 0}.tt-receipt-security strong{color:#607083}@media(max-width:980px){.tt-receipt-grid{grid-template-columns:1fr;gap:26px;padding:28px 0}.tt-receipt-side{order:-1}.tt-receipt-upload-card{min-height:auto}.tt-receipt-dropzone{min-height:430px}.tt-receipt-toolbar{padding-bottom:18px}}@media(max-width:620px){.tt-receipt-toolbar{grid-template-columns:28px 1fr}.tt-receipt-actions{grid-column:1/-1;justify-content:flex-end}.tt-receipt-grid{padding-top:20px}.tt-receipt-upload-card{padding:12px}.tt-receipt-dropzone{min-height:350px;padding:22px 14px}.tt-receipt-detail-grid{grid-template-columns:1fr}.tt-receipt-detail-grid .wide{grid-column:auto}}
+  .tt-receipt-page{max-width:1480px;margin:-6px auto 0;color:#263445}.tt-receipt-form{display:block}.tt-receipt-toolbar{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;padding:8px 0 30px;border-bottom:1px solid #e8edf2}.tt-receipt-back{display:grid;place-items:center;width:30px;height:30px;text-decoration:none;color:#34495e;font-size:24px}.tt-receipt-toolbar h1{font-size:20px;line-height:1.2;margin:0;font-weight:700;color:#263445}.tt-receipt-actions{display:flex;gap:12px}.tt-receipt-action{border:1px solid #dbe2e9;border-radius:9px;background:#f5f7f9;padding:11px 18px;font:inherit;font-weight:650;color:#2d3947;text-decoration:none;cursor:pointer}.tt-receipt-action.primary{background:var(--ab-v3-gold,#b59652);border-color:var(--ab-v3-gold,#b59652);color:#201d16;min-width:84px}.tt-receipt-action.primary:disabled{opacity:.45;cursor:not-allowed}.tt-receipt-grid{display:grid;grid-template-columns:minmax(0,2.05fr) minmax(330px,.95fr);gap:68px;padding:54px 28px 30px}.tt-receipt-upload-card{min-width:0;border-radius:10px;background:#f8fafc;padding:24px;min-height:650px}.tt-receipt-dropzone{min-height:600px;border:1.5px dashed #cbd6e1;border-radius:10px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px;cursor:pointer;transition:border-color .16s,background .16s,box-shadow .16s}.tt-receipt-dropzone:hover,.tt-receipt-dropzone.is-dragging{border-color:#2184e8;background:#f7fbff;box-shadow:0 0 0 3px rgba(33,132,232,.08)}.tt-receipt-dropzone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}.tt-receipt-upload-icon{width:116px;height:92px;position:relative;margin-bottom:24px}.tt-receipt-upload-icon .paper{position:absolute;width:65px;height:78px;border-radius:8px;background:linear-gradient(145deg,#eef2f5,#dfe7ee);left:32px;top:4px;transform:rotate(5deg);box-shadow:0 8px 18px rgba(44,65,82,.08)}.tt-receipt-upload-icon .photo{position:absolute;width:58px;height:46px;border:6px solid #eef2f5;border-radius:7px;background:#fff;left:4px;top:34px;transform:rotate(-4deg)}.tt-receipt-upload-icon .photo:after{content:'●▲';font-size:18px;letter-spacing:-5px;color:#0d3d5a;position:absolute;left:12px;top:8px}.tt-receipt-upload-icon .up{position:absolute;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#0e486b;color:#fff;right:3px;bottom:1px;font-size:21px;font-weight:800}.tt-receipt-upload-button{display:inline-flex;align-items:center;gap:9px;border-radius:9px;background:#f1f4f7;color:#263445;padding:11px 18px;font-weight:700;margin-bottom:13px}.tt-receipt-help{font-size:14px;color:#8190a1;max-width:560px;line-height:1.55}.tt-receipt-file-state{display:none;margin-top:14px;padding:11px 15px;border-radius:8px;background:#eaf5ff;color:#145f9f;font-size:14px;font-weight:650;max-width:90%;overflow-wrap:anywhere}.tt-receipt-file-state.is-visible{display:block}.tt-receipt-side{padding-top:4px}.tt-receipt-customer{display:flex;align-items:center;gap:10px;color:#1479dc;text-decoration:none;font-weight:750;margin:0 0 18px 8px}.tt-receipt-customer-icon{font-size:20px}.tt-receipt-side-field{margin-bottom:16px}.tt-receipt-side-field label{display:block;font-size:12px;font-weight:700;color:#6c7b8b;margin:0 0 6px 4px}.tt-receipt-side-field select,.tt-receipt-side-field input{width:100%;min-height:44px;border:1px solid #d3dce5;border-radius:8px;background:#fff;padding:0 14px;font:inherit;color:#344253;box-sizing:border-box;outline:none}.tt-receipt-side-field select:focus,.tt-receipt-side-field input:focus{border-color:#2786e5;box-shadow:0 0 0 3px rgba(39,134,229,.1)}.tt-receipt-side-field input::placeholder{color:#8a99aa}.tt-receipt-error{margin:7px 3px 0;color:#bb3041;font-size:13px}.tt-receipt-details{display:none;margin-top:18px;padding:22px;border:1px solid #dce5ed;border-radius:10px;background:#fff;text-align:left;width:min(620px,100%);box-sizing:border-box}.tt-receipt-details.is-visible{display:block}.tt-receipt-details h2{font-size:16px;margin:0 0 5px}.tt-receipt-details>p{font-size:13px;color:#7b8a99;margin:0 0 17px}.tt-receipt-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.tt-receipt-detail-grid .wide{grid-column:1/-1}.tt-receipt-detail-grid label{display:block;font-size:12px;font-weight:700;color:#596878;margin-bottom:6px}.tt-receipt-detail-grid input{width:100%;height:42px;border:1px solid #d3dce5;border-radius:8px;padding:0 11px;box-sizing:border-box;font:inherit}.tt-receipt-paid{display:flex!important;align-items:center;gap:9px;margin-top:5px}.tt-receipt-paid input{width:18px;height:18px}.tt-receipt-global-errors{margin-bottom:15px;padding:11px 14px;background:#fff0f2;border:1px solid #f0cbd0;border-radius:8px;color:#a92839;font-size:13px}.tt-receipt-drop-error{margin-top:10px;color:#b83242;font-size:13px}.tt-receipt-no-customer{margin:0 0 18px}.tt-receipt-no-customer select{width:100%;min-height:44px;border:1px solid #d3dce5;border-radius:8px;background:#fff;padding:0 14px;font:inherit}.tt-receipt-security{font-size:12px;color:#8a98a8;line-height:1.5;margin:22px 8px 0}.tt-receipt-security strong{color:#607083}@media(max-width:980px){.tt-receipt-grid{grid-template-columns:1fr;gap:26px;padding:28px 0}.tt-receipt-side{order:-1}.tt-receipt-upload-card{min-height:auto}.tt-receipt-dropzone{min-height:430px}.tt-receipt-toolbar{padding-bottom:18px}}@media(max-width:620px){.tt-receipt-toolbar{grid-template-columns:28px 1fr}.tt-receipt-actions{grid-column:1/-1;justify-content:flex-end}.tt-receipt-grid{padding-top:20px}.tt-receipt-upload-card{padding:12px}.tt-receipt-dropzone{min-height:350px;padding:22px 14px}.tt-receipt-detail-grid{grid-template-columns:1fr}.tt-receipt-detail-grid .wide{grid-column:auto}}
 </style>
 
 <div class="tt-receipt-page" data-tooltime-receipt-create="1">
@@ -248,7 +257,7 @@ def write_template() -> None:
   {% csrf_token %}
   <header class="tt-receipt-toolbar">
     <a class="tt-receipt-back" href="{{ cancel_url }}" aria-label="Zurück">←</a>
-    <h1>Beleg erfassen</h1>
+    <div><h1>Beleg erfassen</h1><a class="tt-receipt-manual" href="?mode=manual{% if selected_project %}&project={{ selected_project.pk }}{% endif %}">Ausgabe ohne Beleg erfassen</a></div>
     <div class="tt-receipt-actions">
       <a class="tt-receipt-action" href="{{ cancel_url }}">Abbrechen</a>
       <button id="receipt-save" class="tt-receipt-action primary" type="submit" disabled>Speichern</button>
@@ -271,7 +280,7 @@ def write_template() -> None:
           <p>Nach dem Hochladen nur noch die für die Buchung nötigen Angaben ergänzen.</p>
           <div class="tt-receipt-detail-grid">
             <div><label for="id_amount_net">Netto-Betrag</label><input id="id_amount_net" name="amount_net" inputmode="decimal" value="{{ receipt_form.amount_net.value|default_if_none:'' }}" placeholder="0,00" required>{% for error in receipt_form.amount_net.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
-            <div><label for="id_tax_rate">MwSt. (%)</label><input id="id_tax_rate" name="tax_rate" inputmode="decimal" value="{{ receipt_form.tax_rate.value|default:'19' }}" required>{% for error in receipt_form.tax_rate.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
+            <div><label for="id_tax_rate">MwSt. (%)</label><input id="id_tax_rate" name="tax_rate" inputmode="decimal" value="{{ receipt_form.tax_rate.value|default_if_none:'19' }}" required>{% for error in receipt_form.tax_rate.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
             <div><label for="id_expense_date">Belegdatum</label><input id="id_expense_date" name="expense_date" type="date" value="{{ receipt_form.expense_date.value|date:'Y-m-d'|default:receipt_form.expense_date.value }}" required>{% for error in receipt_form.expense_date.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
             <div><label for="id_category">Kategorie</label><input id="id_category" name="category" value="{{ receipt_form.category.value|default_if_none:'' }}" placeholder="Optional">{% for error in receipt_form.category.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
             <div class="wide"><label for="id_description">Beschreibung</label><input id="id_description" name="description" value="{{ receipt_form.description.value|default_if_none:'' }}" placeholder="Optional – sonst wird der Dateiname verwendet">{% for error in receipt_form.description.errors %}<div class="tt-receipt-error">{{ error }}</div>{% endfor %}</div>
@@ -362,6 +371,15 @@ def write_template() -> None:
 {% endblock %}
 '''
     write("templates/rebuild/expense_receipt_form.html", template)
+
+    # Direct customer receipts have no project; include the document relation in
+    # the existing customer cockpit and totals, without duplicating either record.
+    views = read("erp/rebuild_views.py")
+    views = views.replace(
+        "m.Expense.objects.filter(organization=org, project__customer=customer)",
+        "m.Expense.objects.filter(organization=org).filter(Q(project__customer=customer) | Q(document__customer=customer)).distinct()",
+    )
+    write("erp/rebuild_views.py", views)
 
 
 def patch_customer_entrypoint() -> None:
