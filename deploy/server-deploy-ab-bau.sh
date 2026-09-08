@@ -52,7 +52,7 @@ mobile_menu_fix_command = "python3 scripts/mobile_invoice_menu_fix.py\n"
 # Django intentionally keeps X_FRAME_OPTIONS=DENY globally, while the dedicated
 # PDF preview views opt into SAMEORIGIN. Caddy must not overwrite those per-view
 # headers with a blanket DENY after the response leaves Django.
-frame_header_fix_command = "test -f deploy/Caddyfile && sed -i '/X-Frame-Options \\\"DENY\\\"/d' deploy/Caddyfile && ! grep -Fq 'X-Frame-Options \\\"DENY\\\"' deploy/Caddyfile\n"
+frame_header_fix_command = "test -f deploy/Caddyfile && sed -i '/X-Frame-Options/d' deploy/Caddyfile && ! grep -Fq 'X-Frame-Options' deploy/Caddyfile\n"
 if frame_header_fix_command not in text:
     if assembly_anchor not in text:
         raise SystemExit("Could not find source assembly anchor for PDF preview proxy header fix")
