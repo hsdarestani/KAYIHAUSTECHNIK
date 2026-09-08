@@ -153,8 +153,7 @@ class ABauV3Phase2Contract(SimpleTestCase):
         ):
             self.assertIn(marker, page)
         self.assertNotIn("{% url 'configurator' %}?project={{ project.pk }}", page)
-        finance_guard = '''{% if not field_user %}
-        <div class="tt-pd-panel" data-tab-panel="finance">'''
+        finance_guard = "{% if not field_user %}\n        <div class=\"tt-pd-panel\" data-tab-panel=\"finance\">"
         self.assertIn(finance_guard, page)
         finance_block = page[page.index(finance_guard):]
         self.assertIn("Umsatz (netto)", finance_block)
