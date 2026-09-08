@@ -120,6 +120,10 @@ def main() -> None:
     runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_create_parity.py"), run_name="__main__")
     runpy.run_path(str(ROOT / "scripts" / "tooltime_receipt_interaction_fix.py"), run_name="__main__")
     patch_browser_smoke_receipt_contract()
+    # Reconcile the only useful pieces from the stale customer/project-history PR
+    # before Phase 2 copies its source templates. The runner keeps the closeout
+    # tolerant of the current project view's evolved render-context shape.
+    runpy.run_path(str(ROOT / "scripts" / "ab_bau_v3_history_lifecycle_closeout_runner.py"), run_name="__main__")
     print("ToolTime customer detail regression compatibility applied.")
 
 
