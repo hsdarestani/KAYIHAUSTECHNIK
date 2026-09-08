@@ -1,13 +1,14 @@
 {% extends 'rebuild/base.html' %}
-{% block title %}{% if mode == 'create' %}Kunde anlegen{% else %}Kunde bearbeiten{% endif %} · A+Bau{% endblock %}
+{% block title %}{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %} · A+Bau{% endblock %}
 {% block content %}
 <div class="ab-v3-form-page" data-ab-v3-customer-form>
   <header class="ab-v3-form-page-head">
-    <div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer wird nach dem Speichern automatisch vergeben.</p></div>
-    <a class="ab-v3-directory-secondary" href="{% url 'next-customers' %}">← Kunden</a>
+    <div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer ist für neue Kunden vorbelegt und kann in den Details geprüft werden.</p></div>
+    <a class="ab-v3-directory-secondary" href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">← {% if next_target == 'project' %}Projekt{% else %}Kunden{% endif %}</a>
   </header>
 
   <form method="post" class="ab-v3-form-card" data-customer-form novalidate>{% csrf_token %}
+    {% if next_target %}<input type="hidden" name="next" value="{{ next_target }}">{% endif %}
     {% if form.errors or location_form.errors %}
       <div class="tt-form-error ab-v3-form-error-summary" data-form-error-summary role="alert" aria-live="assertive">
         <strong>Kunde konnte nicht gespeichert werden.</strong>
@@ -60,7 +61,7 @@
       </details>
     {% endif %}
 
-    <div class="ab-v3-form-actions"><a href="{% url 'next-customers' %}">Abbrechen</a><button type="submit">{% if mode == 'create' %}Kunde anlegen{% else %}Speichern{% endif %}</button></div>
+    <div class="ab-v3-form-actions"><a href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">Abbrechen</a><button type="submit">{% if mode == 'create' %}＋ Erstellen{% else %}Speichern{% endif %}</button></div>
   </form>
 </div>
 {% endblock %}
