@@ -155,18 +155,50 @@ def guard() -> None:
         raise RuntimeError("Existing quote editor runtime fix is missing before singleton layer")
 
 
+def install_global_table_row_navigation() -> None:
+    script = ROOT / "scripts/ab_bau_global_table_row_navigation.py"
+    if not script.exists():
+        raise RuntimeError("Final global table-row navigation installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
+def install_dashboard_action_alignment() -> None:
+    script = ROOT / "scripts/ab_bau_dashboard_action_alignment.py"
+    if not script.exists():
+        raise RuntimeError("Final dashboard action-alignment installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
+def install_quote_flow_action_restore() -> None:
+    script = ROOT / "scripts/ab_bau_quote_flow_action_restore.py"
+    if not script.exists():
+        raise RuntimeError("Final quote-flow action restore installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
 def main() -> None:
     install_runtime_asset()
     patch_document_template()
     install_test()
     guard()
+    # This script is the last source-assembly layer. Keep cross-table row navigation
+    # here so later ToolTime/V3 overlays cannot remove its global cache-busted assets.
+    install_global_table_row_navigation()
+    # Dashboard button centering must run after all V3/cache overlays for the same
+    # reason: the user-visible + Einsatz planen label must not fall back to link
+    # baseline alignment after a later stylesheet/cache rewrite.
+    install_dashboard_action_alignment()
+    # Accepted quotes must keep their lifecycle CTA after every post-draft/V3 layer:
+    # Angebot -> Auftragsbestätigung -> Rechnung. Run this last so no visual parity
+    # installer can reintroduce an always-visible invoice button without its prerequisite.
+    install_quote_flow_action_restore()
     print(f"{MARKER}: Vorlagen uses one canonical modal and both finance/singleton runtimes are cache-busted.")
 
 
 if __name__ == "__main__":
     main()
-    # This is the final commercial-template layer in source assembly. Only here is
-    # the exact, fully patched Angebot editor canonical; reuse that final editor for
-    # the Termin customer-authorization pricing area instead of maintaining a copy.
+    # The authorization bridge must consume the final, fully assembled Angebot editor.
+    # Keep it after every V3/ToolTime/template lifecycle layer above so Termin and
+    # Angebote share the exact same pricing/position implementation without drift.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge.py"), run_name="__main__")
     runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge_followup.py"), run_name="__main__")
