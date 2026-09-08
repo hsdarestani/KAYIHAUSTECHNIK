@@ -27,10 +27,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
-      - name: Verify repeatable source assembly
-        run: |
-          bash scripts/unpack-source.sh
-          bash scripts/unpack-source.sh
+      - name: Verify canonical source checkout
+        run: bash scripts/verify-canonical-source.sh
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
