@@ -39,6 +39,15 @@ def install_templates() -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
 
+    # The project list's modal, row navigation, page-size selector and persisted
+    # column controls are real behaviours from the established parity layer. Keep
+    # that JS explicitly loaded while Phase 2 replaces only the page structure.
+    projects = read(TEMPLATES["projects.html"])
+    project_js = '<script src="/static/js/tooltime-projects-exact.js?v=20260821-projects-exact" defer></script>'
+    if project_js not in projects:
+        projects = projects.replace("{% block content %}", "{% block content %}\n" + project_js, 1)
+        write(TEMPLATES["projects.html"], projects)
+
 
 def install_assets() -> None:
     if not CSS_SOURCE.exists():
@@ -116,6 +125,7 @@ class ABauV3Phase2Contract(SimpleTestCase):
             "data-project-create-form",
             "data-column-toggle",
             "data-page-size",
+            "tooltime-projects-exact.js",
             "next-project-detail",
             "next-appointment-create",
             "next-quote-create",
@@ -176,7 +186,7 @@ def guard() -> None:
         "customers.html": ("data-ab-v3-customers", "data-customer-modal", "data-customer-row"),
         "customer_detail.html": ("data-ab-v3-customer-detail", "＋ Objekt hinzufügen", 'name="action" value="add_location"'),
         "customer_form.html": ("data-ab-v3-customer-form", "Kunde anlegen"),
-        "projects.html": ("data-ab-v3-projects", "data-project-modal", "data-project-table"),
+        "projects.html": ("data-ab-v3-projects", "data-project-modal", "data-project-table", "tooltime-projects-exact.js"),
         "project_detail.html": ("data-ab-v3-project-detail", "next-room-planner", 'data-tab-panel="finance"'),
     }
     for name, markers in required.items():
