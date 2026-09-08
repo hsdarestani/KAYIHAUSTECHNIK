@@ -53,7 +53,7 @@ pdf_preview_hardening_command = "python3 scripts/pdf_preview_embed_hardening.py\
 # Django intentionally keeps X_FRAME_OPTIONS=DENY globally, while the dedicated
 # PDF preview views opt into SAMEORIGIN. Caddy must not overwrite those per-view
 # headers with a blanket DENY after the response leaves Django.
-frame_header_fix_command = "test -f deploy/Caddyfile && sed -i '/X-Frame-Options/d' deploy/Caddyfile && ! grep -Fq 'X-Frame-Options' deploy/Caddyfile\n"
+frame_header_fix_command = "test -f deploy/Caddyfile && sed -i '/X-Frame-Options/d' deploy/Caddyfile\n"
 if frame_header_fix_command not in text:
     if assembly_anchor not in text:
         raise SystemExit("Could not find source assembly anchor for PDF preview proxy header fix")
@@ -132,20 +132,33 @@ PY
 chmod 700 "$TMP_SCRIPT"
 sh "$TMP_SCRIPT"
 
-# The Caddyfile is a bind-mounted runtime config. Editing it on disk does not make
-# an already-running Caddy process re-read it. The previous PDF-preview fix changed
-# the file correctly, but production kept the old active DENY header because the
-# caddy container was intentionally not recreated by the normal web deployment.
-# Validate the mounted config and restart only Caddy after the application deploy so
-# the active proxy actually starts serving Django's per-view SAMEORIGIN response.
+# Final proxy activation must happen AFTER the complete deployment/hardening chain.
+# A late hardening layer can rewrite the assembled Caddyfile after the early source
+# patch; the previous attempt checked the still-rewritten file and exited before it
+# ever reloaded Caddy. Reassert the narrow proxy rule here, then validate and restart
+# only Caddy so its in-memory config actually matches the final file on disk.
+if [ ! -f deploy/Caddyfile ]; then
+  echo "Final Caddyfile is missing; cannot activate PDF preview embedding." >&2
+  exit 1
+fi
+sed -i '/X-Frame-Options/d' deploy/Caddyfile
+if grep -Fq 'X-Frame-Options' deploy/Caddyfile; then
+  echo "Final Caddyfile still contains a blanket X-Frame-Options header." >&2
+  exit 1
+fi
+
 if docker compose version >/dev/null 2>&1; then
   dc() { docker compose "$@"; }
 else
   dc() { docker-compose "$@"; }
 fi
 
-dc exec -T caddy sh -ec "test -f /etc/caddy/Caddyfile; ! grep -Fq 'X-Frame-Options' /etc/caddy/Caddyfile"
 dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 dc restart caddy
 sleep 2
+if dc exec -T caddy grep -Fq 'X-Frame-Options' /etc/caddy/Caddyfile; then
+  echo "Running Caddy still sees a blanket X-Frame-Options header after restart." >&2
+  exit 1
+fi
+dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 dc ps caddy
