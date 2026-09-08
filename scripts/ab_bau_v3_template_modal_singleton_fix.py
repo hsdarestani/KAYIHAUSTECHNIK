@@ -169,6 +169,13 @@ def install_dashboard_action_alignment() -> None:
     runpy.run_path(str(script), run_name="__main__")
 
 
+def install_quote_flow_action_restore() -> None:
+    script = ROOT / "scripts/ab_bau_quote_flow_action_restore.py"
+    if not script.exists():
+        raise RuntimeError("Final quote-flow action restore installer is missing")
+    runpy.run_path(str(script), run_name="__main__")
+
+
 def main() -> None:
     install_runtime_asset()
     patch_document_template()
@@ -181,6 +188,10 @@ def main() -> None:
     # reason: the user-visible + Einsatz planen label must not fall back to link
     # baseline alignment after a later stylesheet/cache rewrite.
     install_dashboard_action_alignment()
+    # Accepted quotes must keep their lifecycle CTA after every post-draft/V3 layer:
+    # Angebot -> Auftragsbestätigung -> Rechnung. Run this last so no visual parity
+    # installer can reintroduce an always-visible invoice button without its prerequisite.
+    install_quote_flow_action_restore()
     print(f"{MARKER}: Vorlagen uses one canonical modal and both finance/singleton runtimes are cache-busted.")
 
 
