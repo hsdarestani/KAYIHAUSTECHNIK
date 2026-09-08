@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,11 +79,5 @@ for needle in (
 for needle in ("Etage", "Hinweise zum Zugang", "Kunde konnte nicht gespeichert werden.", "data-form-error-summary"):
     if needle not in final_template:
         raise RuntimeError(f"Customer German validation regression fix missing: {needle}")
-
-# The field authorization price editor is finalized only after the complete
-# ToolTime offer editor exists. Bridge it here so both screens use the same
-# shared partials, runtime and calculation contract in the assembled source.
-runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge.py"), run_name="__main__")
-runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge_followup.py"), run_name="__main__")
 
 print(f"{MARKER}: empty POST validation, German Einsatzort labels and error summary hook restored.")
