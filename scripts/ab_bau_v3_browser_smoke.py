@@ -103,6 +103,16 @@ def main():
                     expect(page.locator("[data-ab-v3-customer-form]")).to_be_visible()
                     expect(page.get_by_role("heading", name="Neuer Kunde")).to_be_visible()
                     expect(page.get_by_label("Firmenname")).to_be_visible()
+                    location = page.locator("[data-location-details]")
+                    expect(location).to_have_count(1)
+                    assert not location.evaluate("el => el.open")
+                    location.locator("summary").click()
+                    expect(location.get_by_label("Straße", exact=True)).to_be_visible()
+                    location.locator("summary").click()
+                    assert not location.evaluate("el => el.open")
+                    details = page.locator("[data-more-details]")
+                    details.locator("summary").click()
+                    expect(details.locator('[name="customer_number"]')).to_be_visible()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Customer create overflows viewport"
 
                     # Phase 2 directories are real interactive surfaces, not screenshot

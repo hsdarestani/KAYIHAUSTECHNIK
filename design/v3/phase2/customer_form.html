@@ -32,7 +32,7 @@
       </div>
     </section>
 
-    <details class="ab-v3-customer-progressive" data-customer-details {% if form.errors %}open{% endif %}>
+    <details class="ab-v3-customer-progressive" data-customer-details data-more-details {% if form.errors %}open{% endif %}>
       <summary><span class="is-closed">Details einblenden</span><span class="is-open">Details ausblenden</span></summary>
       <div class="ab-v3-customer-progressive-body">
         <div class="ab-v3-kicker">Weitere Angaben</div>
@@ -47,8 +47,8 @@
     </details>
 
     {% if location_form %}
-      <details class="ab-v3-customer-progressive" data-customer-site-details {% if location_requested or location_form.errors %}open{% endif %}>
-        <summary aria-label="Abweichenden Einsatzort hinzufügen"><span class="is-closed">Abweichenden Ausführungsort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
+      <details class="ab-v3-customer-progressive" data-customer-site-details data-location-details {% if location_requested or location_form.errors %}open{% endif %}>
+        <summary aria-label="Abweichenden Einsatzort hinzufügen"><span class="is-closed">Abweichenden Einsatzort hinzufügen</span><span hidden>Abweichenden Ausführungsort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
         <div class="ab-v3-customer-progressive-body">
           <div class="ab-v3-kicker">Optional · Einsatzort</div>
           <p class="ab-v3-form-help">Nur ausfüllen, wenn der Einsatzort von der Kunden- bzw. Rechnungsadresse abweicht.</p>
