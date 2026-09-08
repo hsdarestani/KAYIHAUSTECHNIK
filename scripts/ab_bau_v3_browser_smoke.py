@@ -63,7 +63,12 @@ def main():
                         skip.first.click()
                     expect(page.locator("[data-ab-v3-dashboard]")).to_be_visible()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Dashboard overflows viewport"
-                    trigger = page.locator("[data-ab-v3-command-open]:visible").first
+                    # On mobile the off-canvas sidebar's create control still has layout
+                    # and therefore matches Playwright's :visible even while it is outside
+                    # the viewport. Exercise the dedicated mobile FAB there; on desktop,
+                    # exercise the persistent sidebar command trigger.
+                    trigger = page.locator(".ab-v3-mobile-fab" if width <= 980 else ".ab-v3-create")
+                    expect(trigger).to_be_visible()
                     trigger.click()
                     dialog = page.get_by_role("dialog", name="Schnell erstellen")
                     search = page.get_by_role("textbox", name="Aktion suchen")
