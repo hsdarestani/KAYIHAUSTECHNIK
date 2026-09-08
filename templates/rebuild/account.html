@@ -1,0 +1,24 @@
+{% extends "rebuild/base.html" %}
+{% block title %}Konto · A+Bau{% endblock %}
+{% block content %}
+<div class="account-safe-page" data-safe-account-page>
+  <div class="account-safe-hero">
+    <div><span class="account-safe-eyebrow">MEIN KONTO</span><h1>Persönlicher Bereich</h1><p>Hier sehen Sie ausschließlich Ihre eigenen Kontodaten. Unternehmensweite Finanz-, Steuer- und Kommunikationseinstellungen sind getrennt geschützt.</p></div>
+    <span class="account-safe-badge">Geschützter Mitarbeiterzugang</span>
+  </div>
+  <div class="account-safe-grid">
+    <section><span>Benutzer</span><strong>{{ request.user.get_full_name|default:request.user.username }}</strong><small>@{{ request.user.username }}</small></section>
+    <section><span>Rolle</span><strong>{{ request.user.profile.role|default:"Mitarbeiter" }}</strong><small>{% if request.user.profile.is_mobile_worker %}Mobiler Einsatz aktiviert{% else %}Webzugang{% endif %}</small></section>
+    <section><span>Unternehmen</span><strong>{{ request.user.profile.organization.name|default:"A+Bau" }}</strong><small>Persönlicher Zugriff ohne kaufmännische Systemeinstellungen</small></section>
+  </div>
+</div>
+<section class="account-safe-actions" data-account-actions>
+  <div><span>KONTO</span><strong>Sitzung & Zugriff</strong><small>Sie können sich jederzeit sicher von diesem Gerät abmelden.</small></div>
+  <form method="post" action="{% url 'next-logout' %}" data-account-logout>{% csrf_token %}<button type="submit">↪ Abmelden</button></form>
+</section>
+<style>
+.account-safe-page{max-width:980px;margin:0 auto}.account-safe-hero{display:flex;justify-content:space-between;gap:28px;align-items:flex-start;padding:34px;border:1px solid #e7e4dc;background:#fff;border-radius:20px;box-shadow:0 16px 42px rgba(17,20,24,.07)}.account-safe-hero h1{margin:7px 0 8px;font-size:30px;letter-spacing:-.035em}.account-safe-hero p{max-width:650px;margin:0;color:#69707a;line-height:1.6}.account-safe-eyebrow{font-size:11px;font-weight:900;letter-spacing:.14em;color:#9a7615}.account-safe-badge{white-space:nowrap;padding:9px 12px;border-radius:999px;background:#f6f2e5;color:#75580c;font-size:12px;font-weight:800}.account-safe-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}.account-safe-grid section{display:flex;flex-direction:column;gap:7px;padding:22px;border:1px solid #e7e8eb;border-radius:16px;background:#fff}.account-safe-grid span{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8a9098;font-weight:850}.account-safe-grid strong{font-size:17px}.account-safe-grid small{color:#777f88;line-height:1.45}@media(max-width:760px){.account-safe-hero{padding:24px;flex-direction:column}.account-safe-grid{grid-template-columns:1fr}.account-safe-badge{white-space:normal}}
+
+.account-safe-actions{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:16px;padding:20px 22px;border:1px solid #e7e8eb;border-radius:16px;background:#fff}.account-safe-actions>div{display:flex;flex-direction:column;gap:5px}.account-safe-actions span{font-size:10px;letter-spacing:.12em;color:#92979e;font-weight:900}.account-safe-actions strong{font-size:16px}.account-safe-actions small{color:#777f88;line-height:1.4}.account-safe-actions form{margin:0}.account-safe-actions button{min-height:42px;padding:9px 16px;border:1px solid #dedfe2;border-radius:11px;background:#fff;color:#23262b;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.account-safe-actions button:hover{background:#f6f6f4}@media(max-width:620px){.account-safe-actions{align-items:stretch;flex-direction:column}.account-safe-actions button{width:100%}}
+</style>
+{% endblock %}

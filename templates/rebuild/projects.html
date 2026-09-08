@@ -1,0 +1,85 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}Projekte · A+Bau{% endblock %}
+{% block content %}
+<script src="/static/js/tooltime-projects-exact.js?v=20260821-projects-exact" defer></script>
+<div class="ttp-page ab-v3-directory" data-tooltime-projects-exact data-ab-v3-projects data-modal-open="{% if modal_open %}1{% else %}0{% endif %}">
+  <section class="ab-v3-directory-hero">
+    <div>
+      <div class="ab-v3-kicker">Operations · Arbeitsbestand</div>
+      <h1>Projekte.</h1>
+      <p>Der operative Bestand vom Eingang bis zum Abschluss. Status, Einsatzort, Kunde und letzte Bewegung bleiben auf einer Ebene sichtbar.</p>
+    </div>
+    <div class="ab-v3-directory-actions">
+      <a class="ab-v3-directory-secondary" href="{% url 'next-appointments' %}">Kalender öffnen</a>
+      <button class="ab-v3-directory-primary ttp-new" type="button" data-project-modal-open>＋ Neues Projekt</button>
+    </div>
+  </section>
+
+  <section class="ab-v3-directory-strip" aria-label="Projektkennzahlen">
+    <div class="ab-v3-directory-stat"><small>Arbeitsbestand</small><strong>{{ total_count }}</strong><span>Projekte im aktuellen Filter</span></div>
+    <div class="ab-v3-directory-stat"><small>Ansicht</small><strong>{{ rows|length }}</strong><span>Einträge auf dieser Seite</span></div>
+    <div class="ab-v3-directory-stat"><small>Sortierung</small><strong>{% if sort_type == 'TITLE' %}Titel{% elif sort_type == 'NUMBER' %}Nummer{% elif sort_type == 'CUSTOMER' %}Kunde{% elif sort_type == 'SITE_ADDRESS' %}Einsatzort{% else %}Aktivität{% endif %}</strong><span>{% if sort_order == 'DESCENDING' %}absteigend{% else %}aufsteigend{% endif %}</span></div>
+  </section>
+
+  <div class="ab-v3-directory-toolbar">
+    <form class="ttp-search ab-v3-directory-search" method="get" role="search">
+      <input type="hidden" name="amount" value="{{ amount }}"><input type="hidden" name="status" value="{{ status_filter }}"><input type="hidden" name="sortType" value="{{ sort_type }}"><input type="hidden" name="sortOrder" value="{{ sort_order }}">
+      <span aria-hidden="true">⌕</span><input type="search" name="searchText" value="{{ search_text }}" placeholder="Projekt, Nummer, Kunde oder Ort suchen" aria-label="Projekte suchen"><button class="sr-only" type="submit">Suchen</button>
+    </form>
+    <form class="ttp-toolbar ab-v3-directory-filters" method="get" data-auto-filter>
+      <input type="hidden" name="searchText" value="{{ search_text }}"><input type="hidden" name="offset" value="0"><input type="hidden" name="amount" value="{{ amount }}">
+      <label class="ttp-filter-select"><span class="sr-only">Projektstatus</span><select name="status" aria-label="Projektstatus"><option value="" {% if not status_filter %}selected{% endif %}>Alle Projekte</option>{% for value,label in statuses %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label class="ttp-mobile-sort"><span class="sr-only">Sortierung</span><select name="sortType" aria-label="Sortierung"><option value="LAST_CHANGED" {% if sort_type == 'LAST_CHANGED' %}selected{% endif %}>Letzte Änderung</option><option value="TITLE" {% if sort_type == 'TITLE' %}selected{% endif %}>Titel</option><option value="NUMBER" {% if sort_type == 'NUMBER' %}selected{% endif %}>Nr.</option><option value="CUSTOMER" {% if sort_type == 'CUSTOMER' %}selected{% endif %}>Kunde</option><option value="SITE_ADDRESS" {% if sort_type == 'SITE_ADDRESS' %}selected{% endif %}>Ausführungsort</option></select></label>
+      <label class="ttp-mobile-sort"><span class="sr-only">Reihenfolge</span><select name="sortOrder" aria-label="Reihenfolge"><option value="ASCENDING" {% if sort_order == 'ASCENDING' %}selected{% endif %}>Aufsteigend</option><option value="DESCENDING" {% if sort_order == 'DESCENDING' %}selected{% endif %}>Absteigend</option></select></label>
+      <button class="sr-only" type="submit">Anwenden</button>
+    </form>
+  </div>
+
+  <section class="ab-v3-ledger">
+    <header class="ab-v3-ledger-head"><div><h2>Projektregister</h2><span>Operative Priorisierung statt isolierter Listenansicht.</span></div><span>{{ total_count }} Projekte</span></header>
+    <div class="ttp-table-wrap ab-v3-ledger-scroll">
+      <table class="ttp-table" data-project-table>
+        <thead><tr>
+          <th data-col="title">Titel</th><th data-col="no">Nr.</th><th data-col="status">Status</th><th data-col="address">Ausführungsort</th><th data-col="customer">Kunde</th>
+          <th data-col="changed"><a href="?{{ last_change_query }}">Letzte Änderung {% if sort_type == 'LAST_CHANGED' and sort_order == 'ASCENDING' %}↑{% else %}↓{% endif %}</a></th>
+          <th><details class="ttp-columns ab-v3-row-menu"><summary aria-label="Spalten auswählen">⚙</summary><div><strong>Spalten</strong><label><input type="checkbox" data-column-toggle="no" checked> Nr.</label><label><input type="checkbox" data-column-toggle="status" checked> Status</label><label><input type="checkbox" data-column-toggle="address" checked> Ausführungsort</label><label><input type="checkbox" data-column-toggle="customer" checked> Kunde</label><label><input type="checkbox" data-column-toggle="changed" checked> Letzte Änderung</label></div></details></th>
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr data-project-row data-href="{% url 'next-project-detail' row.project.pk %}" tabindex="0">
+            <td data-col="title"><div class="ab-v3-ledger-name"><span class="ab-v3-ledger-symbol">▣</span><div><a class="ttp-title" href="{% url 'next-project-detail' row.project.pk %}"><strong>{{ row.project.title }}</strong></a><small>{{ row.customer_label|default:'ohne Kunde' }}</small></div></div></td>
+            <td data-col="no"><strong>{{ row.project.number|default:'—' }}</strong></td>
+            <td data-col="status"><span class="ttp-status ttp-status-{{ row.status_key }} ab-v3-status {% if row.status_key == 'done' %}is-done{% elif row.status_key == 'cancelled' %}is-cancelled{% elif row.status_key == 'quote' or row.status_key == 'waiting' or row.status_key == 'planning' %}is-quote{% else %}is-active{% endif %}">{{ row.status_label }}</span></td>
+            <td data-col="address">{{ row.site_address }}</td>
+            <td data-col="customer">{{ row.customer_label|default:'—' }}</td>
+            <td data-col="changed">{% if row.last_change %}{{ row.last_change|date:'d.m.Y' }}{% else %}—{% endif %}</td>
+            <td><details class="ttp-row-actions ab-v3-row-menu"><summary aria-label="Projektaktionen">•••</summary><div><a href="{% url 'next-project-detail' row.project.pk %}">Projekt öffnen</a><a href="{% url 'next-quote-create' %}?project={{ row.project.pk }}">Angebot erstellen</a><a href="{% url 'next-appointment-create' %}?project={{ row.project.pk }}">Termin planen</a></div></details></td>
+          </tr>
+        {% empty %}<tr><td colspan="7"><div class="ttp-empty ab-v3-empty"><strong>Keine Projekte gefunden.</strong><br>Suche oder Filter anpassen oder ein neues Projekt anlegen.</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="ttp-pagination ab-v3-pagination" aria-label="Seitennavigation">
+      <span>{% if total_count %}{{ first_item }}–{{ last_item }} von {{ total_count }}{% else %}0 Projekte{% endif %}</span>
+      <div><label>Zeilen <select data-page-size aria-label="Zeilen pro Seite"><option value="20" {% if amount == 20 %}selected{% endif %}>20</option><option value="50" {% if amount == 50 %}selected{% endif %}>50</option><option value="100" {% if amount == 100 %}selected{% endif %}>100</option></select></label>{% if prev_offset != None %}<a class="ab-v3-page-button" href="?{{ prev_query }}" aria-label="Vorherige Seite">←</a>{% else %}<span class="ab-v3-page-button is-disabled">←</span>{% endif %}{% if next_offset != None %}<a class="ab-v3-page-button" href="?{{ next_query }}" aria-label="Nächste Seite">→</a>{% else %}<span class="ab-v3-page-button is-disabled">→</span>{% endif %}</div>
+    </div>
+  </section>
+
+  <div class="ttp-modal ab-v3-modal" data-project-modal {% if not modal_open %}hidden{% endif %}>
+    <button class="ttp-modal-backdrop" type="button" data-project-modal-close aria-label="Dialog schließen"></button>
+    <form class="ttp-modal-card ab-v3-modal-card" method="post" action="{% url 'next-projects' %}" data-project-create-form>{% csrf_token %}<input type="hidden" name="intent" value="create_project">
+      <header><div><div class="ab-v3-kicker">Neuer Auftrag</div><h2>Projekt erstellen</h2></div><button type="button" data-project-modal-close aria-label="Schließen">×</button></header>
+      <div class="ab-v3-form-body">
+        {% if create_errors %}<div class="ttp-form-errors" role="alert">{% for error in create_errors %}<div>{{ error }}</div>{% endfor %}</div>{% endif %}
+        <div class="ttp-create-grid">
+          <label class="ttp-field ttp-title-field"><span>Projekttitel</span><input name="title" value="{{ create_values.title }}" maxlength="200" autofocus required data-project-title></label>
+          <label class="ttp-field"><span>Eingangsdatum</span><input type="date" name="date_of_receipt" value="{{ create_values.date_of_receipt|default:today_iso }}" required></label>
+          <label class="ttp-field ttp-span-2"><span>Projektbeschreibung</span><textarea name="description" rows="3" placeholder="Projektspezifische Informationen und Notizen (optional)">{{ create_values.description }}</textarea></label>
+        </div>
+        <div class="ttp-customer-section"><h3>Kunde</h3><label class="ttp-field"><span class="sr-only">Kunde auswählen</span><select name="customer" required data-project-customer><option value="">Kunde auswählen …</option>{% for customer in customers %}<option value="{{ customer.pk }}" {% if create_values.customer == customer.pk|stringformat:'s' %}selected{% endif %}>{{ customer.display_name }}{% if customer.city %} · {{ customer.city }}{% endif %}</option>{% endfor %}</select></label><a href="{% url 'next-customer-create' %}?next=project" class="ttp-customer-create">＋ Neuen Kunden anlegen</a></div>
+      </div>
+      <footer><button class="ttp-cancel" type="button" data-project-modal-close>Abbrechen</button><button class="ttp-create" type="submit">＋ Erstellen</button></footer>
+    </form>
+  </div>
+</div>
+{% endblock %}

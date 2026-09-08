@@ -1,0 +1,67 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %} · A+Bau{% endblock %}
+{% block content %}
+<div class="ab-v3-form-page" data-ab-v3-customer-form>
+  <header class="ab-v3-form-page-head">
+    <div><div class="ab-v3-kicker">Kundenstamm · {% if mode == 'create' %}Kunde anlegen{% else %}Datensatz{% endif %}</div><h1>{% if mode == 'create' %}Neuer Kunde{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer ist für neue Kunden vorbelegt und kann in den Details geprüft werden.</p></div>
+    <a class="ab-v3-directory-secondary" href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">← {% if next_target == 'project' %}Projekt{% else %}Kunden{% endif %}</a>
+  </header>
+
+  <form method="post" class="ab-v3-form-card" data-customer-form novalidate>{% csrf_token %}
+    {% if next_target %}<input type="hidden" name="next" value="{{ next_target }}">{% endif %}
+    {% if form.errors or location_form.errors %}
+      <div class="tt-form-error ab-v3-form-error-summary" data-form-error-summary role="alert" aria-live="assertive">
+        <strong>Kunde konnte nicht gespeichert werden.</strong>
+        <p>Bitte prüfe die markierten Felder. Es wurde noch kein Kunde angelegt.</p>
+        <div class="nx-form-error-list">
+          {% for field in form %}{% for error in field.errors %}<div><strong>{{ field.label }}:</strong> {{ error }}</div>{% endfor %}{% endfor %}
+          {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+          {% if location_form %}{% for field in location_form %}{% for error in field.errors %}<div><strong>Einsatzort · {{ field.label }}:</strong> {{ error }}</div>{% endfor %}{% endfor %}{% for error in location_form.non_field_errors %}<div><strong>Einsatzort:</strong> {{ error }}</div>{% endfor %}{% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <section aria-labelledby="customer-core-title">
+      <div class="ab-v3-kicker" id="customer-core-title">Kunde & Kontakt</div>
+      <div class="ab-v3-form-grid">
+        {% for field in form %}
+          {% if field.name == 'type' or field.name == 'company' or field.name == 'first_name' or field.name == 'last_name' or field.name == 'salutation' or field.name == 'email' or field.name == 'phone' or field.name == 'mobile' %}
+            <label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <details class="ab-v3-customer-progressive" data-customer-details data-more-details {% if form.errors %}open{% endif %}>
+      <summary><span class="is-closed">Details einblenden</span><span class="is-open">Details ausblenden</span></summary>
+      <div class="ab-v3-customer-progressive-body">
+        <div class="ab-v3-kicker">Weitere Angaben</div>
+        <div class="ab-v3-form-grid">
+          {% for field in form %}
+            {% if field.name != 'type' and field.name != 'company' and field.name != 'first_name' and field.name != 'last_name' and field.name != 'salutation' and field.name != 'email' and field.name != 'phone' and field.name != 'mobile' %}
+              <label><span>{{ field.label }}</span>{{ field }}{{ field.errors }}</label>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </details>
+
+    {% if location_form %}
+      <details class="ab-v3-customer-progressive" data-customer-site-details data-location-details {% if location_requested or location_form.errors %}open{% endif %}>
+        <summary aria-label="Abweichenden Einsatzort hinzufügen"><span class="is-closed">Abweichenden Einsatzort hinzufügen</span><span hidden>Abweichenden Ausführungsort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
+        <div class="ab-v3-customer-progressive-body">
+          <div class="ab-v3-kicker">Optional · Einsatzort</div>
+          <p class="ab-v3-form-help">Nur ausfüllen, wenn der Einsatzort von der Kunden- bzw. Rechnungsadresse abweicht.</p>
+          <div class="ab-v3-form-grid">
+            {% for field in location_form %}
+              <label><span>{% if field.name == 'name' %}Bezeichnung{% elif field.name == 'street' %}Straße{% elif field.name == 'postal_code' %}PLZ{% elif field.name == 'city' %}Ort{% elif field.name == 'floor' %}Etage{% elif field.name == 'access_notes' %}Hinweise zum Zugang{% else %}{{ field.label }}{% endif %}</span>{{ field }}{{ field.errors }}</label>
+            {% endfor %}
+          </div>
+        </div>
+      </details>
+    {% endif %}
+
+    <div class="ab-v3-form-actions"><a href="{% if next_target == 'project' %}{% url 'next-project-create' %}{% else %}{% url 'next-customers' %}{% endif %}">Abbrechen</a><button type="submit">{% if mode == 'create' %}＋ Erstellen{% else %}Speichern{% endif %}</button></div>
+  </form>
+</div>
+{% endblock %}

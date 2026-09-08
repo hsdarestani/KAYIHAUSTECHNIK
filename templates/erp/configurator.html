@@ -1,0 +1,104 @@
+{% extends 'erp/base.html' %}
+{% block title %}3D-Raummodell · A+Bau{% endblock %}
+{% block page_title %}3D-Raummodell{% endblock %}
+{% block page_subtitle %}Versioniert bearbeiten{% endblock %}
+{% block content %}
+<div class="page-head compact">
+  <div><span class="eyebrow">SCAN → PRÜFEN → BEARBEITEN</span><h1>Editierbares 3D-Raummodell</h1><p>Das Originalmodell bleibt erhalten. Jede Änderung an Maßen, Öffnungen, Objekten und Materialien wird als neue Version gespeichert.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% if selected_project %}{% url 'project-detail' selected_project.pk %}{% else %}{% url 'resource-list' 'projects' %}{% endif %}">Zum Projekt</a></div>
+</div>
+
+<div class="model-source-selector panel">
+  <form method="get" class="config-selector horizontal-selector">
+    <label><span>Projekt</span><select name="project" class="form-control" onchange="this.form.submit()">{% for project in projects %}<option value="{{ project.pk }}" {% if selected_project.pk == project.pk %}selected{% endif %}>{{ project.number }} · {{ project.title }}</option>{% empty %}<option>Kein Projekt</option>{% endfor %}</select></label>
+    <label><span>Raum / Aufmaß</span><select name="measurement" class="form-control" onchange="this.form.submit()">{% for item in measurements %}<option value="{{ item.pk }}" {% if selected_measurement.pk == item.pk %}selected{% endif %}>{{ item.name }} · {{ item.get_status_display }}</option>{% empty %}<option>Kein Aufmaß vorhanden</option>{% endfor %}</select></label>
+    {% if selected_revision %}<span class="badge success">Version {{ selected_revision.revision }}</span>{% elif selected_measurement %}<span class="badge warning">Noch ungespeicherter Ausgangsstand</span>{% endif %}
+  </form>
+</div>
+
+{% if selected_measurement %}
+<div class="room-model-editor" data-room-model-editor data-save-url="{% url 'configurator-model-save' %}" data-ai-url="{% url 'project-room-model-suggestions' %}" data-measurement-id="{{ selected_measurement.pk }}">
+  <section class="model-stage panel">
+    <div class="configurator-toolbar">
+      <div><b>{{ selected_project.number }} · {{ selected_measurement.name }}</b><small>{% if selected_native_scan %}Quelle: {{ selected_native_scan.get_provider_display }}{% else %}Quelle: manuelles / Foto-Aufmaß{% endif %}</small></div>
+      <div class="view-buttons"><button class="active" type="button" data-model-view="perspective">Perspektive</button><button type="button" data-model-view="front">Front</button><button type="button" data-model-view="top">Grundriss</button></div>
+    </div>
+
+    <div class="editable-room-scene" id="editableRoomScene" data-view-mode="perspective">
+      <div class="model-room-shell">
+        <div class="model-wall model-wall-back"><div class="model-openings" data-model-openings="back"></div></div>
+        <div class="model-wall model-wall-left"><div class="model-openings" data-model-openings="left"></div></div>
+        <div class="model-wall model-wall-right"><div class="model-openings" data-model-openings="right"></div></div>
+        <div class="model-wall model-wall-front"><div class="model-openings" data-model-openings="front"></div></div>
+        <div class="model-floor"><span></span></div>
+        <div class="model-fixtures" data-model-fixtures></div>
+      </div>
+      <div class="model-dimension model-dimension-length"><span data-model-dimension="length">–</span></div>
+      <div class="model-dimension model-dimension-width"><span data-model-dimension="width">–</span></div>
+      <div class="model-dimension model-dimension-height"><span data-model-dimension="height">–</span></div>
+      <div class="room-label"><b>{{ selected_measurement.name }}</b><small data-model-summary>Modell wird geladen …</small></div>
+    </div>
+
+    <div class="model-stage-footer">
+      <div><b>Parametrisches Arbeitsmodell</b><p>Maße und Bauteile sind direkt bearbeitbar. Die originale USDZ-/OBJ-Datei des Scans wird dabei nicht überschrieben.</p></div>
+      {% if selected_native_scan and selected_native_scan.model_file %}<a class="btn btn-secondary" href="{{ selected_native_scan.model_file.url }}" download>Original-3D-Datei herunterladen</a>{% endif %}
+    </div>
+  </section>
+
+  <aside class="model-editor-sidebar panel">
+    <div class="model-editor-section">
+      <div class="panel-head"><div><h2>Raummaße</h2><p>Änderungen aktualisieren die Vorschau sofort.</p></div></div>
+      <div class="form-grid three compact model-dimension-inputs">
+        <label><span>Länge m</span><input class="form-control" type="number" min="0.1" max="50" step="0.001" data-room-field="length_m"></label>
+        <label><span>Breite m</span><input class="form-control" type="number" min="0.1" max="50" step="0.001" data-room-field="width_m"></label>
+        <label><span>Höhe m</span><input class="form-control" type="number" min="0.1" max="12" step="0.001" data-room-field="height_m"></label>
+      </div>
+      <div class="model-calculations"><span><small>Grundfläche</small><b data-model-calc="floor">–</b></span><span><small>Wandfläche brutto</small><b data-model-calc="wall">–</b></span><span><small>Öffnungen</small><b data-model-calc="openings">–</b></span></div>
+    </div>
+
+    <div class="model-editor-section">
+      <div class="section-title-row"><div><b>Türen, Fenster & Öffnungen</b><small>Direkt im Modell ziehen oder Position hier exakt eingeben</small></div><button class="btn btn-secondary btn-small" type="button" data-add-opening="window">+ Fenster</button><button class="btn btn-secondary btn-small" type="button" data-add-opening="door">+ Tür</button></div>
+      <div class="opening-editor-list" data-opening-editor-list></div>
+    </div>
+
+    <div class="model-editor-section">
+      <b>Materialvorschau</b>
+      <div class="material-editor-row"><span>Boden</span><div class="material-swatches"><button type="button" data-model-surface="floor" data-value="#3d434b" style="--material:#3d434b"><span></span></button><button type="button" data-model-surface="floor" data-value="#d7cbbb" style="--material:#d7cbbb"><span></span></button><button type="button" data-model-surface="floor" data-value="#adb4bc" style="--material:#adb4bc"><span></span></button><button type="button" data-model-surface="floor" data-value="#75533b" style="--material:#75533b"><span></span></button></div></div>
+      <div class="material-editor-row"><span>Wand</span><div class="material-swatches"><button type="button" data-model-surface="wall" data-value="#eef2f6" style="--material:#eef2f6"><span></span></button><button type="button" data-model-surface="wall" data-value="#d9e2e9" style="--material:#d9e2e9"><span></span></button><button type="button" data-model-surface="wall" data-value="#e4d7ca" style="--material:#e4d7ca"><span></span></button><button type="button" data-model-surface="wall" data-value="#23344a" style="--material:#23344a"><span></span></button></div></div>
+      <div class="customer-type-chips model-patterns"><button type="button" data-model-pattern="straight">Gerade</button><button type="button" data-model-pattern="diagonal">Diagonal</button><button type="button" data-model-pattern="herringbone">Fischgrät</button></div>
+    </div>
+
+    <div class="model-editor-section">
+      <div class="section-title-row"><div><b>Objekte</b><small>Ein- und ausblenden</small></div></div>
+      <label class="toggle-row"><span><b>Walk-in-Dusche</b><small>Sanitärobjekt</small></span><input type="checkbox" data-model-fixture="shower"></label>
+      <label class="toggle-row"><span><b>Waschtisch</b><small>Sanitärobjekt</small></span><input type="checkbox" data-model-fixture="vanity"></label>
+      <label class="toggle-row"><span><b>WC</b><small>Sanitärobjekt</small></span><input type="checkbox" data-model-fixture="toilet"></label>
+    </div>
+
+    <div class="model-editor-section model-ai-section">
+      <div class="model-ai-card"><span class="model-ai-icon">✦</span><div><span class="eyebrow">A+Bau KI DESIGN</span><h3>Modell mit KI anpassen</h3><p>Beschreibe Maße, Materialien, Öffnungen oder Sanitärobjekte in normaler Sprache. Das Ergebnis bleibt ein prüfbarer Entwurf.</p></div></div>
+      <textarea class="form-control" rows="4" data-model-ai-prompt placeholder="z. B. Wände warmweiß, Boden anthrazit 60 × 120 cm, Walk-in-Dusche rechts"></textarea>
+      <div class="model-ai-chips"><button type="button" data-model-ai-chip="Boden anthrazit, Wände warmweiß, Fliesen 60 x 120 cm und warmes Licht">Modernes Bad</button><button type="button" data-model-ai-chip="Helles Bad mit beigen Fliesen, Holz-Waschtisch und mehr Helligkeit">Hell & warm</button><button type="button" data-model-ai-chip="Walk-in-Dusche, Waschtisch und WC sinnvoll im Raum verteilen">Sanitärobjekte</button><button type="button" data-model-ai-chip="Boden im Fischgrätmuster und dunkle Akzentwand">Fischgrät</button></div>
+      <button class="btn btn-ai btn-block" type="button" data-model-ai-apply>✦ Modell mit KI anpassen</button>
+      <div class="model-ai-feedback" data-model-ai-feedback hidden></div>
+      <small class="model-ai-warning">KI-Änderungen werden nicht automatisch bestätigt. Maße und Positionen vor Kalkulation oder Bestellung immer prüfen.</small>
+    </div>
+
+    <div class="model-save-card">
+      <label><span>Versionsnotiz</span><input class="form-control" data-model-label placeholder="z. B. Fenster verschoben"></label>
+      <button class="btn btn-primary btn-block" type="button" data-save-room-model>Neue Modellversion speichern</button>
+      <div class="model-save-status" data-model-save-status>Ungespeicherte Änderungen werden nicht automatisch übernommen.</div>
+      {% if selected_measurement.status == 'confirmed' %}<small>Wird die Geometrie geändert, wechselt das Aufmaß aus Sicherheitsgründen zurück auf „Zu prüfen“.</small>{% endif %}
+    </div>
+
+    <div class="model-revision-history">
+      <div class="section-title-row"><div><b>Versionsverlauf</b><small>Jeder Stand bleibt abrufbar</small></div></div>
+      {% for revision in model_revisions %}<a class="{% if selected_revision.pk == revision.pk %}active{% endif %}" href="?project={{ selected_project.pk }}&measurement={{ selected_measurement.pk }}&revision={{ revision.pk }}"><span>v{{ revision.revision }}</span><div><b>{{ revision.label|default:'Modellstand' }}</b><small>{{ revision.created_at|date:'d.m.Y H:i' }}{% if revision.created_by %} · {{ revision.created_by.get_full_name|default:revision.created_by.username }}{% endif %}</small></div></a>{% empty %}<div class="empty compact"><p>Noch keine gespeicherte Version. Der aktuelle Stand stammt direkt aus dem Aufmaß.</p></div>{% endfor %}
+    </div>
+  </aside>
+</div>
+{{ model_state|json_script:"room-model-state" }}
+{% else %}
+<div class="panel empty"><h2>Noch kein Raumaufmaß</h2><p>Erstelle zuerst einen Raumscan oder ein manuelles Aufmaß.</p>{% if selected_project %}<a class="btn btn-primary" href="{% url 'room-measurement-create' selected_project.pk %}?scan=1">Raumscan starten</a>{% endif %}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'erp/base.html' %}{% load erp_extras %}
+{% block title %}Termine · A+Bau{% endblock %}
+{% block content %}
+<div class="page-head compact"><div><span class="eyebrow">KALENDERWOCHE {{ anchor|date:'W' }}</span><h1>Termine</h1><p>{{ event_count }} Termine im ausgewählten Zeitraum</p></div><div class="actions"><a class="btn btn-secondary" href="?mode={{ mode }}&date={{ previous_date|date:'Y-m-d' }}{% if selected_employee %}&employee={{ selected_employee }}{% endif %}">←</a><a class="btn btn-secondary" href="?mode={{ mode }}&date={% now 'Y-m-d' %}">Heute</a><a class="btn btn-secondary" href="?mode={{ mode }}&date={{ next_date|date:'Y-m-d' }}{% if selected_employee %}&employee={{ selected_employee }}{% endif %}">→</a><a class="btn btn-primary" href="{% url 'event-create' %}">+ Neuer Termin</a></div></div>
+<section class="panel calendar-panel">
+  <div class="calendar-toolbar">
+    <div class="segmented"><a class="{% if mode == 'week' %}active{% endif %}" href="?mode=week&date={{ anchor|date:'Y-m-d' }}">Woche</a><a class="{% if mode == 'day' %}active{% endif %}" href="?mode=day&date={{ anchor|date:'Y-m-d' }}">Tag</a><a class="{% if mode == 'month' %}active{% endif %}" href="?mode=month&date={{ anchor|date:'Y-m-d' }}">Monat</a></div>
+    <form method="get" class="calendar-filter"><input type="hidden" name="mode" value="{{ mode }}"><input type="hidden" name="date" value="{{ anchor|date:'Y-m-d' }}"><select name="employee" onchange="this.form.submit()"><option value="">Alle Mitarbeiter</option>{% for employee in employees %}<option value="{{ employee.pk }}" {% if selected_employee == employee.pk|stringformat:'s' %}selected{% endif %}>{{ employee.full_name }}</option>{% endfor %}</select></form>
+  </div>
+  {% if mode == 'month' %}
+  <div class="month-grid">{% for day in days %}<article class="month-day {% if day == now.date %}today{% endif %}"><header><b>{{ day|date:'D' }}</b><span>{{ day|date:'d' }}</span></header>{% for event in grouped_events|dict_get:day %}<a href="{% url 'model-edit' 'event' event.pk %}" class="month-event {{ event.type|event_color }}"><time>{{ event.starts_at|date:'H:i' }}</time>{{ event.title }}</a>{% empty %}<small>–</small>{% endfor %}</article>{% endfor %}</div>
+  {% else %}
+  <div class="calendar-scroll"><div class="week-calendar {% if mode == 'day' %}single-day{% endif %}"><div class="time-axis"><div class="calendar-corner"></div>{% for hour in hours %}<div>{{ hour|stringformat:'02d' }}:00</div>{% endfor %}</div>{% for day in days %}<div class="day-column"><header><b>{{ day|date:'D' }}</b><span>{{ day|date:'d.m.' }}</span></header><div class="day-slots">{% for hour in hours %}<i></i>{% endfor %}{% for event in grouped_events|dict_get:day %}<a href="{% url 'model-edit' 'event' event.pk %}" class="calendar-event {{ event.type|event_color }}" style="top:{{ event.starts_at|event_top }}px;height:{{ event|event_height }}px"><b>{{ event.title }}</b><small>{{ event.starts_at|date:'H:i' }}–{{ event.ends_at|date:'H:i' }}{% if event.project %} · {{ event.project.number }}{% endif %}</small></a>{% endfor %}</div></div>{% endfor %}</div></div>
+  {% endif %}
+</section>
+{% endblock %}

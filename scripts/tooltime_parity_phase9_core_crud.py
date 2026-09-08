@@ -227,7 +227,7 @@ def project_detail'''
             '"customer": {\n            "id": customer.pk,\n            "name": customer.display_name,\n            "address": ", ".join(part for part in [customer.street, f"{customer.postal_code} {customer.city}".strip()] if part),\n        },',
             1,
         )
-    elif '"address": ", ".join(part for part in [customer.street' not in text:
+    elif '"address": ", ".join(part for part in [customer.street' not in text and not ("customer.street" in text and "customer.display_name" in text):
         raise RuntimeError("Phase 9 customer location API anchor missing")
 
     write(path, text)

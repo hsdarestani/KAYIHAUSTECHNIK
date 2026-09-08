@@ -1,0 +1,38 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}{% if item %}Artikel bearbeiten{% else %}Artikel hinzufügen{% endif %} · A+Bau{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/tooltime-catalogue-exact.css' %}?v=20260821-catalogue-exact">
+<link rel="stylesheet" href="{% static 'css/ab-v3-catalogue-text-layout.css' %}?v=20260908-v3-parity">
+<script src="{% static 'js/ab-v3-catalogue-text-layout.js' %}?v=20260908-v3-parity" defer></script>
+<div class="abtt-catalogue-editor" data-ab-v3-catalogue-editor>
+  <form id="abtt-article-form" method="post" class="abtt-article-form" data-ab-v3-article-form>{% csrf_token %}
+    <header class="abtt-editor-head">
+      <div class="abtt-editor-title">
+        <a class="abtt-close" href="{% url 'next-catalogue' %}" aria-label="Zurück zum Katalog">×</a>
+        <div><span class="abtt-eyebrow">Katalog</span><h1>{% if item %}Artikel bearbeiten{% else %}Artikel hinzufügen{% endif %}</h1></div>
+      </div>
+      <button class="abtt-save" type="submit">Speichern</button>
+    </header>
+    {% if errors %}<div class="ttc-errors abtt-errors">{% for error in errors %}<div>{{ error }}</div>{% endfor %}</div>{% endif %}
+    <div class="abtt-number-block"><label><span>Artikelnummer</span><input name="code" value="{{ values.code }}" placeholder="Optional" autocomplete="off"></label></div>
+    <section class="abtt-article-workspace" aria-label="Artikelkalkulation">
+      <div class="abtt-pricing-row">
+        <label class="abtt-field abtt-type"><span>Artikeltyp</span><select name="type"><option value="material" {% if values.type == 'material' %}selected{% endif %}>Material</option><option value="labor" {% if values.type == 'labor' %}selected{% endif %}>Lohn / Leistung</option><option value="jumbo" {% if values.type == 'jumbo' %}selected{% endif %}>Jumbo</option><option value="other" {% if values.type == 'other' or not values.type %}selected{% endif %}>Sonstiges</option></select></label>
+        <label class="abtt-field abtt-quantity"><span>Menge</span><input type="number" min="0" step="0.001" value="1" data-ab-quantity inputmode="decimal"></label>
+        <label class="abtt-field abtt-unit"><span>Einheit</span><input name="unit" value="{{ values.unit|default:'Stk.' }}" placeholder="Stk."></label>
+        <label class="abtt-field abtt-description"><span>Bezeichnung</span><input name="name" value="{{ values.name }}" placeholder="Material oder Leistung hinzufügen" required autocomplete="off"></label>
+        <label class="abtt-field abtt-money"><span>Einkaufspreis</span><div class="abtt-input-prefix"><b>€</b><input type="number" step="0.01" min="0" name="purchase_price" value="{{ values.purchase_price }}" data-ab-purchase inputmode="decimal"></div></label>
+        <label class="abtt-field abtt-markup"><span>Aufschlag</span><div class="abtt-input-suffix"><input type="number" step="0.01" min="-100" value="0" data-ab-markup inputmode="decimal"><b>%</b></div></label>
+        <div class="abtt-field abtt-output"><span>Aufschlagswert</span><output data-ab-markup-value>0,00 €</output></div>
+        <label class="abtt-field abtt-money"><span>Stückpreis</span><div class="abtt-input-prefix"><b>€</b><input type="number" step="0.01" min="0" name="sales_price" value="{{ values.sales_price }}" data-ab-sales inputmode="decimal"></div></label>
+        <div class="abtt-field abtt-output abtt-total"><span>Gesamtpreis</span><output data-ab-total>0,00 €</output></div>
+      </div>
+      <div class="abtt-detail-row">
+        <label class="abtt-detail-copy"><span>Beschreibung</span><textarea name="description" rows="4" placeholder="Beschreibung, interne Hinweise oder Leistungsdetails">{{ values.description }}</textarea></label>
+        <aside class="abtt-tax-card"><div><span class="abtt-tax-kicker">Weitere Angaben</span><strong>Steuersatz</strong></div><div class="abtt-tax-input"><input type="number" step="0.01" min="0" max="100" name="tax_rate" value="{{ values.tax_rate|default:'19' }}" inputmode="decimal"><span>%</span></div></aside>
+      </div>
+    </section>
+    <footer class="abtt-editor-footer"><a href="{% url 'next-catalogue' %}">Abbrechen</a><button class="abtt-save" type="submit">Speichern</button></footer>
+  </form>
+</div>
+{% endblock %}

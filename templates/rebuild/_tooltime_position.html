@@ -1,0 +1,27 @@
+<div class="tt-position" data-position draggable="true">
+<span class="tt-position-grip">⠿</span><span class="tt-position-number" data-position-number>1.1</span>
+<select class="nx-control" name="item_type" data-item-type><option value="material" {% if item.ui_type == 'material' %}selected{% endif %}>Material</option><option value="labour" {% if item.ui_type == 'labour' %}selected{% endif %}>Lohn</option><option value="mixed" {% if item.ui_type == 'mixed' %}selected{% endif %}>Mischposition</option><option value="other" {% if item.ui_type == 'other' %}selected{% endif %}>Sonstiges</option></select>
+<input class="nx-control tt-qty" name="item_quantity" type="number" step="0.001" value="{{ item.quantity|default:1 }}" title="Negative Menge = Rabattposition; der Einzelpreis bleibt positiv.">
+<input class="nx-control tt-unit" name="item_unit" value="{{ item.unit|default:'Stk.' }}">
+<div class="tt-description">
+  <input type="hidden" name="item_catalog_id" value="{{ item.ui_catalog_id|default:'' }}"><input type="hidden" name="item_group" value="{{ item.ui_group|default:'' }}" data-group-hidden><input type="hidden" name="item_price" value="{{ item.unit_price|default:0 }}" data-hidden-sales-price>
+  <input class="nx-control" name="item_description" value="{{ item.description|default:'' }}" placeholder="Bezeichnung" autocomplete="off" data-position-search><button type="button" class="tt-browse" data-browse-articles>Artikel durchsuchen</button>
+  <textarea class="nx-control" name="item_detail" rows="2" placeholder="Beschreibung">{{ item.ui_detail|default:'' }}</textarea>
+  <div class="tt-mixed-editor" data-mixed-editor {% if item.ui_type != 'mixed' %}hidden{% endif %}>
+    <input type="hidden" name="item_subitems_json" value="{{ item.ui_subitems_json|default:'[]'|escape }}" data-subitems-json>
+    <input type="hidden" name="item_show_subitems" value="{% if item.ui_show_subitems == False %}0{% else %}1{% endif %}" data-show-subitems-hidden>
+    <div class="tt-mixed-head"><strong>Unterpositionen</strong><label class="tt-check"><input type="checkbox" data-show-subitems {% if item.ui_show_subitems != False %}checked{% endif %}> Unterpositionen im PDF anzeigen</label></div>
+    <div data-subitem-list>{% for sub in item.ui_mixed_subitems %}<div class="tt-subitem" data-subitem><select class="nx-control" data-sub-type><option value="material" {% if sub.item_type == 'material' %}selected{% endif %}>Material</option><option value="labour" {% if sub.item_type == 'labour' %}selected{% endif %}>Lohn</option><option value="other" {% if sub.item_type == 'other' %}selected{% endif %}>Sonstiges</option></select><input class="nx-control" data-sub-description value="{{ sub.description }}" placeholder="Unterposition"><input class="nx-control" data-sub-qty type="number" step="0.001" value="{{ sub.quantity }}"><input class="nx-control" data-sub-unit value="{{ sub.unit }}"><input class="nx-control" data-sub-purchase type="number" min="0" step="0.01" value="{{ sub.purchase_price }}" placeholder="EK"><input class="nx-control" data-sub-sales type="number" min="0" step="0.01" value="{{ sub.sales_price }}" placeholder="VK"><button type="button" class="tt-delete-position" data-remove-subitem>×</button></div>{% endfor %}</div>
+    <button type="button" class="tt-add-position" data-add-subitem>＋ Unterposition hinzufügen</button>
+  </div>
+  <div class="tt-position-extra"><label class="tt-check"><input type="checkbox" name="item_add_catalog" value="1"> Zum Katalog hinzufügen</label><label class="tt-upload">Bild hinzufügen<input type="file" name="item_image" accept="image/png,image/jpeg,image/webp"></label></div>
+  <!-- A+BAU V3 POSITION MODEL READABILITY FIX 2026-09-08 -->
+  <label class="tt-service-model-field"><span>Positionsmodell</span><select class="nx-control tt-service-model" name="item_service_model"><option value="normal" {% if item.ui_service_model == 'normal' %}selected{% endif %}>Normalleistung</option><option value="alternative" {% if item.ui_service_model == 'alternative' %}selected{% endif %}>Alternativposition</option><option value="contingent" {% if item.ui_service_model == 'contingent' %}selected{% endif %}>Eventualposition</option></select></label>
+</div>
+<input class="nx-control tt-money" name="item_purchase_price" type="number" min="0" step="0.01" value="{{ item.ui_purchase_price|default:0 }}" title="Einkaufspreis">
+<div class="tt-percent"><input class="nx-control" name="item_markup_percent" type="number" step="0.01" value="{{ item.ui_markup_percent|default:0 }}"><span>%</span></div>
+<output data-markup-value>0,00 €</output>
+<label class="tt-sales-field"><span>VK</span><input class="nx-control tt-money" name="item_sales_price" type="number" min="0" step="0.01" value="{{ item.unit_price|default:0 }}" data-sales-price></label>
+<output data-unit-price>{{ item.unit_price|default:0 }}</output><output data-line-total>0,00 €</output>
+<button type="button" class="tt-delete-position" data-delete-position title="Position löschen">🗑</button>
+</div>

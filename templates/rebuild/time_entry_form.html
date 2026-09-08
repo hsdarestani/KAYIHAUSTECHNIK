@@ -1,0 +1,103 @@
+{% extends 'rebuild/base.html' %}{% block title %}Arbeitszeit korrigieren · A+Bau{% endblock %}{% block content %}<style>
+/* A+BAU TIME ENTRY EDIT LAYOUT 2026-08-18 */
+.nx-time-edit-head,
+.nx-time-edit-card {
+  width: min(100%, 1160px);
+  max-width: none;
+}
+.nx-time-edit-head {
+  align-items: flex-end;
+  gap: 20px;
+}
+.nx-time-edit-head > div {
+  min-width: 0;
+}
+.nx-time-edit-card {
+  margin-right: auto;
+  padding: 24px 26px 22px;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, .035);
+}
+.nx-time-edit-card .nx-time-edit-form {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.nx-time-edit-card .next-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  align-items: start;
+}
+.nx-time-edit-card .next-field {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+.nx-time-edit-card .next-field > span {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #25282d;
+}
+.nx-time-edit-card .next-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border-radius: 12px;
+}
+.nx-time-edit-card textarea.next-control {
+  min-height: 118px;
+  resize: vertical;
+}
+.nx-time-edit-card .next-span-2 {
+  grid-column: 1 / -1;
+}
+.nx-time-edit-card .next-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #e3dfd6;
+}
+.nx-time-edit-card .next-actions .nx-btn {
+  min-height: 42px;
+}
+@media (max-width: 760px) {
+  .nx-time-edit-head {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .nx-time-edit-head > .nx-btn {
+    align-self: flex-start;
+  }
+  .nx-time-edit-card {
+    width: 100%;
+    padding: 17px;
+    border-radius: 16px;
+  }
+  .nx-time-edit-card .next-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .nx-time-edit-card .next-span-2 {
+    grid-column: auto;
+  }
+  .nx-time-edit-card .next-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .nx-time-edit-card .next-actions .nx-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style><div class="nx-pagehead nx-time-edit-head"><div><div class="nx-kicker">Zeiterfassung · Büro</div><h1>Arbeitszeit korrigieren</h1><p>{{ entry.employee.first_name }} {{ entry.employee.last_name }} · {% if entry.project %}{{ entry.project.number }} · {{ entry.project.title }}{% endif %}</p></div><a class="nx-btn" href="{% url 'next-time' %}">← Zeiterfassung</a></div><section class="nx-card nx-time-edit-card">{% if error %}<div class="nx-global-form-errors"><b>Bitte Eingaben prüfen.</b><p><span>{{ error }}</span></p></div>{% endif %}<form method="post" class="nx-time-edit-form" data-no-form-polish>{% csrf_token %}<div class="next-grid"><label class="next-field"><span>Start</span><input class="next-control" type="datetime-local" name="started_at" value="{{ entry.started_at|date:'Y-m-d\TH:i' }}" required step="600"></label><label class="next-field"><span>Ende</span><input class="next-control" type="datetime-local" name="ended_at" value="{% if entry.ended_at %}{{ entry.ended_at|date:'Y-m-d\TH:i' }}{% endif %}" step="600"></label><label class="next-field"><span>Pause (Min.)</span><input class="next-control" type="number" min="0" max="1440" name="break_minutes" value="{{ entry.break_minutes|default:0 }}"></label><label class="next-field"><span>Status</span><select class="next-control" name="approved"><option value="0" {% if not entry.approved %}selected{% endif %}>Offen</option><option value="1" {% if entry.approved %}selected{% endif %}>Freigegeben</option></select></label><label class="next-field next-span-2"><span>Notiz</span><textarea class="next-control" name="description">{{ entry.description }}</textarea></label></div><div class="next-actions"><a class="nx-btn" href="{% url 'next-time' %}">Abbrechen</a><button class="nx-btn nx-btn-primary">Korrektur speichern</button></div></form></section>{% endblock %}

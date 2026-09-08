@@ -276,12 +276,12 @@ def customer_invoice_create(request, pk):
 
 '''
         project = project.replace(render_anchor, history + render_anchor, 1)
-        context_anchor = '        "invoice_gross": invoice_gross,\n'
-        if context_anchor not in project:
-            raise RuntimeError("V3 closeout project context anchor missing")
+        project_context_anchor = '    return render(request, "rebuild/project_detail.html", {\n'
+        if project_context_anchor not in project:
+            raise RuntimeError("V3 closeout project render-context anchor missing")
         project = project.replace(
-            context_anchor,
-            context_anchor
+            project_context_anchor,
+            project_context_anchor
             + '        "history": history,\n'
             + '        "tooltime_status": tooltime_status,\n'
             + '        "has_planned_appointments": has_planned_appointments,\n',
@@ -510,7 +510,11 @@ class ABauV3HistoryLifecycleTests(TestCase):
         self.org = Organization.objects.create(name="A+Bau V3 Closeout Test")
         User = get_user_model()
         self.user = User.objects.create_user(username="v3-closeout-office", password="secret")
-        UserProfile.objects.create(user=self.user, organization=self.org, role="office", is_mobile_worker=False)
+        profile = self.user.profile
+        profile.organization = self.org
+        profile.role = UserProfile.Role.ADMIN
+        profile.is_mobile_worker = False
+        profile.save()
         self.client.force_login(self.user)
         self.customer = Customer.objects.create(
             organization=self.org,

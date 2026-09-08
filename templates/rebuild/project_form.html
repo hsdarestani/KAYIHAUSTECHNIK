@@ -1,0 +1,113 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Neues Projekt · A+Bau{% endblock %}
+{% block content %}
+<div class="tt-create-shell tt-project-create" data-tt-project-create>
+  <div class="tt-create-head nx-project-pagehead"><div><a class="tt-back" href="{% url 'next-projects' %}">← Zurück</a><h1>Neues Projekt</h1></div></div>
+
+  <form method="post" class="tt-create-form nx-project-form" data-project-object-ux>{% csrf_token %}{% if source_appointment %}<input type="hidden" name="_appointment" value="{{ source_appointment.pk }}">{% endif %}
+    <p class="tt-create-hint"><strong>Kein Assistent:</strong> Alle wichtigen Projektdaten werden direkt auf einer Seite erfasst.</p>
+    {% if form.non_field_errors %}<div class="tt-form-alert">{{ form.non_field_errors }}</div>{% endif %}
+    <section class="tt-create-card nx-project-card">
+      <h2>Projektdetails</h2>
+      <div class="tt-grid tt-grid-2">
+        <div class="tt-field tt-span-2"><label for="{{ form.title.id_for_label }}">Projekttitel</label>{{ form.title }}{{ form.title.errors }}</div>
+        <div class="tt-field tt-span-2"><label for="{{ form.description.id_for_label }}">Projektbeschreibung <span class="tt-optional">optional</span></label>{{ form.description }}{{ form.description.errors }}</div>
+      </div>
+    </section>
+
+    <section class="tt-create-card">
+      <div class="tt-section-head nx-project-card-head"><h2>Kunde</h2><a class="tt-inline-link" href="{% url 'next-customer-create' %}?next=project">＋ Kunde anlegen</a><!-- legacy-contract: ＋ Neuen Kunden anlegen --></div>
+      <div class="tt-field" data-select-search><label for="{{ form.customer.id_for_label }}">Kunde suchen</label>{{ form.customer }}{{ form.customer.errors }}<small>Kunde auswählen oder Suchbegriff eingeben.</small></div>
+      <div class="tt-address-preview" data-customer-address-preview hidden><small>Rechnungsadresse</small><strong data-customer-address></strong></div>
+    </section>
+
+    <section class="tt-create-card">
+      <h2>Ausführungsort</h2>
+      <label class="tt-switch-row">
+        <span><strong>Abweichenden Ausführungsort verwenden</strong><small>Standardmäßig wird die Kundenadresse übernommen.</small></span>
+        <input type="checkbox" data-alt-location-toggle>
+        <i aria-hidden="true"></i>
+      </label>
+      <div class="tt-alt-location" data-alt-location hidden>
+        <div class="tt-field"><label for="{{ form.object_location.id_for_label }}">Gespeicherten Ausführungsort auswählen</label>{{ form.object_location }}{{ form.object_location.errors }}</div>
+        <a class="tt-inline-link" data-object-create-link aria-disabled="true">＋ Einsatzort anlegen</a>
+      </div>
+    </section>
+
+    <details class="tt-create-card tt-details" {% if form.priority.errors or form.manager.errors or form.members.errors %}open{% endif %}>
+      <summary><span>Details einblenden</span><span class="tt-chevron">⌄</span></summary>
+      <div class="tt-details-body tt-grid tt-grid-2">
+        <div class="tt-field"><label for="{{ form.priority.id_for_label }}">Priorität</label>{{ form.priority }}{{ form.priority.errors }}</div>
+        <div class="tt-field"><label for="{{ form.manager.id_for_label }}">Projektleitung</label>{{ form.manager }}{{ form.manager.errors }}</div>
+        <div class="tt-field tt-span-2"><label for="{{ form.members.id_for_label }}">Mitarbeiter</label>{{ form.members }}{{ form.members.errors }}</div>
+      </div>
+    </details>
+
+    <div class="tt-create-actions"><a class="nx-btn" href="{% url 'next-projects' %}">Abbrechen</a><button class="nx-btn nx-btn-primary tt-submit" type="submit">＋ Erstellen</button></div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const root = document.querySelector('[data-tt-project-create]');
+  const form = root?.querySelector('[data-project-object-ux]');
+  if (!form) return;
+  const customer = form.querySelector('select[name="customer"]');
+  const object = form.querySelector('select[name="object_location"]');
+  const toggle = form.querySelector('[data-alt-location-toggle]');
+  const alt = form.querySelector('[data-alt-location]');
+  const action = form.querySelector('[data-object-create-link]');
+  const preview = form.querySelector('[data-customer-address-preview]');
+  const previewText = form.querySelector('[data-customer-address]');
+  if (!customer || !object || !toggle || !alt) return;
+
+  const setToggle = (enabled) => {
+    toggle.checked = Boolean(enabled);
+    alt.hidden = !toggle.checked;
+    if (!toggle.checked) object.value = '';
+  };
+  const setAction = () => {
+    const id = customer.value;
+    if (!action) return;
+    action.href = id ? `/customers/${encodeURIComponent(id)}/?add_object=1#objekte` : '#';
+    action.setAttribute('aria-disabled', id ? 'false' : 'true');
+    action.classList.toggle('is-disabled', !id);
+  };
+  const loadCustomer = async () => {
+    const customerId = customer.value;
+    const previous = object.value;
+    object.innerHTML = '<option value="">Kundenadresse verwenden (Standard)</option>';
+    setAction();
+    if (!customerId) {
+      if (preview) preview.hidden = true;
+      setToggle(false);
+      return;
+    }
+    try {
+      const response = await fetch(`/customers/${encodeURIComponent(customerId)}/locations.json/`, {credentials:'same-origin', headers:{'Accept':'application/json'}});
+      if (!response.ok) throw new Error('load failed');
+      const data = await response.json();
+      if (preview && previewText) {
+        previewText.textContent = data.customer?.address || 'Keine Rechnungsadresse hinterlegt';
+        preview.hidden = false;
+      }
+      (data.locations || []).forEach((location) => {
+        const option = document.createElement('option');
+        option.value = String(location.id);
+        option.textContent = location.address ? `${location.name} · ${location.address}` : location.name;
+        object.appendChild(option);
+      });
+      if ([...object.options].some((option) => option.value === previous)) object.value = previous;
+      if (previous) setToggle(true);
+    } catch (_) {
+      if (preview) preview.hidden = true;
+    }
+  };
+  toggle.addEventListener('change', () => setToggle(toggle.checked));
+  customer.addEventListener('change', loadCustomer);
+  setToggle(Boolean(object.value));
+  loadCustomer();
+})();
+</script>
+{% endblock %}

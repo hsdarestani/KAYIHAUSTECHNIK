@@ -1,0 +1,62 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}Rechnungen · A+Bau{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/tooltime-invoices-exact.css' %}?v=20260821-invoices-exact">
+<script src="{% static 'js/tooltime-invoices-exact.js' %}?v=20260821-invoices-exact" defer></script>
+<script src="{% static 'js/tooltime-parity-lifecycle.js' %}?v=20260821-invoices-compat" defer></script>
+<div class="tti-page" data-tooltime-invoices-exact>
+  <div class="tti-topbar">
+    <div class="tti-heading"><h1>Rechnungen</h1><span class="tti-help" title="Rechnungen verwalten">?</span></div>
+    <div class="tti-top-actions">
+      <form class="tti-search" method="get" role="search">
+        <input type="hidden" name="status" value="{{ status_filter }}"><input type="hidden" name="type" value="{{ type_filter }}">
+        <input type="hidden" name="date_from" value="{{ date_from }}"><input type="hidden" name="date_to" value="{{ date_to }}">
+        <input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="amount" value="{{ amount }}">
+        <span aria-hidden="true">⌕</span><input type="search" name="q" value="{{ q }}" placeholder="Suchen" aria-label="Rechnungen suchen"><button type="submit" class="sr-only">Suchen</button>
+      </form>
+      <a class="tti-new" href="{% url 'next-invoice-create' %}"><span aria-hidden="true">＋</span> Neue Rechnung</a>
+    </div>
+  </div>
+  <div class="tti-kpis" aria-label="Rechnungsübersicht">
+    <div class="tti-kpi" data-invoice-kpi="draft"><span>Entwurf</span><strong>{{ draft_amount|floatformat:2 }} €</strong></div>
+    <div class="tti-kpi" data-invoice-kpi="unpaid"><span>Unbezahlt</span><strong>{{ unpaid_amount|floatformat:2 }} €</strong></div>
+    <div class="tti-kpi" data-invoice-kpi="overdue"><span>Überfällig</span><strong>{{ overdue_amount|floatformat:2 }} €</strong></div>
+    <div class="tti-kpi" data-invoice-kpi="dunning"><span>Im Mahnverfahren</span><strong>{{ dunning_amount|floatformat:2 }} €</strong></div>
+  </div>
+  <form class="tti-filters" method="get" data-invoice-filters>
+    <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="sort" value="{{ sort }}"><input type="hidden" name="amount" value="{{ amount }}">
+    <label class="tti-select"><span class="sr-only">Status</span><select name="status" aria-label="Rechnungsstatus">
+      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Alle Rechnungen</option><option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Entwurf</option><option value="unpaid" {% if status_filter == 'unpaid' %}selected{% endif %}>Unbezahlt</option><option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Überfällig</option><option value="dunning" {% if status_filter == 'dunning' %}selected{% endif %}>Im Mahnverfahren</option><option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Bezahlt</option><option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Erstattet</option><option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Storniert</option>
+    </select></label>
+    <label class="tti-select"><span class="sr-only">Rechnungstyp</span><select name="type" aria-label="Rechnungstyp">
+      <option value="all" {% if type_filter == 'all' %}selected{% endif %}>Alle Rechnungstypen</option><option value="standard" {% if type_filter == 'standard' %}selected{% endif %}>Rechnung</option><option value="advance" {% if type_filter == 'advance' %}selected{% endif %}>Abschlagsrechnung</option><option value="partial" {% if type_filter == 'partial' %}selected{% endif %}>Teilrechnung</option><option value="final" {% if type_filter == 'final' %}selected{% endif %}>Schlussrechnung</option>
+    </select></label>
+    <details class="tti-date-filter" {% if date_from or date_to %}open{% endif %}><summary><span aria-hidden="true">▣</span>{% if date_from or date_to %}Zeitraum aktiv{% else %}Zeitraum wählen{% endif %}</summary><div class="tti-date-popover"><label>Von<input type="date" name="date_from" value="{{ date_from }}"></label><label>Bis<input type="date" name="date_to" value="{{ date_to }}"></label><div><button type="submit">Anwenden</button>{% if date_from or date_to %}<button type="button" data-clear-invoice-dates>Zurücksetzen</button>{% endif %}</div></div></details>
+    <label class="tti-mobile-sort"><span>Sortieren</span><select name="sort" aria-label="Sortieren"><option value="last_change_desc" {% if sort == 'last_change_desc' %}selected{% endif %}>Letzte Änderung ↓</option><option value="last_change_asc" {% if sort == 'last_change_asc' %}selected{% endif %}>Letzte Änderung ↑</option><option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Rechnungsdatum ↓</option><option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Rechnungsdatum ↑</option><option value="amount_desc" {% if sort == 'amount_desc' %}selected{% endif %}>Betrag ↓</option><option value="amount_asc" {% if sort == 'amount_asc' %}selected{% endif %}>Betrag ↑</option><option value="outstanding_desc" {% if sort == 'outstanding_desc' %}selected{% endif %}>Ausstehend ↓</option><option value="outstanding_asc" {% if sort == 'outstanding_asc' %}selected{% endif %}>Ausstehend ↑</option></select></label>
+    <button type="submit" class="sr-only">Filter anwenden</button>
+  </form>
+  
+  <div class="tti-table-wrap"><table class="tti-table" data-invoice-table><thead><tr><th>Rechnungsdatum</th><th>Nr.</th><th>Status</th><th>Rechnungstitel</th><th>Kunde</th><th class="tti-money">Betrag</th><th class="tti-money">Ausstehend</th><th><a class="tti-sort-link" href="?{{ last_change_query }}{% if last_change_query %}&{% endif %}offset=0">Letzte Änderung <span aria-hidden="true">{% if sort == 'last_change_asc' %}↑{% else %}↓{% endif %}</span></a></th><th aria-label="Aktionen"></th></tr></thead>
+    <tbody>{% for row in rows %}<tr data-invoice-row><td data-label="Rechnungsdatum"><strong>{{ row.invoice.issue_date|date:'d.m.Y' }}</strong></td><td data-label="Nr."><strong>{% if row.invoice.number %}{{ row.invoice.number }}{% else %}–{% endif %}</strong></td><td data-label="Status"><span class="tti-status tti-status-{{ row.status_key }}">{{ row.status }}</span></td><td data-label="Rechnungstitel"><a class="tti-title" href="{% url 'next-invoice-edit' row.invoice.pk %}">{{ row.invoice_title }}</a><small>{{ row.invoice_type_label }}</small></td><td data-label="Kunde"><span class="tti-customer-icon" aria-hidden="true">⌂</span>{% if row.customer_label %}{{ row.customer_label }}{% else %}—{% endif %}</td><td data-label="Betrag" class="tti-money"><strong>{{ row.gross|floatformat:2 }} €</strong></td><td data-label="Ausstehend" class="tti-money">{{ row.open|floatformat:2 }} €</td><td data-label="Letzte Änderung"><span class="tti-last-change">{{ row.last_change_label }}</span></td><td class="tti-actions"><details class="tti-row-menu"><summary aria-label="Rechnungsaktionen">•••</summary><div><a href="{% url 'next-invoice-edit' row.invoice.pk %}">Rechnung öffnen</a>{% if row.finalized and row.open > 0 %}
+          <button type="button" data-payment-open data-action="{% url 'next-invoice-payment' row.invoice.pk %}" data-number="{{ row.invoice.number|default:'Rechnung' }}" data-open="{{ row.open }}">Zahlung eintragen</button>
+          <form method="post" action="{% url 'next-invoice-dunning' row.invoice.pk %}">{% csrf_token %}<input type="hidden" name="level" value="reminder"><input type="hidden" name="due_days" value="7"><button type="submit">Zahlungserinnerung</button></form>
+          {% if pay_active %}{% if pay_active %}<form method="post" action="{% url 'next-invoice-payment-link' row.invoice.pk %}">{% csrf_token %}<button type="submit">Online-Zahlung / QR</button></form>{% endif %}{% endif %}
+          <form method="post" action="{% url 'next-invoice-dunning-toggle' row.invoice.pk %}">{% csrf_token %}<button type="submit">Mahn-Automatik aussetzen</button></form>
+        {% endif %}</div></details></td></tr>{% empty %}<tr><td colspan="9"><div class="tti-empty"><strong>Keine Rechnungen gefunden.</strong><span>Passe die Filter an oder erstelle eine neue Rechnung.</span></div></td></tr>{% endfor %}</tbody></table></div>
+  <div class="tti-pagination" aria-label="Seitennavigation"><div><span>{% if total_count %}{{ first_item }}–{{ last_item }} von {{ total_count }}{% else %}0 Rechnungen{% endif %}</span><label>Zeilen <select data-invoice-page-size aria-label="Zeilen pro Seite"><option value="20" {% if amount == 20 %}selected{% endif %}>20</option><option value="50" {% if amount == 50 %}selected{% endif %}>50</option><option value="100" {% if amount == 100 %}selected{% endif %}>100</option></select></label></div><div class="tti-page-buttons">{% if offset > 0 %}<a href="?{{ query_tail }}{% if query_tail %}&{% endif %}offset={{ prev_offset }}" aria-label="Vorherige Seite">‹</a>{% else %}<span aria-disabled="true">‹</span>{% endif %}{% if next_offset != None %}<a href="?{{ query_tail }}{% if query_tail %}&{% endif %}offset={{ next_offset }}" aria-label="Nächste Seite">›</a>{% else %}<span aria-disabled="true">›</span>{% endif %}</div></div>
+  <div class="tti-payment-modal" data-payment-modal hidden>
+    <form class="tti-payment-card" method="post" data-payment-form>{% csrf_token %}
+      <header><div><span>Zahlung</span><h2>Zahlung eintragen</h2><p data-payment-caption></p></div><button type="button" data-payment-close aria-label="Schließen">×</button></header>
+      <div class="tti-payment-grid">
+        <label>Zahlungsdatum<input type="date" name="paid_at" value="{% now 'Y-m-d' %}" required></label>
+        <label>Betrag<input type="number" name="amount" min="0.01" step="0.01" data-payment-amount required></label>
+        <label>Zahlungsart<select name="method"><option>Überweisung</option><option>Bar</option><option>Karte</option><option>Lastschrift</option><option>Sonstiges</option></select></label>
+        <label>Kommentar / Referenz<input name="reference" maxlength="240" placeholder="Optional"></label>
+      </div>
+      <p>Teilzahlungen sind möglich. Die Rechnung bleibt bis zum vollständigen Ausgleich offen.</p>
+      <button class="tti-payment-save" type="submit">Zahlung verbuchen</button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

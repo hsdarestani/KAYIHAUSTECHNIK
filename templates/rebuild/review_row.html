@@ -1,0 +1,11 @@
+<article class="nx-review-row">
+  <div class="nx-review-main">
+    <div class="nx-review-status">{% if legacy %}◷ Altbestand · prüfen{% else %}◷ Wartet auf Freigabe{% endif %}</div>
+    <h3>{% if doc.project %}{{ doc.project.number }} · {{ doc.project.title }}{% else %}Einsatz #{{ doc.metadata.event_id }}{% endif %}</h3>
+    <p>{% if doc.project %}{{ doc.project.customer.display_name }} · {% endif %}Abgeschlossen {{ doc.created_at|date:'d.m.Y H:i' }}{% if doc.uploaded_by %} · {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}{% endif %}</p>
+    <div class="nx-review-links"><a href="/appointments/{{ doc.metadata.event_id }}/">Einsatzakte</a><a href="/appointments/{{ doc.metadata.event_id }}/completion/pdf/" target="_blank">Original Abschluss-PDF</a></div>
+  </div>
+  <div class="nx-review-actions">
+    <a class="nx-btn nx-btn-primary" href="{% url 'field-review-detail' doc.pk %}">Prüfen & bearbeiten →</a>
+  </div>
+</article>

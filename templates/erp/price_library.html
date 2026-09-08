@@ -1,0 +1,29 @@
+{% extends 'erp/base.html' %}{% load erp_extras %}
+{% block title %}Preislisten · A+Bau{% endblock %}
+{% block content %}
+<div class="page-head compact price-page-head">
+  <div><span class="eyebrow">ZENTRALE PREISBASIS</span><h1>Preislisten</h1><p>{{ sources|length }} verwendbare Preislisten · {{ total_items }} aktive Positionen. Lieferantenmaterial wie JOKA bleibt im Materialbereich.</p></div>
+  <div class="actions"><a class="btn btn-secondary" href="{% url 'marketplace' %}">Material-Marketplace</a><details class="price-import-popover"><summary class="btn btn-primary">＋ Preisliste importieren</summary><div class="price-import-card"><b>Datei importieren</b><small>XLSX, CSV, PDF, 003 oder P86</small><form method="post" enctype="multipart/form-data" class="stack-form">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary btn-block">Importieren</button></form></div></details></div>
+</div>
+
+<section class="panel price-library-clean">
+  <form class="price-filter-bar" method="get">
+    <label class="price-source-select"><span>Preisliste</span><select class="form-control" name="source" data-searchable="true" data-search-placeholder="B&O, Allianz oder Firmenpreisliste suchen …"><option value="">Alle Preislisten</option>{% for source in sources %}<option value="{{ source.pk }}" {% if selected_source == source.pk|stringformat:'s' %}selected{% endif %}>{{ source.name }} · {{ source.get_kind_display }} · {{ source.priced_item_count }} Preise</option>{% endfor %}</select></label>
+    <label class="price-main-search"><span>Position suchen</span><div class="search-field"><span>⌕</span><input name="q" value="{{ query }}" placeholder="Code, Leistung oder Gewerk …"></div></label>
+    <button class="btn btn-primary" type="submit">Anzeigen</button>
+    {% if selected_source or query %}<a href="{% url 'price-library' %}" class="btn btn-secondary">Zurücksetzen</a>{% endif %}
+  </form>
+
+  {% if selected_source_obj %}
+  <div class="selected-price-source-bar">
+    <div><span>{{ selected_source_obj.get_kind_display }}</span><b>{{ selected_source_obj.name }}</b><small>{{ selected_source_obj.original_filename }} · {{ selected_source_obj.priced_item_count }} bepreiste Positionen</small></div>
+    <div class="actions"><a class="btn btn-secondary btn-small" href="{% url 'price-source-export' selected_source_obj.pk %}">CSV exportieren</a><form method="post" action="{% url 'price-source-share-toggle' selected_source_obj.pk %}">{% csrf_token %}<button class="btn btn-secondary btn-small">{% if selected_source_obj.share_enabled %}Verkaufslink deaktivieren{% else %}Verkaufslink aktivieren{% endif %}</button></form></div>
+  </div>
+  {% if selected_source_obj.share_enabled %}<div class="price-share-link"><span>Freigabelink</span><input class="form-control" readonly value="{{ request.scheme }}://{{ request.get_host }}{% url 'price-source-public' selected_source_obj.share_token %}"></div>{% endif %}
+  {% endif %}
+
+  <div class="price-table-meta"><div><b>{% if selected_source_obj %}{{ selected_source_obj.name }}{% else %}Alle kommerziellen Preislisten{% endif %}</b><small>JOKA, Raab Karcher und reine Lieferantenlisten werden hier nicht angezeigt.</small></div><span>{{ page_obj.paginator.count }} Treffer</span></div>
+  <div class="table-wrap price-table-clean"><table><thead><tr><th>Quelle</th><th>Code</th><th>Beschreibung</th><th>Gewerk</th><th>Einheit</th><th>EK</th><th>VK</th></tr></thead><tbody>{% for item in page_obj %}<tr><td><b>{{ item.source.name }}</b></td><td><code>{{ item.code|default:'–' }}</code></td><td>{{ item.description }}</td><td>{{ item.category|default:'–' }}</td><td>{{ item.unit|default:'–' }}</td><td>{{ item.purchase_price|money|default:'–' }}</td><td><strong>{{ item.sales_price|money|default:'–' }}</strong></td></tr>{% empty %}<tr><td colspan="7"><div class="empty">Keine Preispositionen gefunden.</div></td></tr>{% endfor %}</tbody></table></div>
+  {% if page_obj.has_other_pages %}<div class="pagination">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ query|urlencode }}&source={{ selected_source }}">Zurück</a>{% endif %}<span>Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ query|urlencode }}&source={{ selected_source }}">Weiter</a>{% endif %}</div>{% endif %}
+</section>
+{% endblock %}

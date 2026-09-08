@@ -69,7 +69,7 @@ def _phase7_order_confirmation_document(quote, user):
     project_label = f"{quote.project.number} · {quote.project.title}" if quote.project_id else ""
     accepted_at = meta_for(quote, "quote").accepted_at
     accepted_label = timezone.localtime(accepted_at).strftime("%d.%m.%Y %H:%M") if accepted_at else timezone.localtime().strftime("%d.%m.%Y %H:%M")
-    body = f'''<html><body style="font-family:Arial,sans-serif;font-size:11px;color:#202428">
+    body = f"""<html><body style="font-family:Arial,sans-serif;font-size:11px;color:#202428">
 <h1>Auftragsbestätigung</h1>
 <p>Angebot: <strong>{html.escape(quote.number or '')}</strong></p>
 <p>Kunde: <strong>{html.escape(str(customer_name))}</strong></p>
@@ -78,7 +78,7 @@ def _phase7_order_confirmation_document(quote, user):
 <table style="width:100%;border-collapse:collapse" cellpadding="6"><thead><tr style="border-bottom:1px solid #bbb"><th>Pos.</th><th style="text-align:left">Leistung</th><th style="text-align:right">Menge</th><th style="text-align:right">Gesamt</th></tr></thead><tbody>{''.join(rows)}</tbody></table>
 <p style="font-size:13px;margin-top:18px">Auftragssumme <strong style="float:right">{gross:.2f} €</strong></p>
 <p style="margin-top:36px">Mit freundlichen Grüßen<br>{html.escape(quote.organization.name)}</p>
-</body></html>'''
+</body></html>"""
     payload = html_to_pdf_bytes(inject_business_pdf_identity(body, org=quote.organization, document_kind="Auftragsbestätigung"))
     filename = f"auftragsbestaetigung-{quote.number or quote.pk}.pdf"
     document = m.Document(
@@ -135,7 +135,7 @@ def _phase7_order_confirmation_document(quote, user):
             rf"(def {function_name}\([^\n]+\):\n    org = _org\(request\)\n)(?!    phase7_guard =)",
         )
         replacement = (
-            rf"\1    phase7_guard = _phase7_commercial_guard(request, \"{redirect_name}\")\n"
+            f"\\1    phase7_guard = _phase7_commercial_guard(request, \"{redirect_name}\")\n"
             "    if phase7_guard is not None:\n"
             "        return phase7_guard\n"
         )
@@ -254,25 +254,10 @@ def quote_order_confirmation(request, pk):
 
 
 def patch_dunning_role() -> None:
-    rel = "erp/tooltime_parity_finance.py"
+    rel = "erp/tooltime_parity_views.py"
     text = read(rel)
-    old = '''def invoice_dunning(request, pk):
-    org = _org(request); invoice = get_object_or_404(m.Invoice, organization=org, pk=pk)
-'''
-    new = '''def invoice_dunning(request, pk):
-    org = _org(request)
-    role = str(getattr(getattr(request.user, "profile", None), "role", "") or "")
-    if not (getattr(request.user, "is_superuser", False) or role in {"admin", "office", "project_manager", "accounting"}):
-        messages.error(request, "Mahnungen sind nur für Büro, Projektleitung oder Buchhaltung freigegeben.")
-        return redirect("next-invoices")
-    invoice = get_object_or_404(m.Invoice, organization=org, pk=pk)
-'''
     if "Mahnungen sind nur für Büro" not in text:
-        if old not in text:
-            raise RuntimeError("Phase 7 invoice_dunning role anchor missing")
-        text = text.replace(old, new, 1)
-    write(rel, text)
-
+        raise RuntimeError("Phase 7 dunning role guard missing from final view endpoint")
 
 def patch_urls() -> None:
     rel = "erp/rebuild_urls.py"
@@ -442,7 +427,7 @@ class ToolTimePhase7E2EFlowContractTests(SimpleTestCase):
         finance = (ROOT / "erp/tooltime_parity_finance.py").read_text(encoding="utf-8")
         self.assertIn('role in {"admin", "office", "project_manager", "accounting"}', views)
         self.assertIn('Diese kaufmännische Aktion ist nur für Büro', views)
-        self.assertIn('Mahnungen sind nur für Büro', finance)
+        self.assertIn('Mahnungen sind nur für Büro', views)
         for function_name in ("quote_status", "quote_to_invoice", "invoice_payment"):
             start = views.index(f"def {function_name}")
             self.assertIn("_phase7_commercial_guard", views[start:start + 900])

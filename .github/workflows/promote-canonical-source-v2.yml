@@ -1,0 +1,92 @@
+name: Promote canonical source v2
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[canonical-promote-v2] KAYI source' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'perf/canonical-source-fast-path-v2-20260908' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Materialize exact production source
+        run: |
+          bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/tooltime_user_settings_import.py
+          python3 scripts/mobile_invoice_menu_fix.py
+      - name: Freeze legacy rebuild and install canonical fast path
+        run: |
+          cp scripts/unpack-source.sh scripts/unpack-source-legacy.sh
+          cat > scripts/verify-canonical-source.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          cd "$ROOT"
+          required_files=(manage.py config/settings.py erp/models.py templates/rebuild/base.html static/js/app.js native/package.json compose.yaml Dockerfile requirements.txt)
+          for path in "${required_files[@]}"; do
+            test -f "$path" || { echo "Canonical source file missing: $path" >&2; exit 1; }
+            git ls-files --error-unmatch "$path" >/dev/null 2>&1 || { echo "Canonical source is not tracked: $path" >&2; exit 1; }
+          done
+          test -d mobile || { echo "Canonical mobile source missing" >&2; exit 1; }
+          test -d native || { echo "Canonical native source missing" >&2; exit 1; }
+          echo "A+Bau canonical source checkout verified; no legacy assembly required."
+          EOF
+          cat > scripts/unpack-source.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          cd "$ROOT"
+          if [ "${KAYI_FORCE_LEGACY_REBUILD:-0}" != "1" ]; then
+            if git ls-files --error-unmatch manage.py config/settings.py erp/models.py templates/rebuild/base.html static/js/app.js native/package.json compose.yaml >/dev/null 2>&1; then
+              bash scripts/verify-canonical-source.sh
+              echo "Canonical source detected; legacy archive + patch assembly skipped."
+              exit 0
+            fi
+          fi
+          exec bash scripts/unpack-source-legacy.sh
+          EOF
+          cat > scripts/rebuild-legacy-source.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          cd "$ROOT"
+          echo "Rebuilding canonical source from the legacy archive + patch chain..."
+          KAYI_FORCE_LEGACY_REBUILD=1 bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/tooltime_user_settings_import.py
+          python3 scripts/mobile_invoice_menu_fix.py
+          echo "Legacy source rebuild completed. Review git diff before promoting regenerated output."
+          EOF
+          chmod +x scripts/unpack-source.sh scripts/unpack-source-legacy.sh scripts/verify-canonical-source.sh scripts/rebuild-legacy-source.sh
+      - name: Verify production materialization
+        run: |
+          test -f manage.py
+          test -f erp/models.py
+          test -f templates/rebuild/base.html
+          test -f scripts/production_browser_smoke.py
+          test -d native
+          test -d mobile
+          grep -q '<th>Artikelnummer</th>' templates/rebuild/catalogue.html
+          bash scripts/verify-canonical-source.sh
+          python3 -m compileall -q erp config scripts/production_browser_smoke.py
+      - name: Commit canonical source without workflow mutations
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout HEAD -- .github/workflows
+          git clean -fd .github/workflows
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'Materialize current production source as canonical fast path'
+          git push origin HEAD:${{ github.head_ref }}
