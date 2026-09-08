@@ -46,7 +46,7 @@ def merge_missing(current, defaults):
 
 
 class Command(BaseCommand):
-    help = "Seed product-owner supplied ToolTime/KAYI defaults without overwriting tenant edits."
+    help = "Seed product-owner supplied ToolTime/A+Bau defaults without overwriting tenant edits."
 
     def add_arguments(self, parser):
         parser.add_argument("--organization", required=True, help="Exact Organization.name to update")
@@ -127,7 +127,7 @@ class Command(BaseCommand):
                     template.save()
 
         self.stdout.write(self.style.SUCCESS(
-            f"KAYI settings seeded for {organization.name}: tenant edits preserved; {len(templates)} document defaults checked."
+            f"A+Bau settings seeded for {organization.name}: tenant edits preserved; {len(templates)} document defaults checked."
         ))
 ''', encoding="utf-8")
     compile(COMMAND.read_text(encoding="utf-8"), str(COMMAND), "exec")
