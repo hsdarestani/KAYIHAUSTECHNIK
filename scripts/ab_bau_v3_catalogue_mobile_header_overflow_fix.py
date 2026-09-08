@@ -43,10 +43,14 @@ body.ab-apex .ttq-menu-card{
   min-width:220px!important;
   max-width:min(320px,calc(100vw - 32px))!important;
 }
-@media(max-width:860px){
+@media(max-width:520px){
   body.ab-apex .ttq-menu-card{
-    width:min(320px,calc(100vw - 36px))!important;
-    max-width:calc(100vw - 36px)!important;
+    left:0!important;
+    right:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
   }
 }
 """
@@ -127,6 +131,14 @@ class ABauV3CatalogueMobileHeaderOverflowFixTests(SimpleTestCase):
         self.assertIn("top:calc(100% + 10px)!important", css)
         self.assertIn("z-index:60!important", css)
         self.assertIn("right:0!important", css)
+
+    def test_phone_quote_menu_stays_inside_its_full_width_trigger_column(self):
+        css = (ROOT / "static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css").read_text(encoding="utf-8")
+        self.assertIn("@media(max-width:520px)", css)
+        self.assertIn("left:0!important", css)
+        self.assertIn("width:100%!important", css)
+        self.assertIn("min-width:0!important", css)
+        self.assertIn("max-width:100%!important", css)
 ''',
         encoding="utf-8",
     )
@@ -143,6 +155,10 @@ def guard() -> None:
         "body.ab-apex .ttq-menu-card{",
         "top:calc(100% + 10px)!important",
         "z-index:60!important",
+        "@media(max-width:520px)",
+        "left:0!important",
+        "width:100%!important",
+        "max-width:100%!important",
     ):
         if required not in css:
             raise RuntimeError(f"Final V3 overflow guard failed: {required}")
@@ -164,7 +180,7 @@ def main() -> None:
     guard()
     print(f"{MARKER}: mobile catalogue table header removed from layout; desktop header preserved.")
     print(f"{UPLOAD_MARKER}: Texte & Layout now submits logo/header uploads as multipart form data.")
-    print(f"{QUOTE_MENU_MARKER}: Neues Angebot dropdown can render fully above the following content.")
+    print(f"{QUOTE_MENU_MARKER}: Neues Angebot dropdown can render fully above the following content and stays inside phone viewport.")
 
 
 if __name__ == "__main__":
