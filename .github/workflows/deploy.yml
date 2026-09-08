@@ -25,12 +25,10 @@ jobs:
         with:
           ref: main
 
-      - name: Verify and assemble source
-        run: |
-          bash scripts/unpack-source.sh
-          python3 scripts/final_production_hardening_20260821.py
+      - name: Verify canonical source
+        run: bash scripts/verify-canonical-source.sh
 
-      - name: Validate assembled application
+      - name: Validate canonical application
         run: |
           python3 -m compileall -q erp config tests scripts/production_browser_smoke.py
           node --check static/js/app.js
