@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU V3 FINANCE + MOBILE + PDF HOTFIX 2026-09-08"
-VERSION = "20260908-finance-mobile-pdf-2"
+VERSION = "20260908-finance-mobile-pdf-3"
 
 
 def read(rel: str) -> str:
@@ -63,6 +63,7 @@ body.ab-apex .tti-kpi[data-invoice-kpi="overdue"]:after,body.ab-apex .tti-kpi[da
 body.ab-apex :where(.ttq-table-wrap,.tti-table-wrap,.ttc-table-wrap){margin:0!important;border:1px solid var(--apex-line,#ded8cc)!important;border-radius:20px!important;background:#fffefa!important;box-shadow:0 16px 42px rgba(16,18,21,.055)!important;overflow:auto!important}
 body.ab-apex :where(.ttq-table,.tti-table,.ttc-table){margin:0!important;background:#fffefa!important}
 body.ab-apex :where(.ttq-table th,.tti-table th,.ttc-table th){padding:14px!important;background:#f4f0e7!important;color:#8b857b!important;border-bottom:1px solid #ddd5c8!important;font-size:9px!important;font-weight:850!important;letter-spacing:.09em!important;text-transform:uppercase!important}
+body.ab-apex .ttc-table th{text-transform:none!important}
 body.ab-apex :where(.ttq-table td,.tti-table td,.ttc-table td){padding:16px 14px!important;border-bottom:1px solid #ece6dc!important;color:#55534e!important}
 body.ab-apex :where(.ttq-table,.tti-table,.ttc-table) tbody tr{transition:background .12s ease}
 body.ab-apex :where(.ttq-table,.tti-table,.ttc-table) tbody tr:hover{background:#faf6ed!important}
@@ -190,10 +191,16 @@ def patch_base() -> None:
         if "</head>" not in text:
             raise RuntimeError("V3 finance/mobile/PDF hotfix: base head anchor missing")
         text = text.replace("</head>", f"  {css}\n</head>", 1)
+    else:
+        import re
+        text = re.sub(r'/static/css/ab-bau-v3-finance-mobile-pdf-hotfix\.css\?v=[^\"\']+', f'/static/css/ab-bau-v3-finance-mobile-pdf-hotfix.css?v={VERSION}', text)
     if "ab-bau-v3-finance-mobile-pdf-hotfix.js" not in text:
         if "</body>" not in text:
             raise RuntimeError("V3 finance/mobile/PDF hotfix: base body anchor missing")
         text = text.replace("</body>", f"{js}\n</body>", 1)
+    else:
+        import re
+        text = re.sub(r'/static/js/ab-bau-v3-finance-mobile-pdf-hotfix\.js\?v=[^\"\']+', f'/static/js/ab-bau-v3-finance-mobile-pdf-hotfix.js?v={VERSION}', text)
     write(rel, text)
 
 
@@ -280,6 +287,7 @@ class ABauV3FinanceMobilePdfHotfixTests(SimpleTestCase):
             "env(safe-area-inset-bottom)",
         ):
             self.assertIn(marker, css)
+        self.assertIn(".ttc-table th{text-transform:none!important}", css)
 
     def test_mobile_more_owns_menu_state_and_fabs_do_not_overlap_dock(self):
         js = (ROOT / "static/js/ab-bau-v3-finance-mobile-pdf-hotfix.js").read_text(encoding="utf-8")
@@ -324,7 +332,7 @@ def guard() -> None:
     for marker in ("ab-bau-v3-finance-mobile-pdf-hotfix.css", "ab-bau-v3-finance-mobile-pdf-hotfix.js"):
         if marker not in base:
             raise RuntimeError(f"V3 finance/mobile/PDF base contract missing: {marker}")
-    for marker in (MARKER, ".ttq-topbar", ".tti-topbar", ".ttc-topbar", ".tt-document-form", ".ab-v3-mobile-fab", ".nx-assistant-fab", ".ttc-table thead{display:block!important"):
+    for marker in (MARKER, ".ttq-topbar", ".tti-topbar", ".ttc-topbar", ".tt-document-form", ".ab-v3-mobile-fab", ".nx-assistant-fab", ".ttc-table thead{display:block!important", ".ttc-table th{text-transform:none!important}"):
         if marker not in css:
             raise RuntimeError(f"V3 finance/mobile/PDF CSS contract missing: {marker}")
     for marker in ("[data-ab-open-menu]", "stopImmediatePropagation", "nx-menu-open"):
