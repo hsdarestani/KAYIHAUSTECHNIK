@@ -101,7 +101,7 @@ def main():
                     search.press("Enter")
                     page.wait_for_url(base + reverse("next-customer-create"))
                     expect(page.locator("[data-ab-v3-customer-form]")).to_be_visible()
-                    expect(page.get_by_role("heading", name="Kunde anlegen")).to_be_visible()
+                    expect(page.get_by_role("heading", name="Neuer Kunde")).to_be_visible()
                     expect(page.get_by_label("Firmenname")).to_be_visible()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Customer create overflows viewport"
 
