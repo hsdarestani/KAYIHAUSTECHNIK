@@ -1,4 +1,4 @@
-"""Exercise the assembled V3 shell in desktop and mobile Chromium.
+"""Exercise the assembled V3 shell and structural workspaces in Chromium.
 
 Uses a short-lived Django session against the local CI server. No business records
 or account passwords are changed.
@@ -63,6 +63,7 @@ def main():
                         skip.first.click()
                     expect(page.locator("[data-ab-v3-dashboard]")).to_be_visible()
                     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Dashboard overflows viewport"
+
                     # On mobile the off-canvas sidebar's create control still has layout
                     # and therefore matches Playwright's :visible even while it is outside
                     # the viewport. Exercise the dedicated mobile FAB there; on desktop,
@@ -91,24 +92,61 @@ def main():
                     expect(dialog).not_to_be_visible()
                     expect(trigger).to_be_focused()
                     assert not page.locator("[data-ab-v3-dashboard]").evaluate("(node) => !!node.closest('[inert]')")
+
+                    # The command palette's customer destination must now land on the
+                    # V3 direct-create surface instead of an arbitrary legacy form.
                     page.keyboard.press("Control+k")
                     expect(dialog).to_be_visible()
                     search.fill("Kunde anlegen")
                     search.press("Enter")
                     page.wait_for_url(base + reverse("next-customer-create"))
-                    # Assert the actual customer-create surface rather than an arbitrary
-                    # page form (the shell also contains search/logout forms).
+                    expect(page.locator("[data-ab-v3-customer-form]")).to_be_visible()
                     expect(page.get_by_role("heading", name="Neuer Kunde")).to_be_visible()
                     expect(page.get_by_label("Firmenname")).to_be_visible()
-                    # All command destinations are server-backed and reachable.
+                    location = page.locator("[data-location-details]")
+                    expect(location).to_have_count(1)
+                    assert not location.evaluate("el => el.open")
+                    location.locator("summary").click()
+                    expect(location.get_by_label("Straße", exact=True)).to_be_visible()
+                    location.locator("summary").click()
+                    assert not location.evaluate("el => el.open")
+                    details = page.locator("[data-more-details]")
+                    details.locator("summary").click()
+                    expect(details.locator('[name="customer_number"]')).to_be_visible()
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Customer create overflows viewport"
+
+                    # Phase 2 directories are real interactive surfaces, not screenshot
+                    # shells: both create dialogs must open/close in desktop and mobile.
+                    page.goto(base + reverse("next-customers"), wait_until="networkidle")
+                    expect(page.locator("[data-ab-v3-customers]")).to_be_visible()
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Customer directory overflows viewport"
+                    page.locator("[data-customer-modal-show]").click()
+                    customer_dialog = page.locator("[data-customer-modal]")
+                    expect(customer_dialog).to_be_visible()
+                    expect(customer_dialog.get_by_label("Firmenname")).to_be_visible()
+                    customer_dialog.locator("[data-customer-modal-close]").last.click()
+                    expect(customer_dialog).not_to_be_visible()
+
+                    page.goto(base + reverse("next-projects"), wait_until="networkidle")
+                    expect(page.locator("[data-ab-v3-projects]")).to_be_visible()
+                    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "Project directory overflows viewport"
+                    page.locator("[data-project-modal-open]").click()
+                    project_dialog = page.locator("[data-project-modal]")
+                    expect(project_dialog).to_be_visible()
+                    expect(project_dialog.get_by_label("Projekttitel")).to_be_visible()
+                    project_dialog.locator("[data-project-modal-close]").last.click()
+                    expect(project_dialog).not_to_be_visible()
+
+                    # All global command destinations remain server-backed and reachable.
                     for route in routes:
                         result = context.request.get(base + route)
                         assert result.status == 200, (route, result.status)
                         assert "/login/" not in result.url, route
+
                     page.goto(base + "/", wait_until="networkidle")
                     page.screenshot(path=f"/tmp/kayi-v3-dashboard-{width}.png", full_page=True)
                     assert not errors, errors
-                    print(f"V3 {width}x{height}: dashboard, create routes, search, empty state, keyboard and focus passed")
+                    print(f"V3 {width}x{height}: dashboard, Phase-2 directories, create dialogs, command routes, keyboard and focus passed")
                 except Exception:
                     page.screenshot(path=f"/tmp/kayi-v3-failure-{width}.png", full_page=True)
                     raise
