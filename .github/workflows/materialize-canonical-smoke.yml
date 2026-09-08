@@ -1,0 +1,43 @@
+name: Materialize canonical browser smoke
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: ${{ github.event.pull_request.base.ref == 'main' && github.head_ref == 'perf/canonical-source-fast-path-20260908' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Rebuild legacy source in isolated worktree
+        run: |
+          git worktree add /tmp/kayi-legacy HEAD
+          cd /tmp/kayi-legacy
+          KAYI_FORCE_LEGACY_REBUILD=1 bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/tooltime_user_settings_import.py
+          python3 scripts/mobile_invoice_menu_fix.py
+      - name: Promote only final materialized runtime contracts
+        run: |
+          cp /tmp/kayi-legacy/scripts/production_browser_smoke.py scripts/production_browser_smoke.py
+          cp /tmp/kayi-legacy/erp/management/commands/apply_tooltime_user_settings.py erp/management/commands/apply_tooltime_user_settings.py
+          grep -q 'A+BAU COMMERCIAL SETTINGS ACCESS/UI BROWSER SMOKE' scripts/production_browser_smoke.py
+          grep -q 'A+BAU FIELD TOPBAR LOGOUT BROWSER SMOKE' scripts/production_browser_smoke.py
+          grep -q 'A+BAU TOOLTIME CATALOGUE EXACT PARITY BROWSER SMOKE' scripts/production_browser_smoke.py
+          grep -q 'A+BAU TOOLTIME INVOICES EXACT PARITY BROWSER SMOKE' scripts/production_browser_smoke.py
+          grep -q 'A+BAU TOOLTIME PHASE 8 ONLINE ACCEPTANCE' scripts/production_browser_smoke.py
+          ! grep -q 'ToolTime/KAYI defaults' erp/management/commands/apply_tooltime_user_settings.py
+          git rm .github/workflows/materialize-canonical-smoke.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/production_browser_smoke.py erp/management/commands/apply_tooltime_user_settings.py
+          git diff --cached --quiet && exit 0
+          git commit -m 'Materialize final production smoke contracts'
+          git push origin HEAD:${{ github.head_ref }}
