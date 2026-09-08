@@ -85,5 +85,6 @@ for needle in ("Etage", "Hinweise zum Zugang", "Kunde konnte nicht gespeichert w
 # ToolTime offer editor exists. Bridge it here so both screens use the same
 # shared partials, runtime and calculation contract in the assembled source.
 runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge.py"), run_name="__main__")
+runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge_followup.py"), run_name="__main__")
 
 print(f"{MARKER}: empty POST validation, German Einsatzort labels and error summary hook restored.")
