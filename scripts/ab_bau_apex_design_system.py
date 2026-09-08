@@ -28,7 +28,7 @@ def install_assets() -> None:
 
 def patch_base() -> None:
     text = require(BASE)
-    link = '<link rel="stylesheet" href="/static/css/ab-bau-apex.css?v=20260908-1">'
+    link = '<link rel="stylesheet" href="/static/css/ab-bau-apex.css?v=20260908-2">'
     if link not in text:
         if "</head>" not in text:
             raise RuntimeError("A+Bau Apex base has no head anchor")
@@ -122,7 +122,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ABauApexDesignSystemTests(SimpleTestCase):
     def test_apex_is_loaded_from_main_shell(self):
         base = (ROOT / "templates/rebuild/base.html").read_text(encoding="utf-8")
-        for marker in ("ab-apex", "ab-bau-apex.css?v=20260908-1", "ab-bau-apex.js?v=20260908-1", "ab-mobile-dock", "ab-mobile-wordmark", "data-ab-open-menu"):
+        for marker in ("ab-apex", "ab-bau-apex.css?v=20260908-2", "ab-bau-apex.js?v=20260908-1", "ab-mobile-dock", "ab-mobile-wordmark", "data-ab-open-menu"):
             self.assertIn(marker, base)
 
     def test_apex_unifies_old_tooltime_and_mobile_surfaces(self):
@@ -150,7 +150,7 @@ install_tests()
 base = require(BASE)
 css = require(CSS_TARGET)
 js = require(JS_TARGET)
-for needle in ("ab-bau-apex.css?v=20260908-1", "ab-mobile-dock", "ab-mobile-wordmark", "ab-apex"):
+for needle in ("ab-bau-apex.css?v=20260908-2", "ab-mobile-dock", "ab-mobile-wordmark", "ab-apex"):
     if needle not in base:
         raise RuntimeError(f"A+Bau Apex base guard missing: {needle}")
 for needle in (MARKER, ".tt-customer-page", ".tt-document-page", ".ab-mobile-dock", "safe-area-inset-bottom"):
