@@ -13,8 +13,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
-      - name: Assemble application source
-        run: bash scripts/unpack-source.sh
+      - name: Verify canonical application source
+        run: bash scripts/verify-canonical-source.sh
       - name: Audit account deletion, AI and mobile contracts
         run: |
           echo '=== Account deletion references ==='
@@ -94,8 +94,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
-      - name: Assemble application source
-        run: bash scripts/unpack-source.sh
+      - name: Verify canonical application source
+        run: bash scripts/verify-canonical-source.sh
       - uses: actions/setup-node@v5
         with:
           node-version: 22
