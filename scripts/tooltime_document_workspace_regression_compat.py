@@ -125,15 +125,28 @@ exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exe
 })
 
 # The V3 dashboard intentionally replaces the previous office-overview copy. Keep
-# the end-to-end smoke meaningful by asserting the structural dashboard contract
-# that Phase 1 owns instead of a sentence removed by the redesign.
+# the end-to-end smoke meaningful by checking the structural dashboard marker
+# emitted by Phase 1. The generic smoke already checks markers against page.content,
+# so an HTML data attribute is a stable contract and remains idempotent on reassembly.
 if smoke_path.exists():
     smoke = smoke_path.read_text(encoding="utf-8")
-    legacy_dashboard_assertion = 'expect(page.locator("body")).to_contain_text("Baustellenabwicklung im Überblick")'
-    v3_dashboard_assertion = 'expect(page.locator("[data-ab-v3-dashboard]")).to_be_visible()'
-    if legacy_dashboard_assertion in smoke:
-        smoke = smoke.replace(legacy_dashboard_assertion, v3_dashboard_assertion, 1)
-    elif v3_dashboard_assertion not in smoke:
-        raise RuntimeError("A+Bau V3 browser-smoke dashboard assertion anchor is missing")
+    legacy_check = '("", "Dashboard"),'
+    v3_check = '("", "data-ab-v3-dashboard"),'
+    if legacy_check in smoke:
+        smoke = smoke.replace(legacy_check, v3_check, 1)
+    elif v3_check not in smoke:
+        # Older generated smoke variants used a direct Playwright assertion.
+        legacy_assertions = (
+            'expect(page.locator("body")).to_contain_text("Baustellenabwicklung im Überblick")',
+            'expect("Baustellenabwicklung im Überblick" in page.content(), "dashboard marker missing")',
+        )
+        replacement = 'page.locator("[data-ab-v3-dashboard]").wait_for(state="visible", timeout=10000)'
+        for legacy_assertion in legacy_assertions:
+            if legacy_assertion in smoke:
+                smoke = smoke.replace(legacy_assertion, replacement, 1)
+                break
+        else:
+            if replacement not in smoke:
+                raise RuntimeError("A+Bau V3 browser-smoke dashboard assertion anchor is missing")
     smoke_path.write_text(smoke, encoding="utf-8")
     compile(smoke, str(smoke_path), "exec")
