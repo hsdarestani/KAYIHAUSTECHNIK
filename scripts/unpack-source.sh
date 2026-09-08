@@ -219,5 +219,8 @@ python3 scripts/tooltime_document_workspace_final.py
 # Align earlier quote-preview regression assertions with the dedicated preview route
 # and avoid rendering any unverified E-Rechnung download route.
 python3 scripts/tooltime_document_workspace_regression_compat.py
+# Keep the screenshot-derived catalogue editor and Texte/Layout surface isolated from
+# the concurrent V3 customer/project work. This late hook wins only on those two pages.
+python3 scripts/ab_bau_v3_catalogue_text_layout_parity.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
