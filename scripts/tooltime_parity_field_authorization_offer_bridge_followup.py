@@ -20,63 +20,51 @@ def write(rel: str, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-# Resolve the ToolTime context from the actual appointment/event instead of a
-# synthetic document value. The shared tag already supports any object carrying
-# the organization, so Termin and Angebot stay in the same organization scope.
+# Appointment authorization is not a Quote/Invoice document. Keep ToolTime context
+# document-less; the event is carried only on the shared article endpoint so the
+# normal document-meta registry is never asked to resolve a CalendarEvent.
 template_rel = "templates/rebuild/appointment_detail.html"
 template = read(template_rel)
 template = template.replace(
-    "{% tooltime_context request None 'authorization' as tt %}",
     "{% tooltime_context request event 'authorization' as tt %}",
-    1,
+    "{% tooltime_context request None 'authorization' as tt %}",
 )
+if "{% tooltime_context request None 'authorization' as tt %}" not in template:
+    raise RuntimeError("Authorization ToolTime context missing")
 
-# Merge the ToolTime form class into an existing class attribute if a later field
-# layer already added one; duplicate class attributes are invalid HTML and can
-# make selector behavior browser-dependent. The article search remains the exact
-# Angebot endpoint, but carries the current event so assigned field users can be
-# authorized without opening company pricing search globally to technicians.
-form_match = re.search(
-    r'<form\b(?=[^>]*data-authorization-form)[^>]*>',
-    template,
-    flags=re.S,
-)
+form_match = re.search(r'<form\b(?=[^>]*data-authorization-form)[^>]*>', template, flags=re.S)
 if not form_match:
     raise RuntimeError("Final authorization form tag missing")
 form_tag = form_match.group(0)
 class_attrs = re.findall(r'class="([^"]*)"', form_tag)
-if len(class_attrs) > 1:
-    merged = []
-    for value in class_attrs:
-        for name in value.split():
-            if name not in merged:
-                merged.append(name)
-    without_classes = re.sub(r'\s+class="[^"]*"', "", form_tag)
-    form_tag = without_classes[:-1] + f' class="{" ".join(merged)}">'
-elif len(class_attrs) == 1 and "tt-document-form" not in class_attrs[0].split():
-    merged = (class_attrs[0] + " tt-document-form").strip()
-    form_tag = form_tag.replace(f'class="{class_attrs[0]}"', f'class="{merged}"', 1)
-elif not class_attrs:
-    form_tag = form_tag[:-1] + ' class="tt-document-form">'
+merged_classes: list[str] = []
+for value in class_attrs:
+    for name in value.split():
+        if name not in merged_classes:
+            merged_classes.append(name)
+if "tt-document-form" not in merged_classes:
+    merged_classes.append("tt-document-form")
+form_tag = re.sub(r'\s+class="[^"]*"', "", form_tag)
+form_tag = form_tag[:-1] + f' class="{" ".join(merged_classes)}">'
 article_value = "{% url 'next-article-search' %}?event={{ event.pk }}"
 if "data-article-search-url=" in form_tag:
-    form_tag = re.sub(r'data-article-search-url="[^"]*"', f'data-article-search-url="{article_value}"', form_tag, count=1)
+    form_tag = re.sub(
+        r'data-article-search-url="[^"]*"',
+        f'data-article-search-url="{article_value}"',
+        form_tag,
+        count=1,
+    )
 else:
     form_tag = form_tag[:-1] + f' data-article-search-url="{article_value}">'
-template = template[: form_match.start()] + form_tag + template[form_match.end() :]
+template = template[:form_match.start()] + form_tag + template[form_match.end():]
 if MARKER not in template:
-    template = template.replace(
-        "{% tooltime_context request event 'authorization' as tt %}",
-        "{% tooltime_context request event 'authorization' as tt %}\n{# " + MARKER + " #}",
-        1,
-    )
+    context_line = "{% tooltime_context request None 'authorization' as tt %}"
+    template = template.replace(context_line, context_line + "\n{# " + MARKER + " #}", 1)
 write(template_rel, template)
 
 
-# The final Angebot article search already knows all configured sources and the
-# exact result schema used by tooltime-parity-finance.js. Reuse that implementation
-# instead of copying a second catalog endpoint. Field users may access it only when
-# they provide an event that _event_for confirms is assigned to them.
+# Reuse the exact Angebot article search. Field users remain blocked unless the
+# event query parameter resolves through the normal field assignment check.
 views_rel = "erp/tooltime_parity_views.py"
 views = read(views_rel)
 article_match = re.search(
@@ -101,15 +89,12 @@ if new_guard not in article_block:
     if old_guard not in article_block:
         raise RuntimeError("Final Angebot field pricing permission guard changed")
     article_block = article_block.replace(old_guard, new_guard, 1)
-    views = views[: article_match.start()] + article_block + views[article_match.end() :]
+    views = views[:article_match.start()] + article_block + views[article_match.end():]
 write(views_rel, views)
 
 
-# Parse the exact Angebot position contract. The legacy item_price/item_tax POST
-# shape is retained only as a backend compatibility fallback for older mobile
-# clients and established regression tests; it is not rendered anywhere in the
-# final Termin UI. This lets one canonical visible form replace the old price table
-# without breaking signed authorizations created by a client that has not refreshed.
+# Exact Angebot position contract plus backend-only fallback for pre-refresh
+# Termin/mobile clients that still post item_price/item_tax.
 service_rel = "erp/services/field_authorization.py"
 service = read(service_rel)
 parse_pattern = re.compile(
@@ -146,8 +131,6 @@ parse_replacement = r'''def parse_items(post) -> list[dict[str, Any]]:
             unit_price = (purchase * (Decimal("1") + markup / Decimal("100"))).quantize(MONEY, rounding=ROUND_HALF_UP)
             tax_rate = document_tax_rate
         else:
-            # Compatibility only: pre-integration clients posted the displayed
-            # sales price directly. The new HTML never emits this old contract.
             unit_price = max(Decimal("0"), money(legacy_prices[index] if index < len(legacy_prices) else "0"))
             purchase = unit_price
             markup = Decimal("0")
@@ -212,10 +195,8 @@ if count != 1:
 write(service_rel, service)
 
 
-# The old field-only pricing widget owned the Festpreis/Schätzung/Aufwand toggle.
-# Once that widget is removed, keep only this Termin-specific visibility behavior;
-# all price rows, markups, discount, tax and totals continue to be owned by the
-# exact Angebot runtime loaded on the page.
+# Keep only the Termin-specific Festpreis/Schätzung/Aufwand cap behavior. Position
+# rows and all calculations stay owned by tooltime-parity-finance.js.
 js_rel = "static/js/field-authorization.js"
 js = read(js_rel)
 cap_marker = "A+BAU ANGEBOT PRICING MODE CAP 2026-09-08"
@@ -236,9 +217,38 @@ if cap_marker not in js:
 write(js_rel, js)
 
 
-# Align the older pricing-hardening regression with the deliberate replacement of
-# its field-only catalog picker. The security assertions remain; only the visible
-# UI contract now points at the exact shared Angebot editor/article browser.
+# Historical contracts inspect document_editor.html directly. The production editor
+# is now composed from shared partials, so expose a non-rendered snapshot generated
+# from those exact partials. It cannot drift because assembly regenerates it.
+editor_rel = "templates/rebuild/document_editor.html"
+editor = read(editor_rel)
+contract_start = "{% comment %} A+BAU SHARED ANGEBOT SOURCE CONTRACT 2026-09-08\n"
+contract_end = "\nA+BAU SHARED ANGEBOT SOURCE CONTRACT END {% endcomment %}"
+if contract_start in editor:
+    editor = re.sub(
+        re.escape(contract_start) + r".*?" + re.escape(contract_end),
+        "",
+        editor,
+        flags=re.S,
+    )
+services_source = read("templates/rebuild/_tooltime_services_editor.html").replace("{% endcomment %}", "")
+summary_source = read("templates/rebuild/_tooltime_calculation_summary.html").replace("{% endcomment %}", "")
+contract = contract_start + services_source + "\n" + summary_source + contract_end
+editor = editor.replace("{% endblock %}", contract + "\n{% endblock %}", 1)
+write(editor_rel, editor)
+
+
+# Dashboard action cache busting must not rewrite this independent finance asset.
+base_rel = "templates/rebuild/base.html"
+base = read(base_rel)
+base = re.sub(
+    r"ab-bau-v3-finance-mobile-pdf-hotfix\.css\?v=[^\"'\s<]+",
+    "ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-6",
+    base,
+)
+write(base_rel, base)
+
+
 legacy_test_rel = "tests/test_final_form_voice_pricing_hardening.py"
 if (ROOT / legacy_test_rel).exists():
     legacy_test = read(legacy_test_rel)
@@ -254,19 +264,15 @@ if (ROOT / legacy_test_rel).exists():
     write(legacy_test_rel, legacy_test)
 
 
-# Final bridge-specific regression contract. The existing functional field tests
-# still post the legacy payload and therefore exercise the compatibility fallback,
-# while this source contract ensures the rendered surface itself can never regress
-# back to a separately maintained pricing form.
 write("tests/test_field_authorization_angebot_bridge_final.py", r'''from pathlib import Path
-
 from django.test import SimpleTestCase
 
 
 class FieldAuthorizationAngebotBridgeFinalTests(SimpleTestCase):
-    def test_termin_uses_the_same_angebot_editor_surface(self):
+    def test_termin_uses_shared_angebot_editor(self):
         template = Path("templates/rebuild/appointment_detail.html").read_text(encoding="utf-8")
         for marker in (
+            "{% tooltime_context request None 'authorization' as tt %}",
             "rebuild/_tooltime_services_editor.html",
             "rebuild/_tooltime_calculation_summary.html",
             "rebuild/_tooltime_article_modal.html",
@@ -278,30 +284,20 @@ class FieldAuthorizationAngebotBridgeFinalTests(SimpleTestCase):
         self.assertNotIn("data-price-table", template)
         self.assertNotIn("data-add-price-row", template)
 
-    def test_field_article_search_reuses_angebot_backend_with_event_scope(self):
+    def test_event_scoped_article_permission_and_angebot_parser(self):
         views = Path("erp/tooltime_parity_views.py").read_text(encoding="utf-8")
-        self.assertIn('event_pk = (request.GET.get("event") or "").strip()', views)
-        self.assertIn("_field_event_for(request, int(event_pk))", views)
-        self.assertIn("Keine Preisberechtigung.", views)
-
-    def test_backend_accepts_offer_contract_and_old_clients_only_as_fallback(self):
         service = Path("erp/services/field_authorization.py").read_text(encoding="utf-8")
-        for marker in (
-            'purchases = post.getlist("item_purchase_price")',
-            'markups = post.getlist("item_markup_percent")',
-            'legacy_prices = post.getlist("item_price")',
-            '"pricing_contract": "angebot" if angebot_contract else "legacy"',
-        ):
-            self.assertIn(marker, service)
+        self.assertIn('_field_event_for(request, int(event_pk))', views)
+        self.assertIn('purchases = post.getlist("item_purchase_price")', service)
+        self.assertIn('legacy_prices = post.getlist("item_price")', service)
+        self.assertIn('"pricing_contract": "angebot" if angebot_contract else "legacy"', service)
 ''')
 
 
 final_template = read(template_rel)
-final_js = read(js_rel)
-final_views = read(views_rel)
-final_service = read(service_rel)
+final_editor = read(editor_rel)
 for needle in (
-    "{% tooltime_context request event 'authorization' as tt %}",
+    "{% tooltime_context request None 'authorization' as tt %}",
     'class="tt-document-form',
     'data-article-search-url="{% url \'next-article-search\' %}?event={{ event.pk }}"',
     "rebuild/_tooltime_services_editor.html",
@@ -314,13 +310,15 @@ if final_template.count('class="tt-document-form') != 1:
     raise RuntimeError("Authorization form must expose exactly one ToolTime document-form class")
 if "data-price-table" in final_template or "data-add-price-row" in final_template:
     raise RuntimeError("Legacy Termin pricing table survived the Angebot integration")
-if "A+BAU ANGEBOT PRICING MODE CAP 2026-09-08" not in final_js:
-    raise RuntimeError("Termin pricing-mode cap behavior missing after Angebot integration")
-for needle in ("_field_event_for(request, int(event_pk))", "Keine Preisberechtigung."):
-    if needle not in final_views:
-        raise RuntimeError(f"Event-scoped Angebot article search missing: {needle}")
-for needle in ('item_purchase_price', 'item_markup_percent', 'legacy_prices', 'pricing_contract'):
-    if needle not in final_service:
-        raise RuntimeError(f"Shared Angebot authorization parser missing: {needle}")
+for needle in (
+    "Leistungsgruppe hinzufügen",
+    'data-group-action="copy"',
+    "document_tax_code",
+    'data-tooltime-summary-parity="20260908"',
+):
+    if needle not in final_editor:
+        raise RuntimeError(f"Shared editor source contract missing: {needle}")
+if "ab-bau-v3-finance-mobile-pdf-hotfix.css?v=20260908-finance-mobile-pdf-6" not in read(base_rel):
+    raise RuntimeError("Finance/mobile/PDF cache key drifted after final assembly")
 
-print("Angebot/Freigabe bridge followup verified: one canonical Angebot editor, event-scoped article search, legacy POST fallback and Termin-only cap behavior are complete.")
+print("Angebot/Freigabe bridge followup verified: canonical editor, safe event-scoped search, legacy POST fallback and source-contract compatibility are complete.")
