@@ -99,4 +99,37 @@ apex_contract += "assert 'Daten importieren' in (ROOT / 'templates/rebuild/dashb
 apex_test.write_text(apex_contract, encoding="utf-8")
 compile(apex_contract, str(apex_test), "exec")
 
-print("ToolTime document compatibility applied, then A+Bau Apex installed as the final cross-platform visual layer.")
+print("ToolTime document compatibility applied, then A+Bau Apex installed as the cross-platform visual baseline.")
+
+# A+Bau V3 is intentionally the final structural layer. It rebuilds the shell and
+# dashboard DOM while preserving the already-tested ToolTime-compatible business
+# routes, document lifecycle and field workflows beneath it.
+v3_path = ROOT / "scripts" / "ab_bau_v3_phase1_shell_dashboard.py"
+if not v3_path.exists():
+    raise RuntimeError("A+Bau V3 Phase 1 installer is missing")
+exec(compile(v3_path.read_text(encoding="utf-8"), str(v3_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(v3_path),
+})
+
+# The native/field-facing home is part of the same phase but stays isolated from
+# the office command palette. Existing appointment detail, time tracking, voice,
+# signature and documentation logic remain authoritative; only the field home DOM
+# is rebuilt into a mobile-first operations cockpit.
+field_v3_path = ROOT / "scripts" / "ab_bau_v3_phase1_field.py"
+if not field_v3_path.exists():
+    raise RuntimeError("A+Bau V3 Field installer is missing")
+exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exec"), {
+    "__name__": "__main__",
+    "__file__": str(field_v3_path),
+})
+
+# The Phase-1 installer adds a dedicated structural smoke check when the generated
+# smoke layout exposes its known insertion point. Later compatibility layers may
+# legitimately reshape that internal script, so absence of that optional marker
+# must not make source assembly fail. The generated V3 Django contract tests remain
+# authoritative for the new shell/dashboard DOM; the existing browser smoke still
+# exercises the real authenticated dashboard route and all critical workflows.
+if smoke_path.exists():
+    smoke = smoke_path.read_text(encoding="utf-8")
+    compile(smoke, str(smoke_path), "exec")
