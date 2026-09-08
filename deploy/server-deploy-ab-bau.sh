@@ -132,20 +132,21 @@ PY
 chmod 700 "$TMP_SCRIPT"
 sh "$TMP_SCRIPT"
 
-# The Caddyfile is a bind-mounted runtime config. Editing it on disk does not make
-# an already-running Caddy process re-read it. The previous PDF-preview fix changed
-# the file correctly, but production kept the old active DENY header because the
-# caddy container was intentionally not recreated by the normal web deployment.
-# Validate the mounted config and restart only Caddy after the application deploy so
-# the active proxy actually starts serving Django's per-view SAMEORIGIN response.
+# deploy/Caddyfile is a single-file bind mount. sed -i replaces the host inode,
+# so an already-running Caddy container can keep seeing the old inode even though
+# the host path is correct. Validate the host-side file first, then recreate only
+# Caddy so Docker establishes a fresh bind mount to the updated inode. A plain
+# restart is not sufficient for this bind-mount case.
 if docker compose version >/dev/null 2>&1; then
   dc() { docker compose "$@"; }
 else
   dc() { docker-compose "$@"; }
 fi
 
-dc exec -T caddy sh -ec "test -f /etc/caddy/Caddyfile; ! grep -Fq 'X-Frame-Options' /etc/caddy/Caddyfile"
-dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-dc restart caddy
+test -f deploy/Caddyfile
+! grep -Fq 'X-Frame-Options' deploy/Caddyfile
+dc up -d --force-recreate caddy
 sleep 2
+dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+curl -fsS --retry 5 --retry-delay 1 https://kayi.smarbiz.sbs/login/ >/dev/null
 dc ps caddy
