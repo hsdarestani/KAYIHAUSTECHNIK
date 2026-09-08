@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -21,6 +22,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
+from erp.models import UserProfile
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -28,7 +30,13 @@ def main():
     base = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8000").rstrip("/")
     if urlparse(base).hostname not in {"127.0.0.1", "localhost"}:
         raise RuntimeError("V3 CI smoke requires a local test server")
-    user = get_user_model().objects.get(username=os.environ.get("KAYI_SMOKE_USER", "demo"))
+    demo = get_user_model().objects.select_related("profile").get(username=os.environ.get("KAYI_SMOKE_USER", "demo"))
+    user = get_user_model().objects.create_user(username=f"v3-smoke-{uuid.uuid4().hex}")
+    profile = user.profile
+    profile.organization = demo.profile.organization
+    profile.role = UserProfile.Role.OFFICE
+    profile.is_mobile_worker = False
+    profile.save()
     client = Client()
     client.force_login(user)
     session = client.session
@@ -101,6 +109,7 @@ def main():
             browser.close()
     finally:
         session.delete()
+        user.delete()
 
 
 if __name__ == "__main__":
