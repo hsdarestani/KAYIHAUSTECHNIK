@@ -1,0 +1,1 @@
+diagnose quote 2 invoice 500 - trigger 1
