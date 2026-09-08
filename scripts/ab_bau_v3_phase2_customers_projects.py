@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT / "design" / "v3" / "phase2"
 CSS_SOURCE = ROOT / "design" / "v3" / "ab-bau-v3-phase2.css"
 CSS_TARGET = ROOT / "static" / "css" / "ab-bau-v3-phase2.css"
+MOBILE_CSS_SOURCE = ROOT / "design" / "v3" / "ab-bau-v3-phase2-mobile.css"
+MOBILE_CSS_TARGET = ROOT / "static" / "css" / "ab-bau-v3-phase2-mobile.css"
 BASE = ROOT / "templates" / "rebuild" / "base.html"
 MARKER = "A+BAU V3 PHASE 2 CUSTOMERS PROJECTS 2026-09-08"
 VERSION = "20260908-1"
@@ -52,11 +54,15 @@ def install_templates() -> None:
 def install_assets() -> None:
     if not CSS_SOURCE.exists():
         raise RuntimeError("V3 Phase 2 CSS source missing")
+    if not MOBILE_CSS_SOURCE.exists():
+        raise RuntimeError("V3 Phase 2 mobile CSS source missing")
     CSS_TARGET.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(CSS_SOURCE, CSS_TARGET)
+    shutil.copyfile(MOBILE_CSS_SOURCE, MOBILE_CSS_TARGET)
 
     base = read(BASE)
     link = f'<link rel="stylesheet" href="/static/css/ab-bau-v3-phase2.css?v={VERSION}">'
+    mobile_link = f'<link rel="stylesheet" href="/static/css/ab-bau-v3-phase2-mobile.css?v={VERSION}">'
     if link not in base:
         anchor = '<link rel="stylesheet" href="/static/css/ab-bau-v3.css?v=20260908-2">'
         if anchor in base:
@@ -65,7 +71,14 @@ def install_assets() -> None:
             base = base.replace("</head>", f"  {link}\n</head>", 1)
         else:
             raise RuntimeError("V3 Phase 2 could not locate base stylesheet anchor")
-        write(BASE, base)
+    if mobile_link not in base:
+        if link in base:
+            base = base.replace(link, link + "\n  " + mobile_link, 1)
+        elif "</head>" in base:
+            base = base.replace("</head>", f"  {mobile_link}\n</head>", 1)
+        else:
+            raise RuntimeError("V3 Phase 2 could not load mobile stylesheet")
+    write(BASE, base)
 
 
 def install_contract_test() -> None:
@@ -132,6 +145,18 @@ class ABauV3Phase2Contract(SimpleTestCase):
         ):
             self.assertIn(marker, page)
 
+    def test_project_directory_has_phone_native_card_layout(self):
+        css = self.read("static/css/ab-bau-v3-phase2-mobile.css")
+        for marker in (
+            "PHASE 2 MOBILE PROJECT REGISTER",
+            "table[data-project-table] thead{display:none!important}",
+            "tbody tr[data-project-row]",
+            'td[data-col="address"]:before{content:"Einsatzort"}',
+            "padding-bottom:calc(118px + env(safe-area-inset-bottom,0px))",
+            "grid-template-columns:minmax(0,1.22fr) minmax(0,1.08fr) minmax(0,.9fr)",
+        ):
+            self.assertIn(marker, css)
+
     def test_project_cockpit_preserves_room_planner_field_and_finance_contracts(self):
         page = self.read("templates/rebuild/project_detail.html")
         for marker in (
@@ -162,10 +187,13 @@ class ABauV3Phase2Contract(SimpleTestCase):
     def test_direct_customer_create_and_phase2_asset_are_live(self):
         form = self.read("templates/rebuild/customer_form.html")
         css = self.read("static/css/ab-bau-v3-phase2.css")
+        mobile_css = self.read("static/css/ab-bau-v3-phase2-mobile.css")
         base = self.read("templates/rebuild/base.html")
         self.assertIn("data-ab-v3-customer-form", form)
         self.assertIn("A+BAU V3 — PHASE 2", css)
+        self.assertIn("PHASE 2 MOBILE PROJECT REGISTER", mobile_css)
         self.assertIn("ab-bau-v3-phase2.css?v=20260908-1", base)
+        self.assertIn("ab-bau-v3-phase2-mobile.css?v=20260908-1", base)
 '''
     write(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py", test)
     compile(test, str(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py"), "exec")
@@ -195,10 +223,15 @@ def align_legacy_regressions() -> None:
 def guard() -> None:
     base = read(BASE)
     css = read(CSS_TARGET)
+    mobile_css = read(MOBILE_CSS_TARGET)
     if "ab-bau-v3-phase2.css?v=20260908-1" not in base:
         raise RuntimeError("V3 Phase 2 stylesheet is not loaded after source assembly")
+    if "ab-bau-v3-phase2-mobile.css?v=20260908-1" not in base:
+        raise RuntimeError("V3 Phase 2 mobile stylesheet is not loaded after source assembly")
     if "A+BAU V3 — PHASE 2" not in css:
         raise RuntimeError("V3 Phase 2 stylesheet marker missing")
+    if "PHASE 2 MOBILE PROJECT REGISTER" not in mobile_css:
+        raise RuntimeError("V3 Phase 2 mobile project stylesheet marker missing")
 
     required = {
         "customers.html": ("data-ab-v3-customers", "data-customer-modal", "data-customer-row"),
