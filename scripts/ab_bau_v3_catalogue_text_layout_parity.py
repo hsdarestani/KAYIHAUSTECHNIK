@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU V3 CATALOGUE + TEXT LAYOUT PARITY 2026-09-08"
+TIME_MOBILE_MARKER = "A+BAU V3 TIME TRACKING MOBILE FIX 2026-09-08"
 
 
 def read(rel: str) -> str:
@@ -139,9 +140,45 @@ def patch_settings_surface() -> None:
     write(rel, text)
 
 
+def install_time_tracking_mobile_fix() -> None:
+    css = r"""/* A+BAU V3 TIME TRACKING MOBILE FIX 2026-09-08 */
+@media (max-width:760px){
+  .ab-apex .nx-time-kpis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0 0 14px!important;width:100%!important;min-width:0!important}
+  .ab-apex .nx-time-kpis>.nx-time-card{min-width:0!important;min-height:138px!important;padding:16px!important;border-radius:18px!important;overflow:hidden!important}
+  .ab-apex .nx-time-kpis>.nx-time-card:nth-child(3),.ab-apex .nx-time-kpis>.nx-time-card-live{grid-column:1/-1!important;min-height:124px!important}
+  .ab-apex .nx-time-card :where(strong,b){font-size:clamp(28px,8.4vw,40px)!important;line-height:1.05!important;letter-spacing:-.035em!important}
+  .ab-apex .nx-time-filter-card{padding:16px!important;margin:0 0 18px!important;border-radius:18px!important;overflow:visible!important;min-width:0!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;width:100%!important;min-width:0!important;margin:0!important;align-items:stretch!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters>label{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:6px!important;width:100%!important;min-width:0!important;margin:0!important;padding:0!important;font-size:14px!important;line-height:1.25!important}
+  .ab-apex .nx-time-filter-card .nx-time-filters :where(select,input[type=date],input[type=text]){display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:52px!important;margin:0!important;padding-left:16px!important;padding-right:16px!important;box-sizing:border-box!important;font-size:16px!important}
+  .ab-apex .nx-time-filter-actions{display:grid!important;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important;gap:10px!important;width:100%!important;min-width:0!important;margin:2px 0 0!important;align-items:stretch!important}
+  .ab-apex .nx-time-filter-actions :where(.nx-btn,button,a){display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:50px!important;margin:0!important;padding:10px 14px!important;white-space:nowrap!important}
+  .ab-apex .nx-time-table-card{margin-bottom:30px!important;overflow:hidden!important}
+  body.ab-apex:has(.nx-time-kpis) .nx-content{padding-bottom:calc(158px + env(safe-area-inset-bottom))!important}
+  body.ab-apex:has(.nx-time-kpis) .ab-v3-mobile-fab{right:16px!important;bottom:calc(96px + env(safe-area-inset-bottom))!important;z-index:64!important}
+}
+@media (max-width:380px){
+  .ab-apex .nx-time-filter-actions{grid-template-columns:1fr!important}
+  .ab-apex .nx-time-kpis>.nx-time-card{padding:14px!important}
+}
+"""
+    write("static/css/ab-v3-time-tracking-mobile-fix.css", css)
+
+    rel = "templates/rebuild/base.html"
+    text = read(rel)
+    link = '<link rel="stylesheet" href="/static/css/ab-v3-time-tracking-mobile-fix.css?v=20260908-1">'
+    if "ab-v3-time-tracking-mobile-fix.css" not in text:
+        if "</head>" not in text:
+            raise RuntimeError("V3 time tracking mobile fix: base head anchor missing")
+        text = text.replace("</head>", f"  {link}\n</head>", 1)
+    write(rel, text)
+
+
 def final_guard() -> None:
     catalogue = read("templates/rebuild/catalogue_edit.html")
     settings = read("templates/rebuild/tooltime_settings.html")
+    base = read("templates/rebuild/base.html")
+    time_css = read("static/css/ab-v3-time-tracking-mobile-fix.css")
     if catalogue.count("data-ab-v3-catalogue-editor") != 1:
         raise RuntimeError("V3 catalogue parity marker must exist exactly once")
     if settings.count("data-ab-v3-layout-preview") != 1:
@@ -150,16 +187,23 @@ def final_guard() -> None:
         raise RuntimeError("Legacy duplicate text-template editor survived")
     if "data-tooltime-text-template-manager" not in settings:
         raise RuntimeError("Complete text-template manager was lost")
-    for required in ("static/css/ab-v3-catalogue-text-layout.css", "static/js/ab-v3-catalogue-text-layout.js"):
+    for required in ("static/css/ab-v3-catalogue-text-layout.css", "static/js/ab-v3-catalogue-text-layout.js", "static/css/ab-v3-time-tracking-mobile-fix.css"):
         if not (ROOT / required).exists():
             raise RuntimeError(f"V3 parity asset missing: {required}")
+    if "ab-v3-time-tracking-mobile-fix.css?v=20260908-1" not in base:
+        raise RuntimeError("V3 time tracking mobile stylesheet is not loaded from the main shell")
+    for required in (TIME_MOBILE_MARKER, ".nx-time-filter-card", ".nx-time-filter-actions", ".ab-v3-mobile-fab", "safe-area-inset-bottom"):
+        if required not in time_css:
+            raise RuntimeError(f"V3 time tracking mobile CSS guard missing: {required}")
 
 
 def run() -> None:
     install_catalogue_editor()
     patch_settings_surface()
+    install_time_tracking_mobile_fix()
     final_guard()
     print(f"{MARKER}: Katalog-Editor und Texte/Layout auf ToolTime-Workflow-Parität gebracht, A+Bau-V3-Identität und bestehende Backend-Verträge erhalten.")
+    print(f"{TIME_MOBILE_MARKER}: Zeiterfassung mobil stabilisiert; Filter, KPI-Karten, FAB und Bottom-Dock kollisionsfrei.")
 
 
 if __name__ == "__main__":
