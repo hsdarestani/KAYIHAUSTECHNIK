@@ -5,26 +5,250 @@ on:
     types: [synchronize]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export-source:
     if: ${{ github.event.pull_request.user.login == 'hsdarestani' && github.event.pull_request.title == '[source-export] KAYI source' && github.event.pull_request.base.ref == 'main' && github.head_ref == 'maintenance/source-export' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - name: Assemble source
-        run: bash scripts/unpack-source.sh
-      - name: Package complete generated source
+        with:
+          fetch-depth: 0
+
+      - name: Assemble exact production source
         run: |
-          tar -czf /tmp/kayi-unpacked-source.tar.gz \
+          set -euxo pipefail
+          bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/tooltime_user_settings_import.py
+          python3 scripts/mobile_invoice_menu_fix.py
+          tar -czf /tmp/kayi-canonical-source.tar.gz \
             config erp templates static tests manage.py requirements.txt \
             Dockerfile .env.example .dockerignore .gitignore SECURITY.md compose.yaml \
             deploy docs mobile native scripts/next_test_contract.py
-      - uses: actions/upload-artifact@v4
+
+      - name: Promote canonical source branch
+        env:
+          TARGET_BRANCH: perf/canonical-source-fast-path-20260908
+        run: |
+          set -euxo pipefail
+          git reset --hard origin/main
+          git clean -fdx
+          git checkout -B "$TARGET_BRANCH" origin/main
+          tar -xzf /tmp/kayi-canonical-source.tar.gz
+
+          cat > scripts/verify-canonical-source.sh <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          cd "$ROOT"
+          required_files=(
+            manage.py
+            config/settings.py
+            erp/models.py
+            templates/rebuild/base.html
+            static/js/app.js
+            native/package.json
+            compose.yaml
+            Dockerfile
+            requirements.txt
+          )
+          for path in "${required_files[@]}"; do
+            test -f "$path" || { echo "Canonical source file missing: $path" >&2; exit 1; }
+            git ls-files --error-unmatch "$path" >/dev/null 2>&1 || { echo "Canonical source is not tracked: $path" >&2; exit 1; }
+          done
+          test -d mobile || { echo "Canonical mobile source missing" >&2; exit 1; }
+          test -d native || { echo "Canonical native source missing" >&2; exit 1; }
+          echo "A+Bau canonical source checkout verified; no legacy assembly required."
+          SH
+          chmod +x scripts/verify-canonical-source.sh
+
+          cat > scripts/rebuild-legacy-source.sh <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          cd "$ROOT"
+          echo "Rebuilding canonical source from the legacy archive + patch chain..."
+          bash scripts/unpack-source.sh
+          python3 scripts/final_production_hardening_20260821.py
+          python3 scripts/tooltime_user_settings_import.py
+          python3 scripts/mobile_invoice_menu_fix.py
+          echo "Legacy source rebuild completed. Review git diff before promoting any regenerated output."
+          SH
+          chmod +x scripts/rebuild-legacy-source.sh
+
+          cat > docs/SOURCE_ARCHITECTURE.md <<'MD'
+          # Canonical source architecture
+
+          The assembled A+Bau application source is now committed directly to Git and is the authoritative development, CI and deployment source.
+
+          ## Normal development
+
+          Edit `erp/`, `config/`, `templates/`, `static/`, `mobile/`, `native/` and the other application files directly. CI and production deployments use those tracked files as-is. They do **not** reconstruct the application from `.bootstrap/source.part-*` and dozens of historical patch installers.
+
+          `scripts/verify-canonical-source.sh` is the fast checkout guard used by routine automation. It validates that the expected final source is present and tracked, without mutating it.
+
+          ## Legacy rebuild
+
+          `.bootstrap/`, `scripts/unpack-source.sh` and historical installer scripts are retained only as a compatibility/recovery path. To regenerate the old deterministic assembly explicitly, run:
+
+          ```bash
+          bash scripts/rebuild-legacy-source.sh
+          ```
+
+          A separate `Legacy source reproducibility` workflow periodically checks that the recovery path still produces the committed canonical source. New product fixes must be made directly in canonical source, not added as another historical patch layer.
+
+          ## Why this changed
+
+          The old default path unpacked an archive and executed roughly fifty sequential mutation scripts, sometimes multiple times in one CI/deploy cycle. That made tiny fixes hard to locate, easy for later layers to overwrite, and unnecessarily expensive to validate. The canonical model removes that hidden mutation chain from everyday work while preserving the old rebuild path for recovery.
+          MD
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('.')
+          legacy_only = {
+              'bootstrap-source.yml',
+              'debug-secure-source.yml',
+              'export-unpacked-source.yml',
+              'legacy-source-verify.yml',
+          }
+
+          ci = root / '.github/workflows/ci.yml'
+          text = ci.read_text(encoding='utf-8')
+          old = '''      - name: Verify repeatable source assembly\n        run: |\n          bash scripts/unpack-source.sh\n          bash scripts/unpack-source.sh\n          python3 scripts/final_production_hardening_20260821.py\n          python3 scripts/mobile_invoice_menu_fix.py\n'''
+          new = '''      - name: Verify canonical source checkout\n        run: bash scripts/verify-canonical-source.sh\n'''
+          if old not in text:
+              raise SystemExit('CI legacy assembly block not found')
+          ci.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          deploy = root / '.github/workflows/deploy.yml'
+          text = deploy.read_text(encoding='utf-8')
+          old = '''      - name: Verify and assemble source\n        run: |\n          bash scripts/unpack-source.sh\n          python3 scripts/final_production_hardening_20260821.py\n'''
+          new = '''      - name: Verify canonical source\n        run: bash scripts/verify-canonical-source.sh\n'''
+          if old not in text:
+              raise SystemExit('Deploy legacy assembly block not found')
+          deploy.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          for path in (root / '.github/workflows').glob('*.yml'):
+              if path.name in legacy_only:
+                  continue
+              text = path.read_text(encoding='utf-8')
+              if 'bash scripts/unpack-source.sh' in text:
+                  path.write_text(text.replace('bash scripts/unpack-source.sh', 'bash scripts/verify-canonical-source.sh'), encoding='utf-8')
+
+          server = root / 'deploy/server-deploy.sh'
+          text = server.read_text(encoding='utf-8')
+          if 'bash scripts/unpack-source.sh' not in text:
+              raise SystemExit('Server deploy legacy assembly anchor not found')
+          server.write_text(text.replace('bash scripts/unpack-source.sh', 'bash scripts/verify-canonical-source.sh', 1), encoding='utf-8')
+
+          wrapper = root / 'deploy/server-deploy-ab-bau.sh'
+          text = wrapper.read_text(encoding='utf-8')
+          start_marker = '# Captured ToolTime account values are deliberately not rendered as constants.'
+          end_marker = 'organization_anchor = ('
+          start = text.find(start_marker)
+          end = text.find(end_marker)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('A+Bau wrapper source-patch block not found')
+          replacement = '''# Canonical source is already committed and verified before Docker builds.\n# Historical source installers are no longer injected into routine deployment.\n'''
+          text = text[:start] + replacement + text[end:]
+          for obsolete in (
+              '    hardening_command.strip(),\n',
+              '    installer_command.strip(),\n',
+              '    mobile_menu_fix_command.strip(),\n',
+          ):
+              text = text.replace(obsolete, '')
+          wrapper.write_text(text, encoding='utf-8')
+          PY
+
+          cat > .github/workflows/legacy-source-verify.yml <<'YML'
+          name: Legacy source reproducibility
+
+          on:
+            workflow_dispatch:
+            schedule:
+              - cron: '17 3 * * 0'
+
+          permissions:
+            contents: read
+
+          jobs:
+            verify:
+              runs-on: ubuntu-latest
+              timeout-minutes: 15
+              steps:
+                - uses: actions/checkout@v5
+                - name: Rebuild legacy source explicitly
+                  run: bash scripts/rebuild-legacy-source.sh
+                - name: Compare regenerated output with canonical source
+                  run: |
+                    git diff --exit-code -- \
+                      config erp templates static tests manage.py requirements.txt \
+                      Dockerfile .env.example .dockerignore .gitignore SECURITY.md compose.yaml \
+                      deploy/Caddyfile deploy/entrypoint.sh docs/ARCHITECTURE.md docs/store-compliance.md \
+                      mobile native scripts/next_test_contract.py
+          YML
+
+          cat > tests/test_canonical_source_architecture.py <<'PY'
+          from pathlib import Path
+          from django.test import SimpleTestCase
+
+          ROOT = Path(__file__).resolve().parents[1]
+
+
+          class CanonicalSourceArchitectureTests(SimpleTestCase):
+              def test_final_application_source_is_tracked_and_direct(self):
+                  for rel in (
+                      'manage.py',
+                      'config/settings.py',
+                      'erp/models.py',
+                      'templates/rebuild/base.html',
+                      'static/js/app.js',
+                      'native/package.json',
+                      'compose.yaml',
+                  ):
+                      self.assertTrue((ROOT / rel).exists(), rel)
+
+              def test_routine_ci_and_deploy_do_not_run_legacy_assembly(self):
+                  for rel in (
+                      '.github/workflows/ci.yml',
+                      '.github/workflows/deploy.yml',
+                      '.github/workflows/native-scanner-ci.yml',
+                      'deploy/server-deploy.sh',
+                      'deploy/server-deploy-ab-bau.sh',
+                  ):
+                      text = (ROOT / rel).read_text(encoding='utf-8')
+                      self.assertNotIn('bash scripts/unpack-source.sh', text, rel)
+
+              def test_legacy_rebuild_remains_explicitly_available(self):
+                  rebuild = (ROOT / 'scripts/rebuild-legacy-source.sh').read_text(encoding='utf-8')
+                  self.assertIn('bash scripts/unpack-source.sh', rebuild)
+                  workflow = (ROOT / '.github/workflows/legacy-source-verify.yml').read_text(encoding='utf-8')
+                  self.assertIn('workflow_dispatch:', workflow)
+                  self.assertIn('schedule:', workflow)
+          PY
+
+          bash scripts/verify-canonical-source.sh
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f \
+            config erp templates static tests manage.py requirements.txt \
+            Dockerfile .env.example .dockerignore .gitignore SECURITY.md compose.yaml \
+            deploy docs mobile native scripts/next_test_contract.py
+          git add .github scripts/verify-canonical-source.sh scripts/rebuild-legacy-source.sh docs/SOURCE_ARCHITECTURE.md tests/test_canonical_source_architecture.py
+          echo "Canonical migration changes: $(git status --short | wc -l) paths"
+          git status --short | sed -n '1,80p'
+          git commit -m 'Make assembled source canonical and remove routine legacy rebuilds'
+          git push --force origin "HEAD:$TARGET_BRANCH"
+
+      - name: Upload canonical source snapshot for audit
+        uses: actions/upload-artifact@v4
         with:
-          name: kayi-unpacked-source-${{ github.run_id }}
-          path: /tmp/kayi-unpacked-source.tar.gz
+          name: kayi-canonical-source-${{ github.run_id }}
+          path: /tmp/kayi-canonical-source.tar.gz
           if-no-files-found: error
           retention-days: 3
