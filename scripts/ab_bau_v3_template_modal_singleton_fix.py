@@ -202,3 +202,6 @@ if __name__ == "__main__":
     # Angebote share the exact same pricing/position implementation without drift.
     runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge.py"), run_name="__main__")
     runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_offer_bridge_followup.py"), run_name="__main__")
+    # Final CI/product-contract alignment runs after the bridge. It only removes two
+    # obsolete regression assumptions and does not change the canonical Angebot editor.
+    runpy.run_path(str(ROOT / "scripts" / "tooltime_parity_field_authorization_ci_alignment.py"), run_name="__main__")
