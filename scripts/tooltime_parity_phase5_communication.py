@@ -159,7 +159,7 @@ def _phase5_quote_pdf_bytes(quote):
     address = " · ".join(filter(None, [getattr(customer, "street", "") if customer else "", " ".join(filter(None, [getattr(customer, "postal_code", "") if customer else "", getattr(customer, "city", "") if customer else ""]))]))
     intro = html.escape(str(getattr(quote, "intro_text", "") or "")).replace("\n", "<br>")
     outro = html.escape(str(getattr(quote, "outro_text", "") or "")).replace("\n", "<br>")
-    body = f'''<html><body style="font-family:Arial,sans-serif;font-size:11px;color:#202428">
+    body = f"""<html><body style="font-family:Arial,sans-serif;font-size:11px;color:#202428">
 <h1 style="margin-bottom:4px">{html.escape(meta.document_title or 'Angebot')} {html.escape(quote.number or meta.final_number or '')}</h1>
 <p style="margin-top:0">Angebotsdatum: {quote.issue_date:%d.%m.%Y}</p>
 <div style="margin:20px 0"><strong>{html.escape(str(customer_name))}</strong><br>{html.escape(address)}</div>
@@ -167,7 +167,7 @@ def _phase5_quote_pdf_bytes(quote):
 <table style="width:100%;border-collapse:collapse" cellpadding="6"><thead><tr style="border-bottom:1px solid #bbb"><th>Pos.</th><th style="text-align:left">Leistung</th><th style="text-align:right">Menge</th><th style="text-align:right">Einzelpreis</th><th style="text-align:right">Gesamt</th></tr></thead><tbody>{''.join(rows)}</tbody></table>
 <div style="margin:18px 0 18px auto;width:260px"><p>Nettobetrag <strong style="float:right">{net:.2f} €</strong></p><p>Umsatzsteuer <strong style="float:right">{tax:.2f} €</strong></p><p style="font-size:13px;border-top:1px solid #bbb;padding-top:7px">Gesamtbetrag <strong style="float:right">{gross:.2f} €</strong></p></div>
 <p>{outro}</p>
-</body></html>'''
+</body></html>"""
     return html_to_pdf_bytes(inject_business_pdf_identity(body, org=quote.organization, document_kind="Angebot"))
 
 

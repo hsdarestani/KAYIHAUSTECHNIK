@@ -1,0 +1,52 @@
+{% extends 'erp/base.html' %}{% load erp_extras %}
+{% block title %}Aufmaß · {{ project.number }} · A+Bau{% endblock %}
+{% block page_title %}Raumscan & Aufmaß{% endblock %}
+{% block page_subtitle %}{{ project.number }} · {{ project.title }}{% endblock %}
+{% block content %}
+<div class="page-head compact"><div><div class="breadcrumb"><a href="{% url 'project-detail' project.pk %}">{{ project.number }}</a><span>/</span>Raumscan</div><h1>{{ measurement.name|default:'Raum automatisch erfassen' }}</h1><p>Scan starten, Ergebnis prüfen und das erzeugte 3D-Modell später jederzeit weiterbearbeiten.</p></div><div class="actions">{% if measurement %}<span class="badge {% if measurement.status == 'confirmed' %}success{% else %}warning{% endif %}">{{ measurement.get_status_display }}</span><a class="btn btn-primary" href="{% url 'configurator' %}?project={{ project.pk }}&measurement={{ measurement.pk }}">◈ 3D-Modell bearbeiten</a>{% endif %}</div></div>
+
+<section class="panel native-scan-hero {% if request.GET.scan %}scan-focus{% endif %}">
+  <div class="native-scan-hero-main">
+    <span class="scan-primary-icon">⌁</span>
+    <div><span class="eyebrow">AUTOMATISCHES RAUMAUFMASS</span><h2>Projekt {{ project.number }} in der A+Bau App öffnen</h2><p>Den Raum einmal vollständig ablaufen. Wände, Maße, Türen, Fenster und erkannte Objekte werden als prüfbares Aufmaß mit 3D-Datei hochgeladen.</p></div>
+  </div>
+  <div class="scan-instruction-row"><span><i>1</i>A+Bau App öffnen</span><span><i>2</i>Projekt {{ project.number }} wählen</span><span><i>3</i>„Raum scannen“ starten</span></div>
+  <div class="native-device-note"><b>Geräte:</b> iPhone/iPad mit LiDAR nutzt Apple RoomPlan. Android nutzt eine geführte ARCore-Depth-Messung und kann je nach Gerät ungenauer sein. Eine Freigabe erfolgt nie automatisch.</div>
+</section>
+
+<section class="panel native-scan-panel compact-native-list">
+  <div class="panel-head"><div><h2>Übertragene Raumscans</h2><p>Nach dem Upload erscheint der Scan automatisch hier.</p></div><span class="badge success">Scanner verbunden</span></div>
+  <div class="native-scan-list">{% for scan in native_scans %}<article><div><b>{{ scan.room_name }}</b><small>{{ scan.get_provider_display }} · {{ scan.created_at|date:'d.m.Y H:i' }}</small><span>{{ scan.measurement.length_m|default:'–' }} × {{ scan.measurement.width_m|default:'–' }} × {{ scan.measurement.height_m|default:'–' }} m</span></div><div><span class="badge {% if scan.status == 'confirmed' %}success{% else %}warning{% endif %}">{{ scan.get_status_display }}</span>{% if scan.model_file %}<a class="btn btn-secondary" href="{{ scan.model_file.url }}" download>Originalmodell</a>{% endif %}<a class="btn btn-primary" href="{% url 'configurator' %}?project={{ project.pk }}&measurement={{ scan.measurement.pk }}">3D bearbeiten</a><a class="btn btn-secondary" href="{% url 'room-measurement-edit' project.pk scan.measurement.pk %}">Maße prüfen</a></div></article>{% empty %}<div class="empty"><b>Noch kein Scan hochgeladen</b><p>Die Seite kann geöffnet bleiben. Nach dem Upload aus der App hier neu laden.</p></div>{% endfor %}</div>
+</section>
+
+<details class="panel measurement-fallback" {% if measurement and not request.GET.scan %}open{% endif %}>
+  <summary><div><span>📐</span><div><b>Maße prüfen oder ohne nativen Scanner arbeiten</b><small>Manuelle Eingabe und Foto-KI als Rückfalllösung</small></div></div><i>⌄</i></summary>
+  <form method="post" enctype="multipart/form-data" class="measurement-page" data-room-measurement>
+    {% csrf_token %}
+    <input type="hidden" name="confidence" id="measurementConfidence" value="{{ measurement.confidence|default:'0' }}">
+    <input type="hidden" name="ai_summary" id="measurementAiSummary" value="{{ measurement.ai_summary|default:'' }}">
+    <input type="hidden" name="ai_warnings" id="measurementAiWarnings" value="{{ ai_warnings_json|escape }}">
+    <input type="hidden" name="ai_payload" id="measurementAiPayload" value="{{ ai_payload_json|escape }}">
+    <div class="measurement-layout measurement-layout-page">
+      <section class="measurement-form-card">
+        {% if form.errors %}<div class="alert error">{{ form.errors }}</div>{% endif %}
+        <div class="form-grid two"><label><span>{{ form.name.label }}</span>{{ form.name }}</label><label><span>{{ form.method.label }}</span>{{ form.method }}</label></div>
+        <div class="form-grid three dimension-inputs"><label><span>{{ form.length_m.label }}</span>{{ form.length_m }}</label><label><span>{{ form.width_m.label }}</span>{{ form.width_m }}</label><label><span>{{ form.height_m.label }}</span>{{ form.height_m }}</label></div>
+        <div class="form-grid two"><label><span>{{ form.deductions_area_m2.label }}</span>{{ form.deductions_area_m2 }}</label><label><span>{{ form.waste_percent.label }}</span>{{ form.waste_percent }}</label></div>
+        <div class="measure-results large"><div><span>Grundfläche</span><b data-calc="floor">{% if measurement.floor_area_m2 %}{{ measurement.floor_area_m2 }} m²{% else %}–{% endif %}</b></div><div><span>Wandfläche</span><b data-calc="wall">{% if measurement.wall_area_m2 %}{{ measurement.wall_area_m2 }} m²{% else %}–{% endif %}</b></div><div><span>Wand inkl. Verschnitt</span><b data-calc="wall-waste">{% if measurement.wall_with_waste_m2 %}{{ measurement.wall_with_waste_m2 }} m²{% else %}–{% endif %}</b></div><div><span>Boden inkl. Verschnitt</span><b data-calc="floor-waste">{% if measurement.floor_with_waste_m2 %}{{ measurement.floor_with_waste_m2 }} m²{% else %}–{% endif %}</b></div><div><span>Umfang</span><b data-calc="perimeter">{% if measurement.perimeter_m %}{{ measurement.perimeter_m }} m{% else %}–{% endif %}</b></div></div>
+        <button class="btn btn-primary" type="submit">Geprüfte Maße speichern</button>
+        {% if measurement and measurement.status != 'confirmed' %}<div class="confirm-measure-box"><div><b>Fachlich geprüft?</b><p>Erst danach gelten die Maße für Kalkulation und Bestellung.</p></div><button class="btn btn-success" type="submit" form="confirmMeasurementForm">✓ Aufmaß bestätigen</button></div>{% endif %}
+      </section>
+      <aside class="ai-measure-card">
+        <div class="ai-measure-head"><span>✦</span><div><b>A+Bau KI Fotoaufmaß · Rückfalllösung</b><small>Nur mit sichtbarer Referenz skalierbar</small></div></div>
+        <label class="camera-dropzone compact" for="roomPhotos"><span class="camera-orb">📷</span><b>Raumfotos aufnehmen</b><small>bis zu 10 Fotos</small><input id="roomPhotos" type="file" name="room_photos" accept="image/jpeg,image/png,image/webp" capture="environment" multiple></label>
+        <div class="capture-previews" id="capturePreviews">{% for capture in captures %}<figure class="capture-preview saved"><img src="{{ capture.image.url }}" alt="{{ capture.get_kind_display }}"><figcaption>{{ capture.get_kind_display }}</figcaption><a href="{% url 'capture-annotate' capture.pk %}">Markieren</a></figure>{% endfor %}</div>
+        <div class="form-grid three compact"><label><span>{{ form.reference_type.label }}</span>{{ form.reference_type }}</label><label><span>Breite cm</span>{{ form.reference_width_cm }}</label><label><span>Höhe cm</span>{{ form.reference_height_cm }}</label></div>
+        <button type="button" class="btn btn-ai btn-block" id="analyzeRoomPhotos">✦ Fotos auswerten</button>
+        <div class="ai-result" id="aiMeasurementResult" {% if not measurement.ai_summary %}hidden{% endif %}>{% if measurement.ai_summary %}<b>Letzte Auswertung</b><p>{{ measurement.ai_summary }}</p>{% endif %}</div>
+      </aside>
+    </div>
+  </form>
+</details>
+{% if measurement and measurement.status != 'confirmed' %}<form id="confirmMeasurementForm" method="post" action="{% url 'room-measurement-confirm' project.pk measurement.pk %}">{% csrf_token %}</form>{% endif %}
+{% endblock %}

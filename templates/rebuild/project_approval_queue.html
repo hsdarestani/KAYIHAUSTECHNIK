@@ -1,0 +1,11 @@
+{% extends 'rebuild/base.html' %}
+{% block title %}Projektfreigaben · A+Bau{% endblock %}
+{% block content %}
+<div class="nx-pagehead"><div><div class="nx-kicker">BÜRO · KAUFMÄNNISCHE FREIGABE</div><h1>Projektfreigaben</h1><p>Vor-Ort-Aufnahmen der Mitarbeiter prüfen, Preisgrundlage festlegen und Verkaufspreise freigeben.</p></div></div>
+<div class="nx-card nx-card-pad">
+  <div class="nx-table-wrap"><table class="nx-table"><thead><tr><th>Projekt</th><th>Kunde</th><th>Aufgenommen von</th><th>Eingereicht</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for flow in flows %}<tr><td><b>{{ flow.project.number }}</b><br><span>{{ flow.project.title }}</span></td><td>{{ flow.project.customer.display_name }}</td><td>{{ flow.requested_by.get_full_name|default:flow.requested_by.username }}</td><td>{{ flow.submitted_at|date:'d.m.Y H:i'|default:'–' }}</td><td>{% if flow.status == 'submitted' %}<span class="nx-badge nx-badge-warn">Preisprüfung offen</span>{% elif flow.status == 'confirmed' %}<span class="nx-badge">Kundenfreigabe offen</span>{% elif flow.status == 'signed' %}<span class="nx-badge nx-badge-success">Unterschrieben</span>{% elif flow.status == 'changes_requested' %}<span class="nx-badge nx-badge-warn">Änderung nötig</span>{% else %}<span class="nx-badge">{{ flow.get_status_display }}</span>{% endif %}</td><td><a class="nx-btn nx-btn-primary" href="{% url 'project-approval-review' flow.project_id %}">{% if flow.status == 'submitted' or flow.status == 'changes_requested' %}Prüfen{% else %}Öffnen{% endif %}</a></td></tr>
+  {% empty %}<tr><td colspan="6"><div class="nx-empty"><b>Keine Projektfreigaben vorhanden.</b><br>Neue Vor-Ort-Aufnahmen von Mitarbeitern erscheinen automatisch hier.</div></td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+/* A+BAU TOOLTIME PHASE 11 APPOINTMENT VIEWS 2026-08-21 */
+.tt-phase11-appointments{max-width:1500px;margin-inline:auto}
+.tt-phase11-filters{grid-template-columns:minmax(230px,1.35fr) minmax(160px,.85fr) minmax(210px,1.1fr) minmax(190px,1fr) auto}
+.tt-phase11-filters .tt-phase11-search{min-width:0}
+.tt-phase11-filters .tt-phase11-search input{width:100%}
+.tt-phase11-filters .nx-calendar-filter-actions{white-space:nowrap}
+.tt-phase11-appointments .nx-calendar-list[data-list-view]{box-shadow:0 6px 24px rgba(20,28,38,.035)}
+@media(max-width:1180px){.tt-phase11-filters{grid-template-columns:repeat(2,minmax(0,1fr)) auto}.tt-phase11-filters .tt-phase11-search{grid-column:1/-1}}
+@media(max-width:760px){.tt-phase11-filters{grid-template-columns:1fr 1fr}.tt-phase11-filters .tt-phase11-search{grid-column:1/-1}.tt-phase11-filters .nx-calendar-filter-actions{grid-column:1/-1}.tt-phase11-appointments .nx-calendar-views{max-width:100%;overflow-x:auto;scroll-snap-type:x proximity}.tt-phase11-appointments .nx-calendar-view-btn{scroll-snap-align:start;white-space:nowrap}}
+@media(max-width:520px){.tt-phase11-filters{grid-template-columns:1fr}.tt-phase11-filters .tt-phase11-search,.tt-phase11-filters .nx-calendar-filter-actions{grid-column:auto}.tt-phase11-filters .nx-calendar-filter-actions{display:grid;grid-template-columns:1fr 1fr}}

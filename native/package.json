@@ -1,0 +1,21 @@
+{
+  "name": "kayi-native-app",
+  "version": "2.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "cap:android": "npm run build && npx cap sync android",
+    "cap:ios": "npm run build && npx cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.4.0",
+    "@capacitor/core": "8.4.0",
+    "@capacitor/ios": "8.4.0",
+    "@kayi/room-scanner": "file:plugins/kayi-room-scanner"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.4.0",
+    "typescript": "5.9.3"
+  }
+}

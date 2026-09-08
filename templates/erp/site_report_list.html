@@ -1,0 +1,92 @@
+{% extends "erp/base.html" %}
+{% block title %}Leistungsnachweise · A+Bau{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">BETRIEB</div>
+    <h1>Leistungsnachweise</h1>
+    <p>Alle B&amp;O Leistungsnachweise und Vor-Ort-Berichte projektübergreifend verwalten.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'resource-list' 'projects' %}">Projekte öffnen</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-icon">✍</div><div><small>Gesamt</small><strong>{{ summary.total }}</strong><em>Leistungsnachweise</em></div></div>
+  <div class="kpi"><div class="kpi-icon">✓</div><div><small>Unterschrieben</small><strong>{{ summary.signed }}</strong><em>Kundenbestätigung vorhanden</em></div></div>
+  <div class="kpi"><div class="kpi-icon">◷</div><div><small>Entwürfe</small><strong>{{ summary.draft }}</strong><em>noch ohne Unterschrift</em></div></div>
+  <div class="kpi"><div class="kpi-icon">B&amp;O</div><div><small>B&amp;O</small><strong>{{ summary.bando }}</strong><em>Leistungsnachweis / Regiebericht</em></div></div>
+</div>
+
+<section class="panel table-panel">
+  <form class="table-toolbar" method="get">
+    <label class="search-field"><span>⌕</span><input type="search" name="q" value="{{ query }}" placeholder="Projekt, Kunde oder Unterzeichner suchen ..."></label>
+    <select class="form-control" name="status" aria-label="Status">
+      <option value="">Alle Status</option>
+      <option value="signed" {% if status_filter == 'signed' %}selected{% endif %}>Unterschrieben</option>
+      <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Entwurf</option>
+    </select>
+    <select class="form-control" name="kind" aria-label="Typ">
+      <option value="">Alle Typen</option>
+      <option value="bando" {% if kind_filter == 'bando' %}selected{% endif %}>B&amp;O Leistungsnachweis</option>
+      <option value="generic" {% if kind_filter == 'generic' %}selected{% endif %}>Vor-Ort-Bericht</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Filtern</button>
+    {% if query or status_filter or kind_filter %}<a class="btn btn-secondary" href="{% url 'site-report-list' %}">Zurücksetzen</a>{% endif %}
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Projekt</th><th>Kunde</th><th>Typ</th><th>Status</th><th>Erstellt</th><th>Mitarbeiter</th><th></th></tr></thead>
+      <tbody>
+      {% for report in reports %}
+        <tr>
+          <td><b>{{ report.project.number }}</b><br><span class="muted">{{ report.project.title }}</span></td>
+          <td>{{ report.project.customer.display_name }}</td>
+          <td>{% if report.kind == 'bando' %}<span class="badge">B&amp;O</span> Leistungsnachweis{% else %}Vor-Ort-Bericht{% endif %}</td>
+          <td>{% if report.signed_at %}<span class="badge success">✓ Unterschrieben</span><br><span class="muted">{{ report.signed_name }}</span>{% else %}<span class="badge warning">Entwurf</span>{% endif %}</td>
+          <td>{{ report.created_at|date:'d.m.Y H:i' }}</td>
+          <td>{% if report.employee %}{{ report.employee.first_name }} {{ report.employee.last_name }}{% else %}<span class="muted">–</span>{% endif %}</td>
+          <td class="row-actions">{% if report.signed_at %}<a href="{% url 'site-report-pdf' report.pk %}" target="_blank">PDF</a>{% else %}<a href="{% url 'site-report-edit' report.pk %}">Weiterbearbeiten</a>{% endif %}&nbsp;&nbsp;<a href="{% url 'project-detail' report.project.pk %}">Projekt</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7"><div class="empty">Keine Leistungsnachweise für diese Auswahl gefunden.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}<a href="?q={{ query|urlencode }}&amp;status={{ status_filter }}&amp;kind={{ kind_filter }}&amp;page={{ page_obj.previous_page_number }}">← Zurück</a>{% endif %}
+    <span>Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?q={{ query|urlencode }}&amp;status={{ status_filter }}&amp;kind={{ kind_filter }}&amp;page={{ page_obj.next_page_number }}">Weiter →</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{% if pending_count %}
+<section class="panel" style="margin-top:17px">
+  <div class="panel-head">
+    <div><h2>B&amp;O-Projekte ohne abgeschlossenen Leistungsnachweis</h2><p>{{ pending_count }} Projekt{% if pending_count != 1 %}e{% endif %} wartet/warten noch auf einen unterschriebenen Leistungsnachweis.</p></div>
+    <a href="{% url 'resource-list' 'projects' %}">Alle Projekte →</a>
+  </div>
+  <div class="table-wrap clean">
+    <table>
+      <thead><tr><th>Projekt</th><th>Kunde</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for project in pending_projects %}
+        <tr>
+          <td><b>{{ project.number }}</b><br><span class="muted">{{ project.title }}</span></td>
+          <td>{{ project.customer.display_name }}</td>
+          <td>{% if project.draft_report %}<span class="badge warning">Entwurf</span>{% else %}<span class="badge warning">Noch nicht erstellt</span>{% endif %}</td>
+          <td class="row-actions">{% if can_create_reports %}{% if project.draft_report %}<a href="{% url 'site-report-edit' project.draft_report.pk %}">Weiterbearbeiten</a>{% else %}<a href="{% url 'site-report-create' project.pk %}">Erstellen</a>{% endif %}{% else %}<a href="{% url 'project-detail' project.pk %}">Projekt</a>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

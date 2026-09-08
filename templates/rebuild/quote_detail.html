@@ -1,0 +1,52 @@
+{% extends 'rebuild/base.html' %}{% load static %}
+{% block title %}{{ document_title }} {{ quote.number }} · A+Bau{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/tooltime-quote-detail.css' %}?v=20260907-1">
+<div class="ttqd-page" data-tooltime-quote-detail>
+  <header class="ttqd-head">
+    <div class="ttqd-head-main">
+      <a class="ttqd-back" href="{% url 'next-quotes' %}">‹ Angebote</a>
+      <div class="ttqd-title-row"><div><span class="ttqd-eyebrow">Dokument</span><h1>{{ document_title }} {% if quote.number %}{{ quote.number }}{% endif %}</h1></div><span class="ttqd-status ttqd-status-{{ status_key }}">{{ status_label }}</span></div>
+      <p>{% if customer %}{{ customer_name }}{% else %}Kein Kunde zugeordnet{% endif %}{% if project %} · {{ project_label }}{% endif %}</p>
+    </div>
+    <div class="ttqd-head-actions"><a class="nx-btn" href="{% url 'next-quote-pdf' quote.pk %}">PDF herunterladen</a>{% if quote.status != 'accepted' %}<form method="post" action="{% url 'next-quote-status' quote.pk %}">{% csrf_token %}<button class="nx-btn nx-btn-accent" name="action" value="accepted">Als angenommen markieren</button></form>{% endif %}</div>
+  </header>
+
+  <div class="ttqd-grid">
+    <main class="ttqd-main">
+      <section class="ttqd-card ttqd-preview-card">
+        <div class="ttqd-card-head"><div><span class="ttqd-eyebrow">PDF-Vorschau</span><h2>Finales Angebotsdokument</h2></div><a class="ttqd-link" href="{% url 'next-quote-pdf' quote.pk %}" target="_blank" rel="noopener">In neuem Tab öffnen ↗</a></div>
+        <div class="ttqd-pdf-wrap"><iframe title="PDF-Vorschau {{ quote.number }}" src="{% url 'next-quote-preview' quote.pk %}#toolbar=0&navpanes=0" loading="eager"></iframe><div class="ttqd-pdf-fallback">PDF-Vorschau nicht verfügbar? <a href="{% url 'next-quote-pdf' quote.pk %}">PDF herunterladen</a></div></div>
+      </section>
+
+      <section class="ttqd-card">
+        <div class="ttqd-card-head"><div><span class="ttqd-eyebrow">Leistungen</span><h2>Positionen</h2></div><strong>{{ gross|floatformat:2 }} €</strong></div>
+        <div class="ttqd-table-wrap"><table class="ttqd-table"><thead><tr><th>Pos.</th><th>Beschreibung</th><th class="num">Menge</th><th class="num">Einzelpreis</th><th class="num">MwSt.</th><th class="num">Gesamt</th></tr></thead><tbody>{% for row in items %}<tr><td>{{ row.item.position|default:'—' }}</td><td><strong>{{ row.item.description|default:'—' }}</strong><small>{{ row.item.unit|default:'' }}</small></td><td class="num">{{ row.quantity|floatformat:-3 }} {{ row.item.unit }}</td><td class="num">{{ row.unit_price|floatformat:2 }} €</td><td class="num">{{ row.tax_rate|floatformat:-2 }} %</td><td class="num"><strong>{{ row.line_total|floatformat:2 }} €</strong></td></tr>{% empty %}<tr><td colspan="6" class="ttqd-empty">Keine Positionen vorhanden.</td></tr>{% endfor %}</tbody></table></div>
+        <div class="ttqd-totals"><div><span>Nettobetrag</span><strong>{{ net|floatformat:2 }} €</strong></div><div><span>Umsatzsteuer</span><strong>{{ tax|floatformat:2 }} €</strong></div><div class="ttqd-total-final"><span>Gesamtbetrag</span><strong>{{ gross|floatformat:2 }} €</strong></div></div>
+      </section>
+
+      {% if quote.intro_text or quote.outro_text %}<section class="ttqd-card"><div class="ttqd-card-head"><div><span class="ttqd-eyebrow">Dokumenttexte</span><h2>Texte & Hinweise</h2></div></div>{% if quote.intro_text %}<div class="ttqd-copy"><strong>Einleitung</strong><p>{{ quote.intro_text|linebreaksbr }}</p></div>{% endif %}{% if quote.outro_text %}<div class="ttqd-copy"><strong>Schlusstext</strong><p>{{ quote.outro_text|linebreaksbr }}</p></div>{% endif %}</section>{% endif %}
+    </main>
+
+    <aside class="ttqd-side">
+      <section class="ttqd-card ttqd-summary">
+        <span class="ttqd-eyebrow">Zusammenfassung</span><h2>{{ gross|floatformat:2 }} €</h2>
+        <dl><div><dt>Status</dt><dd><span class="ttqd-status ttqd-status-{{ status_key }}">{{ status_label }}</span></dd></div><div><dt>Angebotsdatum</dt><dd>{{ quote.issue_date|date:'d.m.Y' }}</dd></div><div><dt>Nummer</dt><dd>{{ quote.number|default:'—' }}</dd></div>{% if finalized_at %}<div><dt>Fertiggestellt</dt><dd>{{ finalized_at|date:'d.m.Y H:i' }}</dd></div>{% endif %}</dl>
+      </section>
+
+      <section class="ttqd-card"><span class="ttqd-eyebrow">Kunde & Projekt</span><h3>{{ customer_name }}</h3>{% if customer_address %}<p>{{ customer_address }}</p>{% endif %}{% if customer.email %}<p><a class="ttqd-link" href="mailto:{{ customer.email }}">{{ customer.email }}</a></p>{% endif %}{% if customer.phone %}<p>{{ customer.phone }}</p>{% endif %}<hr>{% if project %}<strong>{{ project_label }}</strong>{% else %}<span class="ttqd-muted">Ohne Projekt</span>{% endif %}</section>
+
+      <section class="ttqd-card"><span class="ttqd-eyebrow">Zahlungsbedingungen</span><dl>{% if payment_due_days != None %}<div><dt>Zahlungsziel</dt><dd>{{ payment_due_days }} Tage</dd></div>{% endif %}{% if early_percent %}<div><dt>Skonto</dt><dd>{{ early_percent|floatformat:-2 }} %{% if early_days %} bei Zahlung in {{ early_days }} Tagen{% endif %}</dd></div>{% endif %}{% if discount_value %}<div><dt>Rabatt</dt><dd>{{ discount_value|floatformat:-2 }}{% if discount_type == 'percent' %} %{% else %} €{% endif %}</dd></div>{% endif %}</dl>{% if commercial.closing_text %}<p class="ttqd-muted">{{ commercial.closing_text|linebreaksbr }}</p>{% endif %}</section>
+
+      <section class="ttqd-card"><span class="ttqd-eyebrow">Aktionen</span><div class="ttqd-action-stack">{% if quote.status != 'accepted' and quote.status != 'rejected' %}<form method="post" action="{% url 'next-quote-status' quote.pk %}">{% csrf_token %}<button class="nx-btn" name="action" value="rejected">Als abgelehnt markieren</button></form>{% endif %}{% if quote.status == 'rejected' %}<form method="post" action="{% url 'next-quote-status' quote.pk %}">{% csrf_token %}<button class="nx-btn" name="action" value="pending">Status zurücksetzen</button></form>{% endif %}<form method="post" action="{% url 'next-quote-to-invoice' quote.pk %}">{% csrf_token %}<button class="nx-btn nx-btn-accent" type="submit">In Rechnung übernehmen</button></form></div></section>
+
+      <section class="ttqd-card"><span class="ttqd-eyebrow">Kommunikation</span><h3>Per E-Mail senden</h3><form class="ttqd-email" method="post" action="{% url 'next-quote-send-email' quote.pk %}">{% csrf_token %}<label>Empfänger<input class="nx-control" type="email" name="recipient_email" value="{{ recipient_email }}" required></label><label>Betreff<input class="nx-control" name="subject" value="Angebot {{ quote.number }} · {{ quote.organization.name }}" required></label><label>Nachricht<textarea class="nx-control" name="message" rows="4">Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie das Angebot {{ quote.number }} als PDF.
+
+Mit freundlichen Grüßen
+{{ quote.organization.name }}</textarea></label><button class="nx-btn" type="submit">PDF per E-Mail senden</button></form>{% if deliveries %}<div class="ttqd-history"><strong>Versandverlauf</strong>{% for delivery in deliveries %}<div><span>{{ delivery.recipient_email }}</span><small>{{ delivery.created_at|date:'d.m.Y H:i' }} · {{ delivery.get_status_display }}</small></div>{% endfor %}</div>{% endif %}</section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

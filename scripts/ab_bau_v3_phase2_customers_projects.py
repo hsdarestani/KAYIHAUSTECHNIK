@@ -11,7 +11,7 @@ MOBILE_CSS_SOURCE = ROOT / "design" / "v3" / "ab-bau-v3-phase2-mobile.css"
 MOBILE_CSS_TARGET = ROOT / "static" / "css" / "ab-bau-v3-phase2-mobile.css"
 BASE = ROOT / "templates" / "rebuild" / "base.html"
 MARKER = "A+BAU V3 PHASE 2 CUSTOMERS PROJECTS 2026-09-08"
-VERSION = "20260908-1"
+VERSION = "20260908-v3-closeout1"
 
 TEMPLATES = {
     "customers.html": ROOT / "templates" / "rebuild" / "customers.html",
@@ -192,8 +192,8 @@ class ABauV3Phase2Contract(SimpleTestCase):
         self.assertIn("data-ab-v3-customer-form", form)
         self.assertIn("A+BAU V3 — PHASE 2", css)
         self.assertIn("PHASE 2 MOBILE PROJECT REGISTER", mobile_css)
-        self.assertIn("ab-bau-v3-phase2.css?v=20260908-1", base)
-        self.assertIn("ab-bau-v3-phase2-mobile.css?v=20260908-1", base)
+        self.assertIn("ab-bau-v3-phase2.css?v=20260908-v3-closeout1", base)
+        self.assertIn("ab-bau-v3-phase2-mobile.css?v=20260908-v3-closeout1", base)
 '''
     write(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py", test)
     compile(test, str(ROOT / "tests" / "test_ab_bau_v3_phase2_contract.py"), "exec")
@@ -224,9 +224,9 @@ def guard() -> None:
     base = read(BASE)
     css = read(CSS_TARGET)
     mobile_css = read(MOBILE_CSS_TARGET)
-    if "ab-bau-v3-phase2.css?v=20260908-1" not in base:
+    if "ab-bau-v3-phase2.css?v=20260908-v3-closeout1" not in base:
         raise RuntimeError("V3 Phase 2 stylesheet is not loaded after source assembly")
-    if "ab-bau-v3-phase2-mobile.css?v=20260908-1" not in base:
+    if "ab-bau-v3-phase2-mobile.css?v=20260908-v3-closeout1" not in base:
         raise RuntimeError("V3 Phase 2 mobile stylesheet is not loaded after source assembly")
     if "A+BAU V3 — PHASE 2" not in css:
         raise RuntimeError("V3 Phase 2 stylesheet marker missing")
