@@ -124,17 +124,34 @@ exec(compile(field_v3_path.read_text(encoding="utf-8"), str(field_v3_path), "exe
     "__file__": str(field_v3_path),
 })
 
-# Phase 1 itself injects the end-to-end browser checks after it has rebuilt the
-# dashboard DOM. Verify that contract here instead of rewriting an older generic
-# dashboard tuple: later product layers can legitimately change that tuple while
-# the dedicated V3 assertions remain the authoritative structural smoke.
+# Phase 1 normally injects this end-to-end smoke itself. Some generated smoke
+# variants have extra compatibility code between tutorial dismissal and `checks`,
+# so guarantee the V3 structural contract here at the final assembly hook instead
+# of depending on one brittle multi-line anchor. The marker guard keeps repeated
+# source assembly idempotent.
 if smoke_path.exists():
     smoke = smoke_path.read_text(encoding="utf-8")
-    for marker in (
-        "A+Bau V3 structural dashboard smoke",
+    marker = "A+Bau V3 structural dashboard smoke"
+    if marker not in smoke:
+        anchor = "            checks = [\n"
+        if anchor not in smoke:
+            raise RuntimeError("A+Bau V3 browser-smoke insertion anchor is missing")
+        block = '''            # A+Bau V3 structural dashboard smoke
+            page.goto(base_url, wait_until="domcontentloaded", timeout=30_000)
+            if page.locator("[data-ab-v3-dashboard]").count() != 1:
+                fail("A+Bau V3 dashboard cockpit is missing")
+            if page.locator("[data-ab-v3-command-open]").count() == 0:
+                fail("A+Bau V3 global command trigger is missing")
+
+'''
+        smoke = smoke.replace(anchor, block + anchor, 1)
+        smoke_path.write_text(smoke, encoding="utf-8")
+
+    for required_marker in (
+        marker,
         '[data-ab-v3-dashboard]',
         '[data-ab-v3-command-open]',
     ):
-        if marker not in smoke:
-            raise RuntimeError(f"A+Bau V3 browser-smoke contract is missing: {marker}")
+        if required_marker not in smoke:
+            raise RuntimeError(f"A+Bau V3 browser-smoke contract is missing: {required_marker}")
     compile(smoke, str(smoke_path), "exec")
