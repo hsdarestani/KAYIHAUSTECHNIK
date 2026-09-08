@@ -228,5 +228,8 @@ python3 scripts/ab_bau_v3_finance_mobile_pdf_hotfix.py
 # Final mobile catalogue overflow guard runs after the V3 hotfix so the desktop table
 # header remains intact while card-mode phones do not lay out hidden TH columns.
 python3 scripts/ab_bau_v3_catalogue_mobile_header_overflow_fix.py
+# User-reported Vorlagen regression: force one canonical text-template modal and
+# a fresh finance runtime after every older ToolTime/V3 layer has finished.
+python3 scripts/ab_bau_v3_template_modal_singleton_fix.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
