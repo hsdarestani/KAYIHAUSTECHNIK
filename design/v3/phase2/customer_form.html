@@ -3,7 +3,7 @@
 {% block content %}
 <div class="ab-v3-form-page" data-ab-v3-customer-form>
   <header class="ab-v3-form-page-head">
-    <div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Kunde anlegen{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar.</p></div>
+    <div><div class="ab-v3-kicker">Kundenstamm · Datensatz</div><h1>{% if mode == 'create' %}Kunde anlegen{% else %}Kunde bearbeiten{% endif %}</h1><p>Stammdaten und Kontakt zuerst erfassen. Abrechnung, Kennungen und ein optionaler Einsatzort bleiben progressiv verfügbar. Die Kundennummer wird nach dem Speichern automatisch vergeben.</p></div>
     <a class="ab-v3-directory-secondary" href="{% url 'next-customers' %}">← Kunden</a>
   </header>
 
@@ -47,7 +47,7 @@
 
     {% if location_form %}
       <details class="ab-v3-customer-progressive" data-customer-site-details {% if location_requested or location_form.errors %}open{% endif %}>
-        <summary><span class="is-closed">Einsatzort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
+        <summary><span class="is-closed">Abweichenden Einsatzort hinzufügen</span><span class="is-open">Einsatzort ausblenden</span></summary>
         <div class="ab-v3-customer-progressive-body">
           <div class="ab-v3-kicker">Optional · Einsatzort</div>
           <p class="ab-v3-form-help">Nur ausfüllen, wenn der Einsatzort von der Kunden- bzw. Rechnungsadresse abweicht.</p>
