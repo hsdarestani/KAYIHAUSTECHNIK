@@ -232,4 +232,14 @@ python3 scripts/ab_bau_v3_catalogue_mobile_header_overflow_fix.py
 # a fresh finance runtime after every older ToolTime/V3 layer has finished.
 python3 scripts/ab_bau_v3_template_modal_singleton_fix.py
 
+# Late V3/template overlays can overwrite the field-authorization form marker
+# used to isolate its compact responsive layout from Document Studio. Restore
+# that guarded UI contract after every template writer has finished.
+python3 scripts/tooltime_parity_field_authorization_ci_alignment.py
+
+# Some late overlays can restore the original 0011 customer migration after it
+# has already been moved onto the linear application chain. Re-run the guarded
+# closeout last so a freshly assembled checkout always has one migration leaf.
+python3 scripts/tooltime_customer_migration_closeout.py
+
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
