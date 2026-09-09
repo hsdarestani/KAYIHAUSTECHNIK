@@ -731,6 +731,53 @@ def _pick(row, *aliases):
     return ""
 
 
+def _tooltime_decimal(value):
+    """Parse ToolTime's German exports without confusing thousands separators."""
+    text = str(value or "0").strip().replace("\u00a0", "").replace(" ", "")
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    try:
+        return Decimal(text)
+    except (InvalidOperation, ValueError):
+        return Decimal("0")
+
+
+def _tooltime_date(value, default=None):
+    text = str(value or "").strip()
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
+        try:
+            return timezone.datetime.strptime(text, fmt).date()
+        except ValueError:
+            pass
+    return default or timezone.localdate()
+
+
+def _tooltime_customer(org, row):
+    number = _pick(row, "Kundennummer", "Kunde Nummer", "Customer Number")
+    customer = m.Customer.objects.filter(organization=org, number=number).first() if number else None
+    if customer:
+        return customer
+    company = _pick(row, "Firma", "Kunde Firma", "Customer Company")
+    first = _pick(row, "Vorname", "Kunde Vorname", "Customer First Name")
+    last = _pick(row, "Nachname", "Kunde Nachname", "Customer Last Name")
+    return m.Customer.objects.create(
+        organization=org, number=number or _unique_number(m.Customer, org, "K"),
+        company=company or "ToolTime Import", first_name=first, last_name=last,
+        street=_pick(row, "Adresse", "Kunde Adresse 1"), postal_code=_pick(row, "PLZ", "Kunde PLZ"),
+        city=_pick(row, "Stadt", "Ort", "Kunde Ort"), country=_pick(row, "Land") or "DE",
+        email=_pick(row, "E-Mail", "Kunde Email Adresse"),
+    )
+
+
+def _tooltime_project(org, customer, title, status):
+    title = (title or "ToolTime Historie").strip()[:240]
+    project = m.Project.objects.filter(organization=org, customer=customer, title=title).first()
+    return project or m.Project.objects.create(
+        organization=org, customer=customer, number=_unique_number(m.Project, org, "P"),
+        title=title, status=status,
+    )
+
+
 def _import_tooltime_rows(org, user, kind, rows):
     created = updated = skipped = 0
     with transaction.atomic():
@@ -744,13 +791,18 @@ def _import_tooltime_rows(org, user, kind, rows):
                 last = _pick(row, "Nachname", "Last Name")
                 query = m.Customer.objects.filter(organization=org)
                 customer = query.filter(number=number).first() if number else None
-                if customer is None and email:
+                if customer is None and not number and email:
                     customer = query.filter(email__iexact=email).first()
                 values = {
                     "company": company, "first_name": first, "last_name": last, "email": email,
-                    "phone": _pick(row, "Telefon", "Phone"), "mobile": _pick(row, "Mobil", "Mobile"),
-                    "street": _pick(row, "Straße", "Strasse", "Street"), "postal_code": _pick(row, "PLZ", "Postleitzahl", "ZIP"),
+                    "type": "business" if _pick(row, "Kunde Typ", "Customer Type").upper() == "GEWERBE" else "private",
+                    "salutation": _pick(row, "Anrede", "Salutation"),
+                    "phone": _pick(row, "Festnetz", "Telefon", "Phone"), "mobile": _pick(row, "Mobiltelefon", "Mobil", "Mobile"),
+                    "street": _pick(row, "Adresse", "Straße", "Strasse", "Street"), "postal_code": _pick(row, "PLZ", "Postleitzahl", "ZIP"),
                     "city": _pick(row, "Ort", "Stadt", "City"), "country": _pick(row, "Land", "Country") or "DE",
+                    "notes": _pick(row, "Beschreibung", "Description"), "debtor_number": _pick(row, "Debitorennummer"),
+                    "routing_id": _pick(row, "Leitweg-ID", "Leitweg ID"), "vat_id": _pick(row, "Umsatzsteuer-ID", "Umsatzsteuer ID"),
+                    "supplier_id": _pick(row, "Lieferantennummer"),
                 }
                 if customer:
                     for key, value in values.items():
@@ -774,14 +826,14 @@ def _import_tooltime_rows(org, user, kind, rows):
                 grouped.setdefault(number, []).append(row)
             for number, group in grouped.items():
                 first = group[0]
-                customer_number = _pick(first, "Kundennummer", "Customer Number")
+                customer_number = _pick(first, "Kundennummer", "Kunde Nummer", "Customer Number")
                 customer_name = _pick(first, "Kunde", "Kundenname", "Customer")
                 customer = m.Customer.objects.filter(organization=org, number=customer_number).first() if customer_number else None
                 if customer is None and customer_name:
                     customer = m.Customer.objects.filter(organization=org).filter(Q(company__iexact=customer_name) | Q(last_name__iexact=customer_name)).first()
                 if customer is None:
-                    customer = m.Customer.objects.create(organization=org, number=_unique_number(m.Customer, org, "K"), company=customer_name or "ToolTime Import")
-                project_title = _pick(first, "Projekt", "Projekttitel", "Project") or f"ToolTime Import {number}"
+                    customer = _tooltime_customer(org, first)
+                project_title = _pick(first, "Projekt", "Projekttitel", "Project", "Titel", "Rechnung Titel") or f"ToolTime Import {number}"
                 project = m.Project.objects.filter(organization=org, customer=customer, title=project_title).first()
                 if project is None:
                     project = m.Project.objects.create(organization=org, customer=customer, number=_unique_number(m.Project, org, "P"), title=project_title, status="invoiced" if kind == "invoices" else "quoted")
@@ -789,9 +841,9 @@ def _import_tooltime_rows(org, user, kind, rows):
                 if obj:
                     updated += 1
                 else:
-                    kwargs = {"organization": org, "number": number or _unique_number(model, org, prefix), "project": project, "created_by": user}
+                    kwargs = {"organization": org, "number": number or _unique_number(model, org, prefix), "project": project, "created_by": user, "issue_date": _tooltime_date(_pick(first, "Datum", "Date"))}
                     if kind == "invoices":
-                        kwargs["due_date"] = timezone.localdate() + timedelta(days=14)
+                        kwargs["due_date"] = kwargs["issue_date"] + timedelta(days=14)
                     obj = model.objects.create(**kwargs)
                     created += 1
                 item_model = m.QuoteItem if kind == "quotes" else m.InvoiceItem
@@ -803,11 +855,49 @@ def _import_tooltime_rows(org, user, kind, rows):
                             continue
                         item_model.objects.create(**{
                             parent_field: obj, "position": position, "description": description,
-                            "quantity": _money(_pick(row, "Menge", "Quantity") or 1),
+                            "quantity": _tooltime_decimal(_pick(row, "Menge", "Quantity") or 1),
                             "unit": _pick(row, "Einheit", "Unit") or "Stk.",
-                            "unit_price": _money(_pick(row, "Einzelpreis", "Preis", "Unit Price", "Netto")),
-                            "tax_rate": _money(_pick(row, "MwSt", "Steuer", "Tax") or 19),
+                            "unit_price": _tooltime_decimal(_pick(row, "Einzelpreis", "Preis", "Unit Price", "Netto")),
+                            "tax_rate": _tooltime_decimal(_pick(row, "MwSt", "Steuer", "Tax", "USt Satz", "Rechnung USt Satz") or 19),
                         })
+                if not obj.items.exists():
+                    net = _tooltime_decimal(_pick(first, "Betrag Netto", "Rechnung Betrag Netto"))
+                    if net:
+                        item_model.objects.create(**{parent_field: obj, "position": 1, "description": project_title, "quantity": 1, "unit": "Pauschal", "unit_price": net, "tax_rate": _tooltime_decimal(_pick(first, "USt Satz", "Rechnung USt Satz") or 19)})
+                raw_status = _pick(first, "Status", "Rechnung Status").casefold()
+                if kind == "quotes":
+                    obj.status = "accepted" if "angenommen" in raw_status or "abgerechnet" in raw_status else ("rejected" if "abgelehnt" in raw_status else "sent")
+                else:
+                    obj.status = "paid" if "bezahlt" in raw_status or "erstattet" in raw_status else ("cancelled" if "storn" in raw_status else ("overdue" if "überf" in raw_status or "zahlungserinner" in raw_status else "sent"))
+                obj.save(update_fields=["status", "updated_at"])
+        elif kind == "invoice_positions":
+            grouped = {}
+            for source in rows:
+                row = _norm(source); number = _pick(row, "Nummer", "Rechnungsnummer")
+                if number: grouped.setdefault(number, []).append(row)
+                else: skipped += 1
+            for number, group in grouped.items():
+                invoice = m.Invoice.objects.filter(organization=org, number=number).first()
+                if invoice is None:
+                    customer = _tooltime_customer(org, group[0]); title = _pick(group[0], "Rechnung Titel") or f"ToolTime Import {number}"
+                    project = _tooltime_project(org, customer, title, "invoiced")
+                    invoice = m.Invoice.objects.create(organization=org, project=project, number=number, issue_date=_tooltime_date(_pick(group[0], "Datum")), due_date=_tooltime_date(_pick(group[0], "Datum"))+timedelta(days=14), created_by=user)
+                    created += 1
+                else: updated += 1
+                invoice.items.all().delete()
+                for index, row in enumerate(group, 1):
+                    item = m.InvoiceItem.objects.create(invoice=invoice, position=index, code=_pick(row, "Grosshandel Artikelnummer"), description=_pick(row, "Beschreibung") or "ToolTime Position", quantity=_tooltime_decimal(_pick(row, "Menge") or 1), unit=_pick(row, "Einheit") or "Stk.", unit_price=_tooltime_decimal(_pick(row, "Einzelpreis")), tax_rate=_tooltime_decimal(_pick(row, "Rechnung USt Satz") or 19))
+                    kind_map = {"material":"material", "lohn":"labour", "sonstiges":"other"}
+                    m.CommercialItemMeta.objects.create(organization=org, invoice_item=item, position_type=kind_map.get(_pick(row, "Leistungsart").casefold(), "other"), purchase_price=_tooltime_decimal(_pick(row, "Einkaufspreis")), markup_percent=_tooltime_decimal(_pick(row, "Marge Prozent")))
+        elif kind == "transactions":
+            for source in rows:
+                row = _norm(source); references = re.findall(r"[A-Za-z]+[- ]?\d+", _pick(row, "Transaktion Zugeordnete Rechnungen"))
+                invoice = m.Invoice.objects.filter(organization=org, number__in=references).first()
+                if invoice is None: skipped += 1; continue
+                reference = _pick(row, "Transaktion Referenz")
+                defaults = {"amount": _tooltime_decimal(_pick(row, "Transaktion Betrag Gesamt")), "paid_at": _tooltime_date(_pick(row, "Transaktion Datum")), "method": _pick(row, "Transaktion Zahlungsart") or "Überweisung", "recorded_by": user}
+                payment, was_created = m.Payment.objects.update_or_create(invoice=invoice, reference=reference, defaults=defaults)
+                created += int(was_created); updated += int(not was_created)
         elif kind == "time":
             employee = m.Employee.objects.filter(organization=org, user=user).first() or m.Employee.objects.filter(organization=org).first()
             if employee is None:
