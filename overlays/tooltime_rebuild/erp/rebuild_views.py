@@ -762,7 +762,7 @@ def _tooltime_customer(org, row):
     last = _pick(row, "Nachname", "Kunde Nachname", "Customer Last Name")
     return m.Customer.objects.create(
         organization=org, number=number or _unique_number(m.Customer, org, "K"),
-        company=company or "ToolTime Import", first_name=first, last_name=last,
+        company=company, first_name=first, last_name=last,
         street=_pick(row, "Adresse", "Kunde Adresse 1"), postal_code=_pick(row, "PLZ", "Kunde PLZ"),
         city=_pick(row, "Stadt", "Ort", "Kunde Ort"), country=_pick(row, "Land") or "DE",
         email=_pick(row, "E-Mail", "Kunde Email Adresse"),
@@ -806,7 +806,7 @@ def _import_tooltime_rows(org, user, kind, rows):
                 }
                 if customer:
                     for key, value in values.items():
-                        if value:
+                        if value or (key == "company" and customer.company == "ToolTime Import" and (first or last)):
                             setattr(customer, key, value)
                     customer.save()
                     updated += 1
@@ -870,6 +870,17 @@ def _import_tooltime_rows(org, user, kind, rows):
                 else:
                     obj.status = "paid" if "bezahlt" in raw_status or "erstattet" in raw_status else ("cancelled" if "storn" in raw_status else ("overdue" if "überf" in raw_status or "zahlungserinner" in raw_status else "sent"))
                 obj.save(update_fields=["status", "updated_at"])
+                if kind == "invoices":
+                    compliance_state = "cancelled" if obj.status == "cancelled" else "finalized"
+                    m.InvoiceComplianceRecord.objects.update_or_create(
+                        invoice=obj,
+                        defaults={
+                            "organization": org,
+                            "state": compliance_state,
+                            "document_type": "cancellation" if compliance_state == "cancelled" else "invoice",
+                            "final_number": obj.number,
+                        },
+                    )
         elif kind == "invoice_positions":
             grouped = {}
             for source in rows:
