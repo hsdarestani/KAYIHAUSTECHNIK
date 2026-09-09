@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MARKER = "A+BAU ANGEBOT/FREIGABE CI ALIGNMENT 2026-09-08"
 LAYOUT_MARKER = "A+BAU TERMIN FREIGABE LAYOUT HOTFIX 2026-09-09"
-LAYOUT_VERSION = "20260909-termin-layout-1"
+LAYOUT_VERSION = "20260909-termin-layout-2"
 
 
 def read(rel: str) -> str:
