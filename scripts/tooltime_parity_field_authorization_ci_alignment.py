@@ -182,6 +182,23 @@ else:
 write(base_rel, base)
 
 
+# Mark the shared document form as the narrower field-authorization variant.
+# Late appointment overlays may restore the canonical form with only the generic
+# class, so make this repair idempotent and fail loudly if its anchor changes.
+appointment_template_rel = "templates/rebuild/appointment_detail.html"
+appointment_template = read(appointment_template_rel)
+if "tt-field-auth-form" not in appointment_template:
+    appointment_template, count = re.subn(
+        r'class="tt-document-form"',
+        'class="tt-document-form tt-field-auth-form"',
+        appointment_template,
+        count=1,
+    )
+    if count != 1:
+        raise RuntimeError("Field authorization document-form anchor missing")
+    write(appointment_template_rel, appointment_template)
+
+
 # The old appointment parity contract deliberately hid internal pricing. That is no
 # longer the requested product behavior: the Termin authorization editor now reuses
 # the exact Angebot pricing editor for authorized staff. Keep the customer-facing
@@ -250,6 +267,8 @@ if read(base_rel).count("data-field-authorization-layout") != 1:
     raise RuntimeError("Termin layout stylesheet must be linked exactly once")
 if LAYOUT_MARKER not in read("static/css/field-authorization-layout-hotfix.css"):
     raise RuntimeError("Termin layout stylesheet marker missing")
+if "tt-field-auth-form" not in read(appointment_template_rel):
+    raise RuntimeError("Termin field-authorization form marker missing")
 if legacy_page_selector in read(finance_css_rel):
     raise RuntimeError("Termin still matches global document-page presentation")
 if (ROOT / appointment_test_rel).exists():
