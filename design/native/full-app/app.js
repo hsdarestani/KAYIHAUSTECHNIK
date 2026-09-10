@@ -121,7 +121,7 @@ async function startScan(projectId){clearScannerFeedback();
   try { const scan=await Scanner.startScan({roomName:'Raum'}); await Scanner.uploadScan({scanId:scan.scanId,projectId:Number(projectId),apiBaseUrl:state.baseUrl,token:state.token}); toast('Aufmaß gespeichert und zur Prüfung hochgeladen.'); }
   catch(error) { toast(error.message || String(error), 'error'); }
 }
-async function listPending(){clearScannerFeedback();try { const data=await Scanner.listPendingScans(); const scans=list(data?.scans || data); const target=document.querySelector('[data-scan-result]'); target.innerHTML=scans.length?`<ul class="pending-list">${scans.map(s=>`<li>${esc(s.roomName||'Raumaufmaß')}<small>${esc(s.createdAt||'Lokal gespeichert')}</small></li>`).join('')}</ul>`:'<p class="empty">Keine ausstehenden Scans.</p>'; } catch(error){toast(error.message,'error');} }
+async function listPending(){clearScannerFeedback();try { const data=await Scanner.listPendingScans(); const scans=list(data?.scans || data); const target=document.querySelector('[data-scan-result]'); target.innerHTML=scans.length?`<ul class="pending-list">${scans.map(s=>`<li>${esc(s.roomName||'Raumaufmaß')}<small>${esc(s.createdAt||'Lokal gespeichert')}</small></li>`).join('')}</ul>`:'<p class="empty">Keine nicht hochgeladenen Scans vorhanden.</p>'; } catch(error){toast(error.message,'error');} }
 async function logout(callApi=true) { if(callApi) await api('/api/mobile/logout/',{method:'POST'}).catch(()=>{}); state.token='';state.user=null;localStorage.removeItem('ab.token');localStorage.removeItem('ab.user');renderLogin(); }
 
 function bindActions() {
