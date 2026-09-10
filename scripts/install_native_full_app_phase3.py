@@ -91,13 +91,13 @@ class MobileWorkReportPermissionTests(TestCase):
     def setUp(self):
         self.org = Organization.objects.create(name="A+Bau Phase 3")
         self.tech_user = User.objects.create_user("tech-phase3", password="test-pass")
-        UserProfile.objects.create(user=self.tech_user, organization=self.org, role="technician")
+        UserProfile.objects.update_or_create(user=self.tech_user, defaults={"organization": self.org, "role": "technician"})
         self.tech = Employee.objects.create(
             organization=self.org, user=self.tech_user, employee_number="M-P3",
             first_name="Mira", last_name="Montage",
         )
         self.other_user = User.objects.create_user("other-phase3", password="test-pass")
-        UserProfile.objects.create(user=self.other_user, organization=self.org, role="technician")
+        UserProfile.objects.update_or_create(user=self.other_user, defaults={"organization": self.org, "role": "technician"})
         self.other = Employee.objects.create(
             organization=self.org, user=self.other_user, employee_number="M-P4",
             first_name="Otto", last_name="Andere",
