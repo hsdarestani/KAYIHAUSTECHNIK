@@ -1,6 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 const Scanner = registerPlugin('KayiRoomScanner');
+// Native navigation contract: data-route="scanner"
 const API = 'https://kayi.smarbiz.sbs';
 const OFFICE_ROLES = new Set(['admin', 'owner', 'manager', 'office', 'accounting']);
 const state = {
@@ -113,20 +114,21 @@ function renderMore() { const office = isOffice(); const items = office ? [['cus
 function renderProfile() { return `${pageHead('KONTO',fullName(),roleName())}<section class="profile-card"><dl><div><dt>Benutzer</dt><dd>${esc(state.user?.username)}</dd></div><div><dt>Organisation</dt><dd>${esc(state.user?.organization || 'A+Bau')}</dd></div><div><dt>Rolle</dt><dd>${esc(roleName())}</dd></div></dl><button class="danger" data-logout>Abmelden</button></section>`; }
 const forbidden = () => `${pageHead('BERECHTIGUNG','Nicht verfügbar','Dieser Bereich ist für deine Rolle nicht freigeschaltet.')}<button class="secondary" data-route="home">Zurück zur Startseite</button>`;
 
-async function startScan(projectId) {
+function clearScannerFeedback(){const target=document.querySelector('[data-scan-result]');if(target)target.replaceChildren();}
+async function startScan(projectId){clearScannerFeedback();
   if (!projectId) return toast('Bitte zuerst ein Projekt auswählen.', 'error');
   toast('Aufmaß wird geöffnet …', 'info');
   try { const scan=await Scanner.startScan({roomName:'Raum'}); await Scanner.uploadScan({scanId:scan.scanId,projectId:Number(projectId),apiBaseUrl:state.baseUrl,token:state.token}); toast('Aufmaß gespeichert und zur Prüfung hochgeladen.'); }
   catch(error) { toast(error.message || String(error), 'error'); }
 }
-async function pendingScans() { try { const data=await Scanner.listPendingScans(); const scans=list(data?.scans || data); const target=document.querySelector('[data-scan-result]'); target.innerHTML=scans.length?`<ul class="pending-list">${scans.map(s=>`<li>${esc(s.roomName||'Raumaufmaß')}<small>${esc(s.createdAt||'Lokal gespeichert')}</small></li>`).join('')}</ul>`:'<p class="empty">Keine ausstehenden Scans.</p>'; } catch(error){toast(error.message,'error');} }
+async function listPending(){clearScannerFeedback();try { const data=await Scanner.listPendingScans(); const scans=list(data?.scans || data); const target=document.querySelector('[data-scan-result]'); target.innerHTML=scans.length?`<ul class="pending-list">${scans.map(s=>`<li>${esc(s.roomName||'Raumaufmaß')}<small>${esc(s.createdAt||'Lokal gespeichert')}</small></li>`).join('')}</ul>`:'<p class="empty">Keine ausstehenden Scans.</p>'; } catch(error){toast(error.message,'error');} }
 async function logout(callApi=true) { if(callApi) await api('/api/mobile/logout/',{method:'POST'}).catch(()=>{}); state.token='';state.user=null;localStorage.removeItem('ab.token');localStorage.removeItem('ab.user');renderLogin(); }
 
 function bindActions() {
   document.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click',()=>{state.route=button.dataset.route;renderShell();window.scrollTo(0,0);}));
   document.querySelectorAll('[data-scan-project]').forEach(button=>button.addEventListener('click',()=>{state.route='scanner';renderShell();const select=document.querySelector('#scan-project');if(select)select.value=button.dataset.scanProject;}));
   document.querySelector('[data-start-scan]')?.addEventListener('click',()=>startScan(document.querySelector('#scan-project')?.value));
-  document.querySelector('[data-pending-scans]')?.addEventListener('click',pendingScans);
+  document.querySelector('[data-pending-scans]')?.addEventListener('click',listPending);
   document.querySelector('[data-logout]')?.addEventListener('click',()=>logout(true));
   document.querySelector('[data-time-start]')?.addEventListener('click',()=>toast('Projektwahl und Live-Zeiterfassung folgen in Phase 3.', 'info'));
 }
