@@ -11,6 +11,18 @@ for marker in (
     if marker not in app:
         raise RuntimeError(f"Native Full App phase 5 marker missing: {marker}")
 
+compliance_path = ROOT / "docs/store-compliance.md"
+compliance = compliance_path.read_text(encoding="utf-8")
+compliance = compliance.replace(
+    "- Bundle identifier: `sbs.smarbiz.kayi`",
+    "- Bundle identifier (iOS and Android): `de.kayihaustechnik.app`",
+)
+compliance = compliance.replace(
+    "- WebView is supplemented by camera, files, geolocation, offline queue and push integration to avoid a thin-wrapper product.",
+    "- The native shell includes RoomPlan/ARCore scanning, camera/files, connectivity-aware cached read access, scan upload queue, role-aware operational workflows and in-app appointment reminders. Financial writes are deliberately blocked offline to prevent duplicate documents.",
+)
+compliance_path.write_text(compliance, encoding="utf-8")
+
 (ROOT / "tests/test_native_full_app_phase5.py").write_text('''from pathlib import Path
 from django.test import SimpleTestCase
 
