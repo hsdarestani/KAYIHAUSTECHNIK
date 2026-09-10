@@ -11,6 +11,7 @@ const state = {
   route: 'home', data: {}, capabilities: null, loading: false,
   selectedCustomerId: null, selectedProjectId: null, selectedAppointmentId: null, selectedTaskId: null, selectedDocumentId: null, documentKind: 'quote', editingId: null,
   activeTimeEntry: null,
+  online: navigator.onLine, lastSync: localStorage.getItem('ab.lastSync') || '',
 };
 const root = document.querySelector('#app');
 const toastStack = document.querySelector('#toast-stack');
@@ -19,6 +20,8 @@ const list = (payload) => Array.isArray(payload) ? payload : (payload?.results |
 const isOffice = () => OFFICE_ROLES.has(state.user?.role);
 const roleName = () => isOffice() ? 'Büro & Administration' : 'Mitarbeiter';
 const fullName = () => state.user?.name || state.user?.username || 'A+Bau';
+const cacheKey = () => `ab.cachedData.${state.user?.id || 'anonymous'}`;
+function cachedOperationalData(){try{return JSON.parse(localStorage.getItem(cacheKey())||'null');}catch(_){localStorage.removeItem(cacheKey());return null;}}
 
 function toast(message, type = 'success') {
   const node = document.createElement('div');
@@ -30,9 +33,12 @@ function toast(message, type = 'success') {
 }
 
 async function api(path, options = {}) {
+  if (!navigator.onLine && !['GET','HEAD'].includes(options.method || 'GET')) throw new Error('Offline: Änderungen sind erst nach Wiederherstellung der Verbindung möglich.');
   const headers = {Accept:'application/json', ...(options.headers || {})};
   if (state.token) headers.Authorization = `Token ${state.token}`;
-  const response = await fetch(state.baseUrl + path, {...options, headers});
+  let response;
+  try { response = await fetch(state.baseUrl + path, {...options, headers}); }
+  catch (_) { throw new Error('Server nicht erreichbar. Bitte Internetverbindung prüfen.'); }
   const body = response.status === 204 ? {} : await response.json().catch(() => ({}));
   if (response.status === 401) { logout(false); throw new Error('Sitzung abgelaufen. Bitte erneut anmelden.'); }
   if (!response.ok) throw new Error(body.detail || body.error || 'Aktion konnte nicht abgeschlossen werden.');
@@ -66,10 +72,15 @@ async function bootstrap() {
     const [projects, events, tasks, timeEntries, customers, quotes, invoices, employees, expenses] = await Promise.all([...common, ...office]);
     state.data = {projects:list(projects), events:list(events), tasks:list(tasks), timeEntries:list(timeEntries), customers:list(customers), quotes:list(quotes), invoices:list(invoices), employees:list(employees), expenses:list(expenses)};
     state.activeTimeEntry = state.data.timeEntries.find(entry => !entry.ended_at) || null;
+    state.lastSync = new Date().toISOString(); localStorage.setItem('ab.lastSync',state.lastSync); localStorage.setItem(cacheKey(),JSON.stringify({projects:state.data.projects,events:state.data.events,tasks:state.data.tasks,timeEntries:state.data.timeEntries,customers:[],quotes:[],invoices:[],employees:[],expenses:[]}));
     state.capabilities = await Scanner.getCapabilities().catch(() => ({supported:false, fallback:false, provider:'web'}));
+    notifyUpcomingAppointments();
     state.loading = false; renderShell();
-  } catch (error) { state.loading = false; renderShell(); toast(error.message, 'error'); }
+  } catch (error) { const cached=cachedOperationalData();if(cached){state.data=cached;state.activeTimeEntry=(cached.timeEntries||[]).find(entry=>!entry.ended_at)||null;state.loading=false;renderShell();toast('Offline-Modus: zuletzt synchronisierte Einsatzdaten werden angezeigt.','info');}else{state.loading=false;renderShell();toast(error.message,'error');} }
 }
+
+function notifyUpcomingAppointments(){const now=Date.now();for(const event of state.data.events||[]){const delta=new Date(event.starts_at).getTime()-now;const key=`ab.reminded.${event.id}.${String(event.starts_at)}`;if(delta>0&&delta<=2*60*60*1000&&!localStorage.getItem(key)){toast(`Termin in Kürze: ${event.title}`,'info');localStorage.setItem(key,'1');}}}
+function connectionLabel(){if(!state.online)return '<span class="sync-chip offline">Offline</span>';if(!state.lastSync)return '<span class="sync-chip">Online</span>';return `<span class="sync-chip">Sync ${esc(new Date(state.lastSync).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}))}</span>`;}
 
 function renderLogin(message = '') {
   root.innerHTML = `<section class="login-screen"><div class="login-brand"><div class="brand-mark">A+</div><div><h1>A+Bau</h1><p>Die komplette Arbeit in einer App.</p></div></div><form class="login-card" id="login-form"><label>Server<input name="server" type="url" value="${esc(state.baseUrl)}" required></label><label>Benutzername<input name="username" autocomplete="username" required></label><label>Passwort<input name="password" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Anmelden</button><p class="form-status${message ? ' is-error' : ''}" data-status role="status">${esc(message || 'Mit deinem persönlichen A+Bau-Konto anmelden.')}</p></form></section>`;
@@ -82,7 +93,7 @@ function navItems() {
 }
 
 function renderShell() {
-  root.innerHTML = `<div class="app-shell"><header class="topbar"><div class="mini-brand"><span>A+</span><div><b>A+Bau</b><small>${esc(roleName())}</small></div></div><button class="avatar" data-route="profile" aria-label="Konto öffnen">${esc(fullName().slice(0,2).toUpperCase())}</button></header><section class="content">${state.loading ? loadingView() : renderRoute()}</section><nav class="bottom-nav" aria-label="Hauptnavigation">${navItems().map(([id,icon,label]) => `<button data-route="${id}" class="${state.route===id?'is-active':''}"><span>${icon}</span>${label}</button>`).join('')}</nav></div>`;
+  root.innerHTML = `<div class="app-shell"><header class="topbar"><div class="mini-brand"><span>A+</span><div><b>A+Bau</b><small>${esc(roleName())}</small></div></div><div class="topbar-actions">${connectionLabel()}<button class="avatar" data-route="profile" aria-label="Konto öffnen">${esc(fullName().slice(0,2).toUpperCase())}</button></div></header><section class="content">${state.loading ? loadingView() : renderRoute()}</section><nav class="bottom-nav" aria-label="Hauptnavigation">${navItems().map(([id,icon,label]) => `<button data-route="${id}" class="${state.route===id?'is-active':''}"><span>${icon}</span>${label}</button>`).join('')}</nav></div>`;
   bindActions();
 }
 
@@ -154,7 +165,7 @@ async function startScan(projectId){clearScannerFeedback();
   catch(error) { toast(error.message || String(error), 'error'); }
 }
 async function listPending(){clearScannerFeedback();try { const data=await Scanner.listPendingScans(); const scans=list(data?.scans || data); const target=document.querySelector('[data-scan-result]'); target.innerHTML=scans.length?`<ul class="pending-list">${scans.map(s=>`<li>${esc(s.roomName||'Raumaufmaß')}<small>${esc(s.createdAt||'Lokal gespeichert')}</small></li>`).join('')}</ul>`:'<p class="empty">Keine nicht hochgeladenen Scans vorhanden.</p>'; } catch(error){toast(error.message,'error');} }
-async function logout(callApi=true) { if(callApi) await api('/api/mobile/logout/',{method:'POST'}).catch(()=>{}); state.token='';state.user=null;localStorage.removeItem('ab.token');localStorage.removeItem('ab.user');renderLogin(); }
+async function logout(callApi=true) { const oldCache=cacheKey();if(callApi) await api('/api/mobile/logout/',{method:'POST'}).catch(()=>{}); state.token='';state.user=null;localStorage.removeItem('ab.token');localStorage.removeItem('ab.user');localStorage.removeItem(oldCache);localStorage.removeItem('ab.lastSync');renderLogin(); }
 
 function formPayload(form){return Object.fromEntries([...new FormData(form).entries()].map(([key,value])=>[key,String(value).trim()]));}
 function upsert(collection,item){const index=collection.findIndex(row=>Number(row.id)===Number(item.id));if(index>=0)collection[index]=item;else collection.unshift(item);}
@@ -209,4 +220,6 @@ function bindActions() {
   document.querySelector('[data-expense-form]')?.addEventListener('submit',saveExpense);
 }
 
+window.addEventListener('online',()=>{state.online=true;toast('Verbindung wiederhergestellt. Daten werden synchronisiert.','info');if(state.user)bootstrap();else renderLogin();});
+window.addEventListener('offline',()=>{state.online=false;renderShell();toast('Offline-Modus aktiviert. Gespeicherte Daten bleiben lesbar.','info');});
 if (state.token && state.user) bootstrap(); else renderLogin();
