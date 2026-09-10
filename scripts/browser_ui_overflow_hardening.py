@@ -22,6 +22,24 @@ body {
   display: none !important;
 }
 
+/* The final document overlay left the one-column editor grid at a fixed
+   1376px track inside a narrower application content area. */
+.ab-v3-document-editor .tt-document-form {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ab-v3-document-editor .tt-document-form > *,
+.ab-v3-document-editor .tt-card,
+.ab-v3-document-editor .tt-services,
+.ab-v3-document-editor .tt-two,
+.ab-v3-document-editor .tt-price-tools {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .nx-calendar-shell,
 .nx-calendar-shell > *,
 .nx-calendar-toolbar,
@@ -64,6 +82,8 @@ verified = TARGET.read_text(encoding="utf-8")
 for needle in (
     MARKER,
     '.nx-assistant-drawer[aria-hidden="true"]',
+    ".ab-v3-document-editor .tt-document-form",
+    "grid-template-columns: minmax(0, 1fr) !important",
     "@media (min-width: 901px)",
     "grid-template-columns: repeat(7, minmax(0, 1fr)) !important",
 ):
