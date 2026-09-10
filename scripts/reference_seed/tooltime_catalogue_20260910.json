@@ -1,0 +1,1769 @@
+{
+  "source": "ToolTime Catalogue",
+  "captured_at": "2026-09-10",
+  "currency": "EUR",
+  "selection": "latest positive per normalized name and unit; otherwise latest zero",
+  "items": [
+    {
+      "code": "AGTEMPOFPN",
+      "name": "Abdeckhaube Tempoplex f. Tempoplex-/Plus f. DW mit 90mm Ablauf,d=115mm verchromt",
+      "unit": "Pc.",
+      "purchase": "15.60",
+      "sales": "39.81",
+      "changed": "14/08/2026"
+    },
+    {
+      "code": "AGTEMPO36",
+      "name": "Ablauf Funktionseinheit Tempoplex 90mm ohne Abdeckhaube, Ablauf 45 Grad BH:60mm",
+      "unit": "Pc.",
+      "purchase": "53.32",
+      "sales": "109.40",
+      "changed": "14/08/2026"
+    },
+    {
+      "code": "",
+      "name": "Kaldewei CAYONOPLAN 2257-5 Duschwanne 90 x 100 cm, mit Vollantislip, inkl. Wannenträger extraflach",
+      "unit": "Pc.",
+      "purchase": "599.99",
+      "sales": "1530.99",
+      "changed": "14/08/2026"
+    },
+    {
+      "code": "",
+      "name": "Isolierung-Wärmetauscher-Vordersch",
+      "unit": "Pc.",
+      "purchase": "38.84",
+      "sales": "62.14",
+      "changed": "12/08/2026"
+    },
+    {
+      "code": "",
+      "name": "Kunststofffenster 175 × 115 cm",
+      "unit": "Flat rate",
+      "purchase": "1050.00",
+      "sales": "1050.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kunststoff-Balkontüranlage",
+      "unit": "Pc.",
+      "purchase": "2600.00",
+      "sales": "2600.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kunststofffenster 175 × 115 cm",
+      "unit": "Pc.",
+      "purchase": "1050.00",
+      "sales": "1050.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Bodenbelag aufnehmen und fachgerecht entsorgen",
+      "unit": "m²",
+      "purchase": "12.00",
+      "sales": "12.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Bereitstellung und Betrieb von Bautrocknern",
+      "unit": "Pc.",
+      "purchase": "1250.00",
+      "sales": "1250.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Endreinigung",
+      "unit": "Flat rate",
+      "purchase": "500.00",
+      "sales": "500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Anschluss- und Ausbesserungsarbeiten",
+      "unit": "Flat rate",
+      "purchase": "1500.00",
+      "sales": "1500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wand- und Deckenflächen streichen",
+      "unit": "m²",
+      "purchase": "9.00",
+      "sales": "9.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wand- und Deckenflächen spachteln",
+      "unit": "m²",
+      "purchase": "25.00",
+      "sales": "25.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Grundierung der Wand- und Deckenflächen",
+      "unit": "m²",
+      "purchase": "8.00",
+      "sales": "8.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wiederherstellung von Wand- und Deckenbekleidungen",
+      "unit": "m²",
+      "purchase": "16.00",
+      "sales": "16.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "An- und Abfahrtspauschale",
+      "unit": "Flat rate",
+      "purchase": "500.00",
+      "sales": "500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Container und Entsorgungskosten",
+      "unit": "Flat rate",
+      "purchase": "2500.00",
+      "sales": "2500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Untergrund reinigen und für Trocknung-/Sanierungs-arbeiten Vorbereiten",
+      "unit": "m²",
+      "purchase": "15.00",
+      "sales": "15.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wandbekleidung (Gipskaton/Putz je nach Bestand) demontieren und entsorgen",
+      "unit": "m²",
+      "purchase": "75.00",
+      "sales": "75.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Holzverkleidungen/Dämmung an Wände und Decken demontieren und entsorgen",
+      "unit": "m²",
+      "purchase": "60.00",
+      "sales": "60.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Baustelle Einrichten und Arbeitsbereich Schützen",
+      "unit": "Flat rate",
+      "purchase": "750.00",
+      "sales": "750.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Anschluss- und Ausbesserungsarbeiten",
+      "unit": "h",
+      "purchase": "1500.00",
+      "sales": "1500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wand- und Deckenflächen spachteln",
+      "unit": "h",
+      "purchase": "25.00",
+      "sales": "25.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wandflächen mit Kalkzementputz herstellen",
+      "unit": "m²",
+      "purchase": "25.00",
+      "sales": "25.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Untergrund vorbereiten",
+      "unit": "m²",
+      "purchase": "8.00",
+      "sales": "8.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Bauschutt und Mischabfälle aufnehmen, verladen und entsorgen",
+      "unit": "Flat rate",
+      "purchase": "3000.00",
+      "sales": "3000.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "An- und Abfahrtspauschale",
+      "unit": "Pc.",
+      "purchase": "500.00",
+      "sales": "500.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Baustelle Einrichten und Arbeitsbereich Schützen",
+      "unit": "Pc.",
+      "purchase": "750.00",
+      "sales": "750.00",
+      "changed": "31/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Evakuieren der Anlage, Dichtheitsprüfung und Inbetriebnahme",
+      "unit": "Flat rate",
+      "purchase": "250.00",
+      "sales": "250.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Klimaanlage (Innen- und Außengerät)",
+      "unit": "Flat rate",
+      "purchase": "400.00",
+      "sales": "440.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Lieferung und Montage Wandkonsole für Außengerät",
+      "unit": "Flat rate",
+      "purchase": "180.00",
+      "sales": "270.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Lieferung und Montage Kabelkanal",
+      "unit": "Flat rate",
+      "purchase": "165.00",
+      "sales": "272.25",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kältemutter 1/4 und 3/8",
+      "unit": "Pc.",
+      "purchase": "9.00",
+      "sales": "19.80",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kältemittelleitung 3/8 6er",
+      "unit": "m",
+      "purchase": "16.00",
+      "sales": "32.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kältemittelleitung 1/4 10er",
+      "unit": "m",
+      "purchase": "27.00",
+      "sales": "54.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kernbohrung",
+      "unit": "Flat rate",
+      "purchase": "60.00",
+      "sales": "78.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Daikin WiFi Comfora 2,5 kW",
+      "unit": "Flat rate",
+      "purchase": "1450.00",
+      "sales": "2465.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "LG Standard 2 EZ09CYN 2,5 kW WiFi",
+      "unit": "Flat rate",
+      "purchase": "400.00",
+      "sales": "640.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Termotek Monosplit 9000 BTU 2,5 kw",
+      "unit": "Flat rate",
+      "purchase": "400.00",
+      "sales": "600.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kernbohrung",
+      "unit": "h",
+      "purchase": "60.00",
+      "sales": "60.00",
+      "changed": "30/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Innengeräte Klimaanlage LG Dualcool Libero",
+      "unit": "h",
+      "purchase": "250.00",
+      "sales": "250.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Außengerät LG Inverter",
+      "unit": "h",
+      "purchase": "350.00",
+      "sales": "350.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kernbohrung 70mm",
+      "unit": "Flat rate",
+      "purchase": "80.00",
+      "sales": "80.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Klimaanlage LG Dualcool Libero Smart Wifi",
+      "unit": "Pc.",
+      "purchase": "1700.00",
+      "sales": "2550.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Mitsubishi Basic Duo Dual 2X3,5 Kw Multisplit Klimaanlage weiss",
+      "unit": "Pc.",
+      "purchase": "3200.00",
+      "sales": "3840.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Umlöten Von Links nach Rechts von der 3,5 kW Inneneinheit",
+      "unit": "h",
+      "purchase": "350.00",
+      "sales": "350.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Außengerät Mitsubishi Basic Dual",
+      "unit": "h",
+      "purchase": "350.00",
+      "sales": "350.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Evakuieren der Anlage, Dichtheitsprüfung und Inbetriebnahme",
+      "unit": "h",
+      "purchase": "250.00",
+      "sales": "250.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Innengeräte Mitsubishi Basic Duo Klimaanlage",
+      "unit": "h",
+      "purchase": "250.00",
+      "sales": "250.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Außengerät Mitsubishi Basic Dual",
+      "unit": "Pc.",
+      "purchase": "350.00",
+      "sales": "350.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Montage Innengeräte Mitsubishi Basic Duo Klimaanlage",
+      "unit": "Pc.",
+      "purchase": "250.00",
+      "sales": "250.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Umlöten Von Links nach Rechts von der 3,5 kW Inneneinheit",
+      "unit": "Flat rate",
+      "purchase": "350.00",
+      "sales": "350.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Wand oder Bodenkonsole",
+      "unit": "Pc.",
+      "purchase": "146.00",
+      "sales": "146.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kabel Und Kondensatschlauch",
+      "unit": "Flat rate",
+      "purchase": "65.00",
+      "sales": "65.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kabelkanal Liefern und montieren",
+      "unit": "Flat rate",
+      "purchase": "60.00",
+      "sales": "60.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kabelkanal Liefern und montieren",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kernbohrung 70mm",
+      "unit": "h",
+      "purchase": "80.00",
+      "sales": "80.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kältemittelleitung 3/8 6er",
+      "unit": "Pc.",
+      "purchase": "16.00",
+      "sales": "16.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Kältemutter 1/4und 3/8",
+      "unit": "Pc.",
+      "purchase": "8.00",
+      "sales": "8.00",
+      "changed": "29/07/2026"
+    },
+    {
+      "code": "",
+      "name": "Tür Zargen schleifen lackieren",
+      "unit": "Pc.",
+      "purchase": "60.00",
+      "sales": "156.00",
+      "changed": "11/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Untergrund Q3 spachteln",
+      "unit": "m²",
+      "purchase": "16.00",
+      "sales": "16.00",
+      "changed": "11/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Glasfaser Vlies Tapete anbringen und streichen",
+      "unit": "m²",
+      "purchase": "8.50",
+      "sales": "30.18",
+      "changed": "11/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Grundierungsarbeiten",
+      "unit": "m²",
+      "purchase": "3.00",
+      "sales": "5.40",
+      "changed": "11/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Malerarbeiten Wände und Decken",
+      "unit": "Flat rate",
+      "purchase": "14000.00",
+      "sales": "14000.00",
+      "changed": "02/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Schutzmaßnahmen / Abdeckarbeiten",
+      "unit": "Pc.",
+      "purchase": "2200.00",
+      "sales": "2200.00",
+      "changed": "02/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Möbelrückung sowie Demontage- und Montagearbeiten",
+      "unit": "Pc.",
+      "purchase": "2600.00",
+      "sales": "2600.00",
+      "changed": "02/06/2026"
+    },
+    {
+      "code": "",
+      "name": "Rückbau",
+      "unit": "h",
+      "purchase": "95.00",
+      "sales": "95.00",
+      "changed": "26/05/2026"
+    },
+    {
+      "code": "",
+      "name": "Isolieranstrich (Wasserflecken)",
+      "unit": "Flat rate",
+      "purchase": "300.00",
+      "sales": "300.00",
+      "changed": "14/03/2026"
+    },
+    {
+      "code": "",
+      "name": "rückbau der alten leitungen",
+      "unit": "Flat rate",
+      "purchase": "232.50",
+      "sales": "232.50",
+      "changed": "03/02/2026"
+    },
+    {
+      "code": "",
+      "name": "Schimmelentfernung an den Deckenflächen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Spachtelarbeiten an den Decken",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Demontage der Duschkabine",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Entfernung der Unterkonstruktion an der Decke",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Neuverspachtelung der Decke",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Montage einer neuen Decke",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Grundieren und Streichen der neuen Deckenfläche",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Stundenlohn Facharbeiter auf Nachweis! Einrichtungsgegenstände innerhalb der Wohnung De-und Remontieren, verrücken.",
+      "unit": "h",
+      "purchase": "54.62",
+      "sales": "54.62",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Stundenlohn Helfer auf Nachweis! Einrichtungsgegenstände innerhalb der Wohnung De-und Remontieren, verrücken",
+      "unit": "Pc.",
+      "purchase": "41.71",
+      "sales": "41.71",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Schutz- und Vorbereitungsmaßnahmen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Schimmelbefallene Wandflächen freilegen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Schimmelentfernung und Desinfektion der Wandflächen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Neuverputzen der Wandflächen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Grundieren und Streichen der Wandflächen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "23/12/2025"
+    },
+    {
+      "code": "",
+      "name": "Stand - Flachspül-WC clivia Abgang waagerecht weiss VIGOUR",
+      "unit": "Pc.",
+      "purchase": "201.00",
+      "sales": "472.35",
+      "changed": "09/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Wand-Q3 malerfertig spachteln und streichen",
+      "unit": "Flat rate",
+      "purchase": "2550.00",
+      "sales": "4845.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Wände streichen",
+      "unit": "Flat rate",
+      "purchase": "1160.00",
+      "sales": "2204.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "DeckenFläche Q3 malerfertig spachteln",
+      "unit": "Flat rate",
+      "purchase": "1250.00",
+      "sales": "2380.50",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Decken streichen",
+      "unit": "Pc.",
+      "purchase": "580.00",
+      "sales": "580.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Wände streichen",
+      "unit": "Pc.",
+      "purchase": "1160.00",
+      "sales": "1160.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Nachputz nach Elektro",
+      "unit": "Flat rate",
+      "purchase": "775.68",
+      "sales": "2598.53",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Elektro neu installation",
+      "unit": "Flat rate",
+      "purchase": "5050.00",
+      "sales": "12625.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "Multimedia",
+      "unit": "Pc.",
+      "purchase": "3800.00",
+      "sales": "9500.00",
+      "changed": "02/10/2025"
+    },
+    {
+      "code": "",
+      "name": "120x200cm Duschabtrennung Walk In 8mm Nano ESG Klarglas Duschtrennwand Höhe 200cm",
+      "unit": "Pc.",
+      "purchase": "389.90",
+      "sales": "389.90",
+      "changed": "26/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Kombi. Eckventil TRINNITY 1/2\"",
+      "unit": "Pc.",
+      "purchase": "16.70",
+      "sales": "37.70",
+      "changed": "24/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Geschirrspüler Abwasserrohr",
+      "unit": "Pc.",
+      "purchase": "20.00",
+      "sales": "25.40",
+      "changed": "24/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Grohe Costa UP-Ventil Farbset",
+      "unit": "Pc.",
+      "purchase": "24.36",
+      "sales": "48.72",
+      "changed": "24/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Eckventil TRINNITY 1/2\" m. Schubrosette und Längenausgleich verchromt",
+      "unit": "Pc.",
+      "purchase": "3.59",
+      "sales": "27.48",
+      "changed": "24/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Siphon Tauchrohr 300mm",
+      "unit": "Pc.",
+      "purchase": "12.00",
+      "sales": "26.40",
+      "changed": "24/09/2025"
+    },
+    {
+      "code": "",
+      "name": "Bett",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "19/08/2025"
+    },
+    {
+      "code": "",
+      "name": "Wandfliesen verlegen",
+      "unit": "Flat rate",
+      "purchase": "750.00",
+      "sales": "900.00",
+      "changed": "19/08/2025"
+    },
+    {
+      "code": "",
+      "name": "120x200cm Duschabtrennung Walk In 8mm Nano ESG Klarglas Duschtrennwand Höhe 200cm",
+      "unit": "Flat rate",
+      "purchase": "180.00",
+      "sales": "576.00",
+      "changed": "23/05/2025"
+    },
+    {
+      "code": "",
+      "name": "Wand ziehen mit Dämmung abdesthane",
+      "unit": "Pc.",
+      "purchase": "580.00",
+      "sales": "1740.00",
+      "changed": "12/05/2025"
+    },
+    {
+      "code": "",
+      "name": "Abfluss",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/11/2024"
+    },
+    {
+      "code": "",
+      "name": "Duschkabine De- und Remontage",
+      "unit": "Pc.",
+      "purchase": "200.00",
+      "sales": "560.00",
+      "changed": "20/11/2024"
+    },
+    {
+      "code": "",
+      "name": "Leckortung im Keller",
+      "unit": "Flat rate",
+      "purchase": "550.00",
+      "sales": "550.00",
+      "changed": "19/09/2024"
+    },
+    {
+      "code": "",
+      "name": "Leckortung in der Tiefgarage",
+      "unit": "Flat rate",
+      "purchase": "550.00",
+      "sales": "550.00",
+      "changed": "19/09/2024"
+    },
+    {
+      "code": "",
+      "name": "Wand-DeckenFläche malerfertig spachte",
+      "unit": "m²",
+      "purchase": "12.00",
+      "sales": "24.00",
+      "changed": "27/07/2024"
+    },
+    {
+      "code": "",
+      "name": "HARMO FLUGELGITTER (NET",
+      "unit": "m²",
+      "purchase": "95.00",
+      "sales": "142.50",
+      "changed": "24/06/2024"
+    },
+    {
+      "code": "",
+      "name": "HARMO Flügelgitter (NET",
+      "unit": "m²",
+      "purchase": "95.00",
+      "sales": "142.50",
+      "changed": "24/06/2024"
+    },
+    {
+      "code": "",
+      "name": "Deckentapete entfernen",
+      "unit": "Flat rate",
+      "purchase": "150.00",
+      "sales": "150.00",
+      "changed": "06/06/2024"
+    },
+    {
+      "code": "",
+      "name": "Richtarbeiten Fenster",
+      "unit": "Pc.",
+      "purchase": "75.00",
+      "sales": "97.50",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Fenster Kammergetriebe Schüco",
+      "unit": "Pc.",
+      "purchase": "95.00",
+      "sales": "123.50",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Eckverbindung Fensterdichtung Schüco",
+      "unit": "Pc.",
+      "purchase": "11.00",
+      "sales": "14.30",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Fensterdichtung Anschlagrahmen",
+      "unit": "Pc.",
+      "purchase": "7.00",
+      "sales": "9.10",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Eckumlenkung Schüco",
+      "unit": "Pc.",
+      "purchase": "105.00",
+      "sales": "136.50",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Facharbeiterstunde mechanisch",
+      "unit": "Pc.",
+      "purchase": "69.00",
+      "sales": "89.70",
+      "changed": "25/05/2024"
+    },
+    {
+      "code": "GN5032",
+      "name": "Sicken-Nippel, passend für HT-Muffe DN50 und Siphon-Anschluss DN32",
+      "unit": "Labour value",
+      "purchase": "3.29",
+      "sales": "7.30",
+      "changed": "21/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Lampe versetzen",
+      "unit": "Pc.",
+      "purchase": "20.00",
+      "sales": "20.00",
+      "changed": "16/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Verrohrung",
+      "unit": "Pc.",
+      "purchase": "367.00",
+      "sales": "440.40",
+      "changed": "16/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Betätigungsplatte GEBERIT Sigma 30 Platte weiß Glanz",
+      "unit": "Pc.",
+      "purchase": "67.95",
+      "sales": "144.84",
+      "changed": "06/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Geberit Abdeckplatte Sigma01 weiss-alpin f.2-Mengen-Spülung, für UP320/UP300",
+      "unit": "Pc.",
+      "purchase": "38.00",
+      "sales": "81.00",
+      "changed": "02/05/2024"
+    },
+    {
+      "code": "",
+      "name": "Abwasserleitung",
+      "unit": "Flat rate",
+      "purchase": "2000.00",
+      "sales": "2000.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Frischwasserleitung",
+      "unit": "Flat rate",
+      "purchase": "2500.00",
+      "sales": "2500.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizungsleitung",
+      "unit": "Flat rate",
+      "purchase": "2000.00",
+      "sales": "2000.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizkörperinstallation",
+      "unit": "Flat rate",
+      "purchase": "3000.00",
+      "sales": "3000.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Badinstallation",
+      "unit": "Flat rate",
+      "purchase": "6000.00",
+      "sales": "6000.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizungsraum",
+      "unit": "Flat rate",
+      "purchase": "13000.00",
+      "sales": "13000.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Fenster einbau",
+      "unit": "Flat rate",
+      "purchase": "9000.00",
+      "sales": "10350.00",
+      "changed": "29/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Hansgrohe Shower Select",
+      "unit": "Pc.",
+      "purchase": "1737.93",
+      "sales": "1737.93",
+      "changed": "28/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Bausatz Duofix f.Vorwandmontage Geberit verzinkt",
+      "unit": "Pc.",
+      "purchase": "14.80",
+      "sales": "35.30",
+      "changed": "28/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Reinigung kpl",
+      "unit": "Flat rate",
+      "purchase": "547.96",
+      "sales": "821.94",
+      "changed": "25/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Anschluss 15 x 1mm",
+      "unit": "Flat rate",
+      "purchase": "50.00",
+      "sales": "50.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Schachteinbauventilator CATA E100 GT Ø 100",
+      "unit": "Pc.",
+      "purchase": "49.95",
+      "sales": "84.92",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "COSMO Universal-Mittenanschlussarmatur Durchg./Eck DN 20 weiss 1/2\"IG u. 3/4\"AG",
+      "unit": "Pc.",
+      "purchase": "57.60",
+      "sales": "144.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "TRINNITY M Badheizkörper 1217x500mm, RAL 9016, MA 50MM",
+      "unit": "Pc.",
+      "purchase": "105.00",
+      "sales": "175.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "clivia Set m. clivia WWC mit clivia WC- Sitz Edelstahlscharnier VIGOUR",
+      "unit": "Pc.",
+      "purchase": "101.00",
+      "sales": "148.50",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Wand-WC-Montageelement Duofix BH 1120mm m.UP-Spülkasten Sigma Bet.v.vorn Geberit",
+      "unit": "Pc.",
+      "purchase": "175.00",
+      "sales": "448.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Einhand-Aufputz-Badebatterie clivia ohne Brausegarnitur verchromt VIGOUR",
+      "unit": "Pc.",
+      "purchase": "74.25",
+      "sales": "148.50",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Waschtisch-Röhrensiphon 1 1/4\"G mit Verstellrohr 120mm TRINNITY",
+      "unit": "Pc.",
+      "purchase": "11.03",
+      "sales": "47.20",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Waschtisch-Befestigungssatz",
+      "unit": "Pc.",
+      "purchase": "0.99",
+      "sales": "4.10",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Waschtisch one 60 x 45cm weiß VIGOUR",
+      "unit": "Pc.",
+      "purchase": "25.82",
+      "sales": "71.30",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Brausegarnitur indiv.1.0 m. Stange 60 cm Schlauch,Handbr.mehrstrahl.verchr.VIGOUR",
+      "unit": "Pc.",
+      "purchase": "26.88",
+      "sales": "64.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Farbset zu Wannengarnitur m.Drehgriff verchromt TRINNITY",
+      "unit": "Pc.",
+      "purchase": "8.54",
+      "sales": "19.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Ab-u.Überlaufgarnitur Funktionseinheit f.Normalwannen TRINNITY",
+      "unit": "Pc.",
+      "purchase": "23.90",
+      "sales": "55.20",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Fussgestell Allround Kaldewei",
+      "unit": "Pc.",
+      "purchase": "34.05",
+      "sales": "54.10",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Badewanne Stahl Cayono 170x75cm weiss Kaldewei",
+      "unit": "Pc.",
+      "purchase": "383.71",
+      "sales": "571.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Sockelleisten einbauen",
+      "unit": "Flat rate",
+      "purchase": "200.00",
+      "sales": "200.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Click Vinyl Verlegen inklusive Trittschalldämmung",
+      "unit": "m²",
+      "purchase": "23.95",
+      "sales": "52.69",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Bad Abdichtung",
+      "unit": "Pc.",
+      "purchase": "20.00",
+      "sales": "56.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Bad Flur und Abstellkammer: Bodenfliesenbelag",
+      "unit": "m²",
+      "purchase": "30.00",
+      "sales": "90.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Wandfliesen verlegen",
+      "unit": "m²",
+      "purchase": "20.00",
+      "sales": "60.00",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Tapeten entfernen",
+      "unit": "m²",
+      "purchase": "3.51",
+      "sales": "3.51",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Abdecken von Belägen (Fußboden)",
+      "unit": "m²",
+      "purchase": "2.09",
+      "sales": "2.09",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Dispersionsanstrich",
+      "unit": "Pc.",
+      "purchase": "6.09",
+      "sales": "6.09",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Rauhfaser kleben",
+      "unit": "Pc.",
+      "purchase": "5.19",
+      "sales": "5.19",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Haftgrund aufbringen",
+      "unit": "m²",
+      "purchase": "2.97",
+      "sales": "2.97",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Isolieranstrich (Rost-, Nikotin und Wasserflecke)",
+      "unit": "m²",
+      "purchase": "8.52",
+      "sales": "8.52",
+      "changed": "24/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Dispersionsanstrich",
+      "unit": "m²",
+      "purchase": "6.09",
+      "sales": "6.09",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Beschädigten Wandputz erneuern (Innenputz); ab 5,01 m² - Wohnzimmer und Schlafzimmer",
+      "unit": "m²",
+      "purchase": "45.79",
+      "sales": "45.79",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Beschädigten Deckenputz (Innenputz) ab 5,01 m² - Wohnzimmer und Schlafzimmer",
+      "unit": "m²",
+      "purchase": "53.68",
+      "sales": "53.68",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Rauhfaser kleben - Bad / Küche Flur",
+      "unit": "m²",
+      "purchase": "5.19",
+      "sales": "5.19",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Zimmertürblatt neu DIN Maß,",
+      "unit": "Pc.",
+      "purchase": "218.97",
+      "sales": "218.97",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Innentürzargen neu DIN Maß",
+      "unit": "Pc.",
+      "purchase": "183.19",
+      "sales": "183.19",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "HZ Sockelleisten erneuern",
+      "unit": "m",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Universal-Mittenanschlussarmatur erneuern",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Klein- und Dichtmaterial",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Flachheizkörper Kermi",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Demontage alter Heizkörper",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Anschluss C-Stahl 15 x 1mm",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "C-Stahlrohr 15 x 1mm als Heizleitung",
+      "unit": "Running metre",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizungsanlage entleeren bis zur Station",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Tapeten entfernen - Bad / Küche Flur",
+      "unit": "m²",
+      "purchase": "3.51",
+      "sales": "3.51",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Bodenbelag ausbauen und entsorgen, fest verklebt, 1-lagig",
+      "unit": "m²",
+      "purchase": "8.87",
+      "sales": "8.87",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Fensterbänke Demontieren und Entsorgen.",
+      "unit": "Pc.",
+      "purchase": "29.49",
+      "sales": "29.49",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Stundenverrechnungssatz Entsorgung kontaminierter Bauteile/Einrichtungen",
+      "unit": "h",
+      "purchase": "47.17",
+      "sales": "47.17",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Stundenlohn Helfer Entsorgung kontaminierter Bauteile/Einrichtungen",
+      "unit": "h",
+      "purchase": "36.02",
+      "sales": "36.02",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Stundenlohnarbeiten in kontaminierten Bereichen.",
+      "unit": "h",
+      "purchase": "75.94",
+      "sales": "75.94",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Decken- und Wandflächen, nach Brandschaden, neutralisierend reinigen",
+      "unit": "m²",
+      "purchase": "7.31",
+      "sales": "7.31",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Decken- und Wandflächen, nach Brandbelastung, absaugen",
+      "unit": "m²",
+      "purchase": "4.00",
+      "sales": "4.00",
+      "changed": "20/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Zwei-Rohr Hahnblock erneuern",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Thermostatkopf erneuern",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Klein- und Dichtmaterial",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Flachheizkörper Kermi",
+      "unit": "h",
+      "purchase": "1007.00",
+      "sales": "1007.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Demontage alter Heizkörper",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizungsanlage entleeren bis zur Station",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Anschluss C-Stahl 15 x 1mm",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "C-Stahlrohr 15 x 1mm als Heizleitung",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Heizungsstrang entleeren",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "An- und Abfahrt",
+      "unit": "h",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "16/04/2024"
+    },
+    {
+      "code": "",
+      "name": "Sanitärinstallation Komplett",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Reinigung komplett",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Gebäudereinigungsarbeiten",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Wohnungseingangstür einbauen",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Zi-Tür kpl. ern. einschl. Verbreiterung",
+      "unit": "Pc.",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Zi-Tür kpl. ern. einschl. Verbreiterung",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "PVC-Click vinyl-Planke l+m",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Holz-Fußleisten entf., beiputzen",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "alle Altbeläge entfernen",
+      "unit": "m²",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Ausgleich v. Unebenheiten bis 5 mm",
+      "unit": "m²",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Wandputz innen 2lagig 500 M2",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Türöffnung auf Normmaß",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Holzflächen abschleifen, als Zulage",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Holzflächen lackieren",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Decken- Wandplatten entfernen",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "W-Fläche malerfertig spachteln",
+      "unit": "m²",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "abbruch",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Decke malerfertig spachteln",
+      "unit": "m²",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Rohrverkleidung aus Hartschaum",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Boden-Abschluss-Schiene",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Kunststoff-Eckprofile für Wandbeläge",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Magnetrahmen",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "WC oder WT Vorwandelement verkleiden",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Putzarbeiten zu Fliesenspiegel",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Fliesenspiegel kpl. Erneuern",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Bodenfliesen Zulage je m² über 6m²",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Bad bis 6 m²: Bodenfliesenbelag",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Wandfliesen 1,35m: Zulage je m² über 6m",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Bad bis 6 m²: Wandfl. 1,35 / 2,0m",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Küche: Fliesen abstemmen, spachteln",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    },
+    {
+      "code": "",
+      "name": "Bad: Fliesen abstemmen, spachteln",
+      "unit": "Flat rate",
+      "purchase": "0.00",
+      "sales": "0.00",
+      "changed": "31/03/2024"
+    }
+  ]
+}
+
