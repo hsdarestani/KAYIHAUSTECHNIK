@@ -18,7 +18,7 @@ def replace_once(path: Path, old: str, new: str) -> None:
 
 base = ROOT / "templates/rebuild/base.html"
 old_messages = '''<div class="nx-content">{% if messages %}<div class="nx-messages">{% for message in messages %}<div class="nx-message">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</div>'''
-new_messages = '''<div class="nx-content">{% if messages %}<div class="nx-messages" aria-label="Systemmeldungen">{% for message %}<div class="nx-message nx-message-{{ message.tags|default:'info' }}" data-notification="{{ message.tags|default:'info' }}" {% if 'error' in message.tags %}role="alert" aria-live="assertive"{% else %}role="status" aria-live="polite"{% endif %} aria-atomic="true"><span class="nx-message-icon" aria-hidden="true"></span><span class="nx-message-text">{{ message }}</span><button class="nx-message-close" type="button" aria-label="Meldung schließen">×</button></div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</div>'''
+new_messages = '''<div class="nx-content">{% if messages %}<div class="nx-messages" aria-label="Systemmeldungen">{% for message in messages %}<div class="nx-message nx-message-{{ message.tags|default:'info' }}" data-notification="{{ message.tags|default:'info' }}" {% if 'error' in message.tags %}role="alert" aria-live="assertive"{% else %}role="status" aria-live="polite"{% endif %} aria-atomic="true"><span class="nx-message-icon" aria-hidden="true"></span><span class="nx-message-text">{{ message }}</span><button class="nx-message-close" type="button" aria-label="Meldung schließen">×</button></div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}</div>'''
 replace_once(base, old_messages, new_messages)
 
 
