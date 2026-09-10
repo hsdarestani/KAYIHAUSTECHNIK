@@ -256,5 +256,6 @@ python3 scripts/install_native_full_app_phase1.py
 python3 scripts/install_native_full_app_phase2.py
 python3 scripts/install_native_full_app_phase3.py
 python3 scripts/install_native_full_app_phase4.py
+python3 scripts/install_native_full_app_phase5.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
