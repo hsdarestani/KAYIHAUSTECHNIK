@@ -233,12 +233,6 @@ python3 scripts/tooltime_catalogue_full_sync.py
 # User-reported Vorlagen regression: force one canonical text-template modal and
 # a fresh finance runtime after every older ToolTime/V3 layer has finished.
 python3 scripts/ab_bau_v3_template_modal_singleton_fix.py
-# Browser-verified overflow closeout: keep closed off-canvas UI out of document
-# width and constrain the desktop week calendar to the available content column.
-python3 scripts/browser_ui_overflow_hardening.py
-# CRUD feedback runs after the final visual layers so success, warning and error
-# messages stay typed, accessible and consistent on every create/edit form.
-python3 scripts/user_flow_notifications_hardening.py
 
 # Late V3/template overlays can overwrite the field-authorization form marker
 # used to isolate its compact responsive layout from Document Studio. Restore
@@ -253,5 +247,6 @@ python3 scripts/tooltime_customer_migration_closeout.py
 # Native Full App phase 1 runs last: role-aware admin/employee navigation owns
 # the mobile shell while RoomPlan/ARCore remains available as one project tool.
 python3 scripts/install_native_full_app_phase1.py
+python3 scripts/install_native_full_app_phase2.py
 
 echo "A+Bau source tree assembled with ToolTime-parity commercial documents, German fiscal compliance, AI/3D advantages and stable operational UX."
