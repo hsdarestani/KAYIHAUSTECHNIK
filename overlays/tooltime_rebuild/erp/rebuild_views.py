@@ -813,6 +813,60 @@ def _import_tooltime_rows(org, user, kind, rows):
                 else:
                     m.Customer.objects.create(organization=org, number=number or _unique_number(m.Customer, org, "K"), **values)
                     created += 1
+        elif kind == "projects":
+            status_map = {
+                "new project": "inquiry", "quote created": "quoted", "invoice created": "invoiced",
+                "invoice paid": "completed", "in progress": "in_progress", "completed": "completed",
+                "cancelled": "cancelled",
+            }
+            for source in rows:
+                row = _norm(source)
+                number = _pick(row, "Projektnummer", "Project Number", "Nummer")
+                title = _pick(row, "Projekttitel", "Projekt", "Project Title", "Title")
+                customer_number = _pick(row, "Kundennummer", "Customer Number")
+                customer_name = _pick(row, "Kunde", "Customer")
+                customers = m.Customer.objects.filter(organization=org)
+                customer = customers.filter(number=customer_number).first() if customer_number else None
+                if customer is None and customer_name:
+                    wanted = " ".join(customer_name.casefold().replace(",", " ").split())
+                    customer = next((candidate for candidate in customers if wanted in {
+                        " ".join((candidate.company or "").casefold().split()),
+                        " ".join(f"{candidate.first_name} {candidate.last_name}".casefold().split()),
+                        " ".join(f"{candidate.last_name} {candidate.first_name}".casefold().split()),
+                    }), None)
+                if customer is None:
+                    skipped += 1
+                    continue
+                raw_status = _pick(row, "Status", "Project Status").casefold()
+                values = {
+                    "customer": customer,
+                    "title": title or number or "ToolTime Projekt",
+                    "status": status_map.get(raw_status, "inquiry"),
+                    "description": _pick(row, "Beschreibung", "Project Description", "Description"),
+                    "external_reference": _pick(row, "ToolTime ID", "External Reference"),
+                }
+                project = m.Project.objects.filter(organization=org, number=number).first() if number else None
+                if project:
+                    for key, value in values.items():
+                        setattr(project, key, value)
+                    project.save()
+                    updated += 1
+                else:
+                    project = m.Project.objects.create(
+                        organization=org, number=number or _unique_number(m.Project, org, "P"), **values
+                    )
+                    created += 1
+                street = _pick(row, "Straße", "Strasse", "Street")
+                postal_code = _pick(row, "PLZ", "ZIP", "Postal Code")
+                city = _pick(row, "Ort", "Stadt", "City")
+                if street or postal_code or city:
+                    location, _ = m.ObjectLocation.objects.get_or_create(
+                        organization=org, customer=customer, street=street, postal_code=postal_code, city=city,
+                        defaults={"name": title or "ToolTime Objekt"},
+                    )
+                    if project.object_location_id != location.id:
+                        project.object_location = location
+                        project.save(update_fields=["object_location", "updated_at"])
         elif kind in {"quotes", "invoices"}:
             model = m.Quote if kind == "quotes" else m.Invoice
             prefix = "A" if kind == "quotes" else "R"
@@ -833,8 +887,11 @@ def _import_tooltime_rows(org, user, kind, rows):
                     customer = m.Customer.objects.filter(organization=org).filter(Q(company__iexact=customer_name) | Q(last_name__iexact=customer_name)).first()
                 if customer is None:
                     customer = _tooltime_customer(org, first)
+                project_number = _pick(first, "Projektnummer", "Project Number")
                 project_title = _pick(first, "Projekt", "Projekttitel", "Project", "Titel", "Rechnung Titel") or f"ToolTime Import {number}"
-                project = m.Project.objects.filter(organization=org, customer=customer, title=project_title).first()
+                project = m.Project.objects.filter(organization=org, number=project_number).first() if project_number else None
+                if project is None:
+                    project = m.Project.objects.filter(organization=org, customer=customer, title=project_title).first()
                 if project is None:
                     project = m.Project.objects.create(organization=org, customer=customer, number=_unique_number(m.Project, org, "P"), title=project_title, status="invoiced" if kind == "invoices" else "quoted")
                 obj = model.objects.filter(organization=org, number=number).first()
