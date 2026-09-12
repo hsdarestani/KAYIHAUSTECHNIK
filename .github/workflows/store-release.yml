@@ -41,7 +41,8 @@ jobs:
           python-version: '3.13'
       - name: Install native and branding dependencies
         run: |
-          cd native && npm install --no-audit --no-fund
+          python3 scripts/prepare_native_store_shell.py
+          cd native && npm install --no-audit --no-fund && npm run build
           python -m pip install Pillow
       - name: Generate Android project
         working-directory: native
@@ -170,7 +171,8 @@ jobs:
           xcrun --sdk iphoneos --show-sdk-version | grep -E '^26(\.|$)'
       - name: Install native and branding dependencies
         run: |
-          cd native && npm install --no-audit --no-fund
+          python3 scripts/prepare_native_store_shell.py
+          cd native && npm install --no-audit --no-fund && npm run build
           python -m pip install Pillow
       - name: Generate iOS project
         working-directory: native
