@@ -30,3 +30,9 @@ class NativeMobileEntryFlowTests(SimpleTestCase):
             self.assertIn(marker, app)
         self.assertIn("data-mobile-more", installer)
         self.assertIn("{% url 'logout' %}", installer)
+
+    def test_native_back_navigation_uses_history(self):
+        app = (ROOT / "design/native/full-app/app.js").read_text(encoding="utf-8")
+        self.assertIn("history.pushState", app)
+        self.assertIn("window.addEventListener('popstate'", app)
+        self.assertIn("navigate('scanner')", app)

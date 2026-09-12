@@ -22,6 +22,7 @@ const roleName = () => isOffice() ? 'Büro & Administration' : 'Mitarbeiter';
 const fullName = () => state.user?.name || state.user?.username || 'A+Bau';
 const cacheKey = () => `ab.cachedData.${state.user?.id || 'anonymous'}`;
 function cachedOperationalData(){try{return JSON.parse(localStorage.getItem(cacheKey())||'null');}catch(_){localStorage.removeItem(cacheKey());return null;}}
+function navigate(route, replace=false){state.route=route;if(replace)history.replaceState({route},'',`#${route}`);else history.pushState({route},'',`#${route}`);renderShell();window.scrollTo(0,0);}
 
 function toast(message, type = 'success') {
   const node = document.createElement('div');
@@ -183,8 +184,8 @@ async function saveDocument(event){event.preventDefault();const form=event.curre
 async function saveExpense(event){event.preventDefault();const form=event.currentTarget;const payload=formPayload(form);payload.amount_net=Number(payload.amount_net);payload.tax_rate=Number(payload.tax_rate);payload.paid=form.querySelector('[name="paid"]').checked;if(payload.project)payload.project=Number(payload.project);else payload.project=null;setBusy(form,true,'Ausgabe wird gespeichert …');try{const saved=await api('/api/expenses/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});upsert(state.data.expenses,saved);state.route='expenses';renderShell();toast('Ausgabe wurde gespeichert.');}catch(error){setBusy(form,false,error.message,true);toast(error.message,'error');}}
 
 function bindActions() {
-  document.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click',()=>{state.route=button.dataset.route;renderShell();window.scrollTo(0,0);}));
-  document.querySelectorAll('[data-scan-project]').forEach(button=>button.addEventListener('click',()=>{state.selectedProjectId=Number(button.dataset.scanProject);state.route='scanner';renderShell();}));
+  document.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click',()=>navigate(button.dataset.route)));
+  document.querySelectorAll('[data-scan-project]').forEach(button=>button.addEventListener('click',()=>{state.selectedProjectId=Number(button.dataset.scanProject);navigate('scanner');}));
   document.querySelector('[data-start-scan]')?.addEventListener('click',()=>startScan(document.querySelector('#scan-project')?.value));
   document.querySelector('[data-pending-scans]')?.addEventListener('click',listPending);
   document.querySelector('[data-logout]')?.addEventListener('click',()=>logout(true));
@@ -224,4 +225,6 @@ function bindActions() {
 
 window.addEventListener('online',()=>{state.online=true;toast('Verbindung wiederhergestellt. Daten werden synchronisiert.','info');if(state.user)bootstrap();else renderLogin();});
 window.addEventListener('offline',()=>{state.online=false;renderShell();toast('Offline-Modus aktiviert. Gespeicherte Daten bleiben lesbar.','info');});
+window.addEventListener('popstate',event=>{if(!state.user)return;state.route=event.state?.route||'home';renderShell();window.scrollTo(0,0);});
+history.replaceState({route:'home'},'','#home');
 if (state.token && state.user) bootstrap(); else renderLogin();
